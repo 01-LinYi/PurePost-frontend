@@ -1,69 +1,50 @@
+# macOS
 .DS_Store
-node_modules/
-dist/
-build/
-*.log
-*.tmp
-*.bak
-.idea/
-.vscode/
-*.swp
-
-# Python
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-venv/
-env/
-*.egg-info/
-.pytest_cache/
 
 # Node.js
 node_modules/
-npm-debug.log
-yarn-error.log
-.yarn/
-.yarnrc
-.pnpm-debug.log
 
 
-*.db
-*.sqlite
-
-
-apps/frontend/.expo/
-apps/frontend/.expo-shared/
-apps/frontend/.cache/
-apps/frontend/dist/
-apps/frontend/build/
-
-
-apps/backend/static/
-apps/backend/media/
-apps/backend/.env
-
-
-
-*.h5
-*.pt
-*.bin
-
-
-.env
-.env.local
-.env.development
-.env.production
+dist/
+build/
+web-build/
+expo-env.d.ts
 
 
 *.log
 logs/
-
-
+*.tmp
 temp/
 tmp/
+*.bak
+*.swp
+npm-debug.*
+yarn-debug.*
+yarn-error.*
 
 
 .idea/
 .vscode/
-*.swp
+
+# Expo
+.expo/
+
+# Native
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# Metro
+.metro-health-check*
+
+
+.env*.local
+
+# TypeScript
+*.tsbuildinfo
+
+
+*.pem
