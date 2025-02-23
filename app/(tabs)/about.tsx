@@ -4,7 +4,7 @@ import { View, Text, StyleSheet, Image } from 'react-native';
 const AboutPage = () => {
     return (
         <View style={styles.container}>
-            <Image source={require('@/assets/images/307icon.jpeg')} style={{ width: 200, height: 200 }} />
+            <Image source={require('@/assets/images/purePostTransparent.png')} style={{ width: 200, height: 200 }} />
             <Text style={styles.title}>About Us</Text>
             <Text style={styles.description}>
             Welcome to PurePost! We are dedicated to providing the best service for our users.
