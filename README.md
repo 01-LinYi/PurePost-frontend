@@ -3,6 +3,8 @@
 ![React Native](https://img.shields.io/badge/React_Native-61DAFB?logo=react&logoColor=white)
 ![Expo](https://img.shields.io/badge/Expo-000020?logo=expo&logoColor=white)
 
+![PurePost Logo](./assets/images/PurePost-transparent.png)
+
 PurePost is an innovative social media platform designed to empower users to identify potential deepfake images and videos through robust deepfake detection tools. This repository contains the frontend of PurePost, built using **React Native** and **Expo** for iOS and Android.
 
 ---
@@ -155,3 +157,7 @@ cp .env.example .env
   ```bash
   git checkout -b feature/your-branch-name main
   ```
+
+### Continuous Integration (CI)
+
+This project uses GitHub Actions to automate the Continuous Integration (CI) process, ensuring code quality through automated builds and tests. The CI pipeline is configured to run on every push and pull request to the main branch.
