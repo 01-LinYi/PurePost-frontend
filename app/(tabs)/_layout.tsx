@@ -48,12 +48,13 @@ export default function TabLayout() {
         }}
       />
 
-      {/* Profile 页面 */}
+      {/* Profile Page */}
       <Tabs.Screen
         name="profile"
         options={{
           title: "Profile",
           tabBarIcon: ({ color }) => <TabBarIcon name="user" color={color} />,
+          headerShown: false,
         }}
       />
 
@@ -66,7 +67,7 @@ export default function TabLayout() {
         }}
       />
 
-      {/* About 页面 ✅ 确保存在 */}
+      {/* About Page  */}
       <Tabs.Screen
         name="about"
         options={{
