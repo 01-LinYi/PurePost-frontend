@@ -51,22 +51,22 @@ export default function RootLayout() {
 
 function RootLayoutNav() {
   const colorScheme = useColorScheme();
-  const [isLoggedIn, setIsLoggedIn]=useState(false);
-  const router=useRouter();
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const router = useRouter();
   //router.replace("/login");
 
   useEffect(() => {
-    const checkAuth = async() => {
-      const userToken=false;
+    const checkAuth = async () => {
+      const userToken = false;
       setIsLoggedIn(userToken);
-      if(userToken)
+      if (userToken)
         router.replace("/(tabs)");
       else
         router.replace("/login");
 
       SplashScreen.hideAsync();
     }
-    
+
     checkAuth();
   }, []);
 
@@ -75,7 +75,7 @@ function RootLayoutNav() {
   return (
     <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
       <Stack>
-        <Stack.Screen name="login" options={{headerShown: false}}/>
+        <Stack.Screen name="login" options={{ headerShown: false }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="modal" options={{ presentation: "modal" }} />
       </Stack>
