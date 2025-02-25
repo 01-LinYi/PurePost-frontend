@@ -3,7 +3,7 @@
 ![React Native](https://img.shields.io/badge/React_Native-61DAFB?logo=react&logoColor=white)
 ![Expo](https://img.shields.io/badge/Expo-000020?logo=expo&logoColor=white)
 
-![PurePost Logo](./assets/images/PurePost-transparent.png)
+![PurePost Logo](./assets/images/purePostTransparent.png)
 
 PurePost is an innovative social media platform designed to empower users to identify potential deepfake images and videos through robust deepfake detection tools. This repository contains the frontend of PurePost, built using **React Native** and **Expo** for iOS and Android.
 
