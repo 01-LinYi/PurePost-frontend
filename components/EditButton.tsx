@@ -1,17 +1,22 @@
-import React from "react";
-import { StyleSheet, TouchableOpacity, Text, View } from "react-native";
+import { StyleSheet, TouchableOpacity, ViewStyle } from "react-native";
+import { View, Text } from "./Themed";
 import { LinearGradient } from "expo-linear-gradient";
 
-export default function EditButton({ onPress }: { onPress: () => void }) {
+type EditButtonProps = {
+  onPress: () => void;
+  style?: ViewStyle; // Allow an optional style prop
+};
+
+const EditButton = ({ onPress, style }: EditButtonProps) => {
   return (
-    <View style={styles.container}>
+    <View>
       <TouchableOpacity
-        style={styles.buttonContainer}
+        style={[styles.buttonContainer, style]} // Apply custom styles
         onPress={onPress}
-        activeOpacity={0.8} 
+        activeOpacity={0.8} // Provides visual feedback on press
       >
         <LinearGradient
-          colors={["#4facfe", "#00f2fe"]} // 渐变颜色
+          colors={["#00c5e3", "#0072ff"]} // Gradient with brand color and a complementary shade
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
           style={styles.gradient}
@@ -21,27 +26,26 @@ export default function EditButton({ onPress }: { onPress: () => void }) {
       </TouchableOpacity>
     </View>
   );
-}
+};
+
+export default EditButton;
 
 const styles = StyleSheet.create({
-  container: {
-    alignItems: "center",
-    justifyContent: "center",
-  },
   buttonContainer: {
-    borderRadius: 20,
+    borderRadius: 20, // Rounded corners for the button
     overflow: "hidden",
   },
   gradient: {
-    paddingVertical: 15,
-    paddingHorizontal: 30,
-    borderRadius: 25,
+    paddingVertical: 12, // Adjust vertical spacing for better button size
+    paddingHorizontal: 25, // Adjust horizontal spacing for a balanced look
+    borderRadius: 20, // Consistent rounded corners
     alignItems: "center",
+    justifyContent: "center",
   },
   text: {
-    fontSize: 13,
-    fontWeight: "500",
-    color: "#fff",
-    textTransform: "uppercase",
+    fontSize: 14, // Balanced font size
+    fontWeight: "600", // Semi-bold text for emphasis
+    color: "#fff", // White text color for contrast
+    textTransform: "uppercase", // Uppercase text for consistency with button style
   },
 });

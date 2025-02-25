@@ -3,15 +3,15 @@ import { Stack } from "expo-router";
 export default function ProfileLayout() {
   return (
     <Stack>
-      {/* 主页面的 header */}
+      {/* Profile page'  header */}
       <Stack.Screen
-        name="index" // 对应 profile/index.tsx
+        name="index" // profile/index.tsx
         options={{
-          headerTitle: "Profile", // 只为主页面设置标题
+          headerTitle: "Profile", // only for the main page
         }}
       />
 
-      {/* Followers 页面 */}
+      {/* Followers page */}
       <Stack.Screen
         name="followers"
         options={{
@@ -19,7 +19,7 @@ export default function ProfileLayout() {
         }}
       />
 
-      {/* Following 页面 */}
+      {/* Following page */}
       <Stack.Screen
         name="following"
         options={{
