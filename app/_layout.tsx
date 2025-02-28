@@ -10,7 +10,11 @@ import * as SplashScreen from "expo-splash-screen";
 import { useEffect, useState } from "react";
 import "react-native-reanimated";
 
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+
 import { useColorScheme } from "@/components/useColorScheme";
+import { View } from "react-native";
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -70,15 +74,28 @@ function RootLayoutNav() {
     checkAuth();
   }, []);
 
-
+  const insets =  useSafeAreaInsets()
 
   return (
-    <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="login" options={{ headerShown: false }} />
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ presentation: "modal" }} />
-      </Stack>
-    </ThemeProvider>
+    <View 
+      style={{ 
+        flex: 1, 
+        
+        // padding for iOS. Maybe custom for Android?
+        paddingTop: insets.top,
+        paddingRight: insets.right,
+        paddingBottom: insets.bottom,
+        paddingLeft: insets.left
+      }}
+    >
+      <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
+        <Stack>
+          <Stack.Screen name="login" options={{ headerShown: false }} />
+          <Stack.Screen name="register" options={{ headerShown: false }} />
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen name="modal" options={{ presentation: "modal" }} />
+        </Stack>
+      </ThemeProvider>
+    </View>
   );
 }

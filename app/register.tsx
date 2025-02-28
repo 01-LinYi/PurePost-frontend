@@ -1,4 +1,4 @@
-import { Redirect } from 'expo-router';
+import { Redirect, router } from 'expo-router';
 import { Text, View, Image, TextInput, TouchableOpacity, StyleSheet, useColorScheme } from 'react-native';
 
 import { useState } from 'react';
@@ -80,20 +80,21 @@ const RegisterPage = () => {
           onChangeText={setLastname}
         />
 
-        <TouchableOpacity 
-          style={styles.button} 
+        <TouchableOpacity
+          style={styles.button}
           onPress={() => alert("Logging in...")}
         >
-          <Text style={styles.loginText}>Register</Text>
+          <Text style={styles.registerText}>Register</Text>
         </TouchableOpacity>
       </View>
 
       {/* Login Button */}
       <TouchableOpacity
-        style={styles.button}
-        onPress={() => <Redirect href={"/login"} />}
+        onPress={
+          () => router.replace("/login")
+        }
       >
-        <Text style={styles.loginText}>Login</Text>
+        <Text style={styles.loginText}>Have an account? Login!</Text>
       </TouchableOpacity>
     </View>
   );
@@ -158,7 +159,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
 
-  loginText: {
+  registerText: {
     color: "#fff",
     fontSize: 24,
     fontWeight: '600',
@@ -167,6 +168,14 @@ const styles = StyleSheet.create({
   logoImage: {
     width: 150,
     height: 150,
+  },
+
+  loginText: {
+    color: '#00c5e3',
+    fontSize: 16,
+    fontWeight: '500',
+    marginTop: 5,
+    marginBottom: 20,
   },
 });
 
