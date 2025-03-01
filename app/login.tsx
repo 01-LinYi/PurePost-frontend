@@ -1,10 +1,11 @@
+import { useSession } from '@/components/SessionProvider';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
-import { View, Text, TextInput, StyleSheet, Image, TouchableOpacity } from 'react-native';
+import { Image, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 
 const LoginPage = () => {
-
+    const { logIn } = useSession();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
 
@@ -36,12 +37,17 @@ const LoginPage = () => {
                     value={password}
                     onChangeText={setPassword}
                 />
-                
+
                 <TouchableOpacity
                     style={styles.button}
-                    onPress={
-                        () => alert("Logging in...")
-                    }
+                    onPress={() => {
+                        logIn(email, password)
+                        .then(
+                            () => router.replace("/(tabs)"),
+                            () => alert("Invalid email or password.")
+                        )
+                        .catch((error) => alert(error.message));
+                    }}
                 >
                     <Text style={styles.loginText}>Login</Text>
                 </TouchableOpacity>
@@ -51,12 +57,8 @@ const LoginPage = () => {
                 </TouchableOpacity>
             </View>
 
-
-
-            <TouchableOpacity 
-                onPress={
-                    () => router.replace("/register")
-                }
+            <TouchableOpacity
+                onPress={() => router.replace("/register")}
             >
                 <Text style={styles.registerText}>Don't have an account? Create one!</Text>
             </TouchableOpacity>
@@ -64,8 +66,6 @@ const LoginPage = () => {
 
     );
 }
-
-
 
 const styles = StyleSheet.create({
     container: {
@@ -80,15 +80,12 @@ const styles = StyleSheet.create({
     inputContainer: {
         width: '100%',
         alignItems: 'center',
-        // marginTop: 30,
     },
     title: {
         fontSize: 32,
         color: "#00c5e3",
         fontWeight: '800',
         fontStyle: 'italic',
-        // position: 'absolute',
-        // top: 300,
     },
     input: {
         width: '90%',
@@ -107,15 +104,11 @@ const styles = StyleSheet.create({
         textAlign: 'center',
     },
     button: {
-        // position: 'absolute',
-        // bottom: 240,
         width: '90%',
         backgroundColor: '#00c5e3',
         paddingVertical: 10,
-        // paddingHorizontal: 30,
         alignItems: 'center',
         borderRadius: 8,
-        // margin: 20,
     },
     registerText: {
         color: '#00c5e3',
@@ -139,8 +132,6 @@ const styles = StyleSheet.create({
     absoluteImage: {
         width: 150,
         height: 150,
-        // position: 'absolute',
-        // top: 150,
     },
 });
 
