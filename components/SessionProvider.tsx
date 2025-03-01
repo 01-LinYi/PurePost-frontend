@@ -1,17 +1,19 @@
 import axiosInstance from '@/utils/axiosInstance';
 import axios from 'axios';
-import { createContext, useContext, type PropsWithChildren } from 'react';
+import { createContext, useContext, useState, type PropsWithChildren } from 'react';
 import { useStorageState } from '../hooks/useStorageState';
 
 const AuthContext = createContext<{
   logIn: (username: string, password: string) => Promise<boolean>;
   logOut: () => Promise<boolean>;
-  session?: string | null;
+  session: string | null;
+  user: { id: string; username: string } | null;
   isSessionLoading: boolean;
 }>({
   logIn: async () => false,
   logOut: async () => false,
   session: null,
+  user: null,
   isSessionLoading: false,
 });
 
@@ -27,9 +29,11 @@ export function useSession() {
   return value;
 }
 
+const authEndpoint = 'auth/';
+
 export function SessionProvider({ children }: PropsWithChildren) {
+  const [user, setUser] = useState(null);
   const [[isSessionLoading, session], setSession] = useStorageState('session');
-  const authEndpoint = 'auth/';
 
   const logIn = async (username: string, password: string): Promise<boolean> => {
     try {
@@ -40,7 +44,8 @@ export function SessionProvider({ children }: PropsWithChildren) {
 
       if (response.status === 200) {
         const data = response.data;
-        setSession(data.token); // Assuming the token is returned in the response
+        setUser(data.user);
+        setSession(data.token);
         return true;
       } else {
         console.error('Login failed:', response.statusText);
@@ -57,6 +62,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
       // Call the logout endpoint
       const response = await axiosInstance.post(authEndpoint + "logout/");
       if (response.status === 200) {
+        setUser(null);
         setSession(null);
         return true;
       } else {
@@ -81,6 +87,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
       value={{
         logIn,
         logOut,
+        user,
         session,
         isSessionLoading,
       }}>
