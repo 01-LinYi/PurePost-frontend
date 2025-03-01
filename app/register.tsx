@@ -2,15 +2,14 @@ import { Redirect, router } from 'expo-router';
 import { Text, View, Image, TextInput, TouchableOpacity, StyleSheet, useColorScheme } from 'react-native';
 
 import { useState } from 'react';
+import axiosInstance from '@/utils/axiosInstance';
 
 const RegisterPage = () => {
 
   const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [passwordConfirm, setPasswordConfirm] = useState('');
-  const [firstname, setFirstname] = useState('');
-  const [middlename, setMiddlename] = useState('');
-  const [lastname, setLastname] = useState('');
 
   return (
     <View style={styles.container}>
@@ -55,34 +54,37 @@ const RegisterPage = () => {
 
         <TextInput
           style={styles.input}
-          placeholder="Enter First Name"
+          placeholder="Enter Username"
           placeholderTextColor="#888"
           secureTextEntry
-          value={firstname}
-          onChangeText={setFirstname}
-        />
-
-        <TextInput
-          style={styles.input}
-          placeholder="Enter Middle Name"
-          placeholderTextColor="#888"
-          secureTextEntry
-          value={middlename}
-          onChangeText={setMiddlename}
-        />
-
-        <TextInput
-          style={styles.input}
-          placeholder="Enter Last Name"
-          placeholderTextColor="#888"
-          secureTextEntry
-          value={lastname}
-          onChangeText={setLastname}
+          value={username}
+          onChangeText={setUsername}
         />
 
         <TouchableOpacity
           style={styles.button}
-          onPress={() => alert("Logging in...")}
+          onPress={
+            async () => {
+              if (password !== passwordConfirm) {
+                alert("Passwords do not match");
+                return;
+              }
+
+              const response = await axiosInstance.post("auth/register/", {
+                "email": email,
+                "password": password,
+                "username": username,
+              });
+
+              if (response.status !== 201) {
+                console.error("Registration failed:", response);
+                alert("Registration failed");
+                return;
+              }
+              
+              // TODO: Show a success notification
+              router.replace("/login");
+          }}
         >
           <Text style={styles.registerText}>Register</Text>
         </TouchableOpacity>
@@ -113,7 +115,6 @@ const styles = StyleSheet.create({
 
   inputContainer: {
     width: '100%',
-    // height: "50%",
     alignItems: 'center',
     display: 'flex',
     flexDirection: 'column',
