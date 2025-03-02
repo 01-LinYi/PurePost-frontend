@@ -7,14 +7,16 @@ const AuthContext = createContext<{
   logIn: (username: string, password: string) => Promise<boolean>;
   logOut: () => Promise<boolean>;
   session: string | null;
-  user: { id: string; username: string } | null;
   isSessionLoading: boolean;
+  user: { id: string; username: string } | null;
+  isUserLoading: boolean;
 }>({
   logIn: async () => false,
   logOut: async () => false,
   session: null,
-  user: null,
   isSessionLoading: false,
+  user: null,
+  isUserLoading: false,
 });
 
 // This hook can be used to access the user info.
@@ -32,8 +34,9 @@ export function useSession() {
 const authEndpoint = 'auth/';
 
 export function SessionProvider({ children }: PropsWithChildren) {
-  const [user, setUser] = useState(null);
+  // const [user, setUser] = useState(null);
   const [[isSessionLoading, session], setSession] = useStorageState('session');
+  const [[isUserLoading, user], setUser] = useStorageState('user');
 
   const logIn = async (username: string, password: string): Promise<boolean> => {
     try {
@@ -44,7 +47,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
 
       if (response.status === 200) {
         const data = response.data;
-        setUser(data.user);
+        setUser(JSON.stringify(data.user));
         setSession(data.token);
         return true;
       } else {
@@ -52,7 +55,11 @@ export function SessionProvider({ children }: PropsWithChildren) {
         return false;
       }
     } catch (error) {
-      console.error('Login error:', error);
+      if (axios.isAxiosError(error) && error.response) {
+        console.error('Login error:', error.response.data);
+      } else {
+        console.error('Login error:', error);
+      }
       return false;
     }
   };
@@ -74,9 +81,9 @@ export function SessionProvider({ children }: PropsWithChildren) {
       }
     } catch (error) {
       if (axios.isAxiosError(error) && error.response) {
-        console.error('Login error:', error.response.data);
+        console.error('Logout error:', error.response.data);
       } else {
-        console.error('Login error:', error);
+        console.error('Logout error:', error);
       }
       return false;
     }
@@ -87,9 +94,10 @@ export function SessionProvider({ children }: PropsWithChildren) {
       value={{
         logIn,
         logOut,
-        user,
-        session,
-        isSessionLoading,
+        session: session,
+        isSessionLoading: isSessionLoading,
+        user: user ? JSON.parse(user) : null,
+        isUserLoading: isUserLoading,
       }}>
       {children}
     </AuthContext.Provider>
