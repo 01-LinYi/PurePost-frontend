@@ -56,7 +56,7 @@ function RootLayoutNav() {
 
   useEffect(() => {
     const checkAuth = async() => {
-      const userToken=false;
+      const userToken=true;
       setIsLoggedIn(userToken);
       if(userToken)
         router.replace("/(tabs)");

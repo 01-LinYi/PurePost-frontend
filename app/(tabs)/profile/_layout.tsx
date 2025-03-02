@@ -15,7 +15,7 @@ export default function ProfileLayout() {
       <Stack.Screen
         name="followers"
         options={{
-          headerTitle: "Followers", // 自定义子页面标题
+          headerTitle: "Followers", 
         }}
       />
 
@@ -23,7 +23,14 @@ export default function ProfileLayout() {
       <Stack.Screen
         name="following"
         options={{
-          headerTitle: "Following", // 自定义子页面标题
+          headerTitle: "Following",
+        }}
+      />
+      {/* Edit Profile page */}
+      <Stack.Screen
+        name="edit"
+        options={{
+          headerTitle: "Edit Profile",
         }}
       />
     </Stack>
