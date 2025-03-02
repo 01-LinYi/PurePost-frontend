@@ -68,11 +68,11 @@ export default function TabLayout() {
         }}
       />
 
-      {/* Dashboard 页面 */}
+      {/* Message 页面 */}
       <Tabs.Screen
-        name="dashboard"
+        name="message"
         options={{
-          title: "Dashboard",
+          title: "Message",
           tabBarIcon: ({ color }) => <TabBarIcon name="th-large" color={color} />,
         }}
       />
