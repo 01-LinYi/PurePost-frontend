@@ -1,21 +1,24 @@
+import { useSession } from '@/components/SessionProvider';
+import { router } from 'expo-router';
 import React, { useState } from 'react';
-import {View, Text, TextInput, StyleSheet, Image, TouchableOpacity } from 'react-native';
+import { Image, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 
 const LoginPage = () => {
-
+    const { logIn } = useSession();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
 
-    return(
+    return (
         <View style={styles.container}>
-            <Image 
-                source={require('@/assets/images/PurePost-Transparent-Edgeless.png')}
-                style={styles.absoluteImage} 
-            />
+            <View style={styles.logoContainer}>
+                <Image
+                    source={require('@/assets/images/PurePost-Transparent-Edgeless.png')}
+                    style={styles.absoluteImage}
+                />
+                <Text style={styles.title}>PurePost</Text>
+            </View>
 
-            <Text style={styles.title}>PurePost</Text>
-            
             <View style={styles.inputContainer}>
                 <TextInput
                     style={styles.input}
@@ -35,53 +38,79 @@ const LoginPage = () => {
                     onChangeText={setPassword}
                 />
 
+                <TouchableOpacity
+                    style={styles.button}
+                    onPress={() => {
+                        logIn(email, password)
+                        .then(
+                            () => router.replace("/(tabs)"),
+                            () => alert("Invalid email or password.")
+                        )
+                        .catch((error) => alert(error.message));
+                    }}
+                >
+                    <Text style={styles.loginText}>Login</Text>
+                </TouchableOpacity>
+
                 <TouchableOpacity onPress={() => alert("Resetting password...")}>
                     <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
                 </TouchableOpacity>
             </View>
-            
 
-            <TouchableOpacity style={styles.button} onPress={() => alert("Logging in...")}>
-                <Text style={styles.loginText}>Login</Text>
-            </TouchableOpacity>
+            <View style={styles.registerContainer}>
+                <TouchableOpacity onPress={() => router.replace("/register")}>
+                    <Text style={styles.registerText}>Don't have an account? Create one!</Text>
+                </TouchableOpacity>
+            </View>
+            
         </View>
-        
+
     );
 }
 
-
-
 const styles = StyleSheet.create({
     container: {
+        display: 'flex',
         flex: 1,
         backgroundColor: '#fff',
-        justifyContent: 'center',
+        justifyContent: 'space-evenly',
         alignItems: 'center',
-        padding: 20,
+        flexDirection: 'column',
+        padding: 0,
     },
-    inputContainer:{
+    logoContainer: {
         width: '100%',
         alignItems: 'center',
-        marginTop: 30,
+        position: 'absolute',
+        top: '5%',
+    },
+    inputContainer: {
+        width: '100%',
+        alignItems: 'center',
+        position: 'absolute',
+        top: '30%',
+    },
+    registerContainer: {
+        width: '100%',
+        alignItems: 'center',
+        position: 'absolute',
+        bottom: '5%',
     },
     title: {
         fontSize: 32,
         color: "#00c5e3",
         fontWeight: '800',
         fontStyle: 'italic',
-        position: 'absolute',
-        top: 300,
     },
     input: {
-        width: '90%',
+        width: '80%',
         height: 50,
         borderWidth: 1,
         borderColor: '#00c5e3',
         borderRadius: 8,
         paddingHorizontal: 15,
         fontSize: 16,
-        marginVertical: 10,
-        marginTop: 10,
+        marginVertical: 8,
         backgroundColor: '#f9f9f9',
     },
     description: {
@@ -89,20 +118,24 @@ const styles = StyleSheet.create({
         textAlign: 'center',
     },
     button: {
-        position: 'absolute',
-        bottom: 240,
+        width: '80%',
         backgroundColor: '#00c5e3',
         paddingVertical: 10,
-        paddingHorizontal: 30,
+        alignItems: 'center',
         borderRadius: 8,
-        margin: 20,
+        marginVertical: 8,
+    },
+    registerText: {
+        color: '#00c5e3',
+        fontSize: 16,
+        fontWeight: '500',
+        marginVertical: 10,
     },
     forgotPasswordText: {
         color: '#00c5e3',
         fontSize: 16,
         fontWeight: '500',
-        marginTop: 5,
-        marginBottom: 20,
+        marginVertical: 5,
     },
     loginText: {
         color: '#fff',
@@ -112,8 +145,6 @@ const styles = StyleSheet.create({
     absoluteImage: {
         width: 150,
         height: 150,
-        position: 'absolute',
-        top: 150,
     },
 });
 

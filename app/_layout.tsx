@@ -5,16 +5,21 @@ import {
   ThemeProvider,
 } from "@react-navigation/native";
 import { useFonts } from "expo-font";
-import { Stack, useRouter } from "expo-router";
+import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import "react-native-reanimated";
 
-import { useColorScheme } from "@/components/useColorScheme";
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+
+import { SessionProvider } from "@/components/SessionProvider";
+import { useColorScheme } from "@/hooks/useColorScheme";
+import { View } from "react-native";
 
 export {
   // Catch any errors thrown by the Layout component.
-  ErrorBoundary,
+  ErrorBoundary
 } from "expo-router";
 
 export const unstable_settings = {
@@ -36,11 +41,11 @@ export default function RootLayout() {
     if (error) throw error;
   }, [error]);
 
-  /*useEffect(() => {
+  useEffect(() => {
     if (loaded) {
       SplashScreen.hideAsync();
     }
-  }, [loaded]);*/
+  }, [loaded]);
 
   if (!loaded) {
     return null;
@@ -50,35 +55,27 @@ export default function RootLayout() {
 }
 
 function RootLayoutNav() {
+  const insets = useSafeAreaInsets()
   const colorScheme = useColorScheme();
-  const [isLoggedIn, setIsLoggedIn]=useState(false);
-  const router=useRouter();
-
-  useEffect(() => {
-    const checkAuth = async() => {
-      const userToken=true;
-      setIsLoggedIn(userToken);
-      if(userToken)
-        router.replace("/(tabs)");
-      else
-        router.replace("/posting");
-
-      SplashScreen.hideAsync();
-    }
-    
-    checkAuth();
-  }, []);
-
-
 
   return (
-    <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="login" options={{ headerShown: false }}/>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="posting" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ presentation: "modal" }} />
-      </Stack>
-    </ThemeProvider>
+    <View
+      style={{
+        flex: 1,
+
+        // padding for iOS. Maybe custom for Android?
+        paddingTop: insets.top,
+        paddingRight: insets.right,
+        paddingBottom: insets.bottom,
+        paddingLeft: insets.left
+      }}
+    >
+      <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
+        <SessionProvider>
+          {/* File-based routing: tsx files in this dir is added to stack */}
+          <Stack screenOptions={{ headerShown: false }} />
+        </SessionProvider>
+      </ThemeProvider>
+    </View>
   );
 }

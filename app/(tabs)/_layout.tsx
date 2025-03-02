@@ -1,11 +1,12 @@
-import React from "react";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
-import { Link, Tabs } from "expo-router";
+import { Link, Redirect, SplashScreen, Tabs } from "expo-router";
+import React from "react";
 import { Pressable } from "react-native";
 
+import { useSession } from "@/components/SessionProvider";
 import Colors from "@/constants/Colors";
-import { useColorScheme } from "@/components/useColorScheme";
-import { useClientOnlyValue } from "@/components/useClientOnlyValue";
+import { useClientOnlyValue } from "@/hooks/useClientOnlyValue";
+import { useColorScheme } from "@/hooks/useColorScheme";
 
 // TabBarIcon 组件
 function TabBarIcon(props: {
@@ -17,6 +18,16 @@ function TabBarIcon(props: {
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
+  const { session, isSessionLoading } = useSession();
+
+  if (isSessionLoading) {
+    SplashScreen.preventAutoHideAsync();
+    return null;
+  }
+
+  if (!session) {
+    return <Redirect href={"/login"} />;
+  }
 
   return (
     <Tabs
