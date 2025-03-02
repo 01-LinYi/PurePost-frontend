@@ -15,7 +15,7 @@ const RegisterPage = () => {
     <View style={styles.container}>
 
       {/* Logo and App Name */}
-      <View>
+      <View style={styles.logoContainer}>
         <Image
           source={require('@/assets/images/PurePost-Transparent-Edgeless.png')}
           style={styles.logoImage}
@@ -32,6 +32,15 @@ const RegisterPage = () => {
           keyboardType="email-address"
           value={email}
           onChangeText={setEmail}
+        />
+        
+        <TextInput
+          style={styles.input}
+          placeholder="Enter Username"
+          placeholderTextColor="#888"
+          secureTextEntry
+          value={username}
+          onChangeText={setUsername}
         />
 
         <TextInput
@@ -50,15 +59,6 @@ const RegisterPage = () => {
           secureTextEntry
           value={passwordConfirm}
           onChangeText={setPasswordConfirm}
-        />
-
-        <TextInput
-          style={styles.input}
-          placeholder="Enter Username"
-          placeholderTextColor="#888"
-          secureTextEntry
-          value={username}
-          onChangeText={setUsername}
         />
 
         <TouchableOpacity
@@ -91,35 +91,47 @@ const RegisterPage = () => {
       </View>
 
       {/* Login Button */}
-      <TouchableOpacity
-        onPress={
-          () => router.replace("/login")
-        }
-      >
-        <Text style={styles.loginText}>Have an account? Login!</Text>
-      </TouchableOpacity>
+      <View style={styles.loginContainer}>
+        <TouchableOpacity onPress={ () => router.replace("/login")}>
+          <Text style={styles.loginText}>Have an account? Login!</Text>
+        </TouchableOpacity>
+      </View>
+      
+    
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
     display: 'flex',
-    flexDirection: 'column',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flex: 1,
     backgroundColor: '#fff',
-    padding: 40,
+    justifyContent: 'space-evenly',
+    alignItems: 'center',
+    flexDirection: 'column',
+    padding: 0,
+  },
+
+  logoContainer: {
+    width: '100%',
+    alignItems: 'center',
+    position: 'absolute',
+    top: '5%',
   },
 
   inputContainer: {
     width: '100%',
     alignItems: 'center',
-    display: 'flex',
-    flexDirection: 'column',
-    justifyContent: 'flex-start',
-    gap: 10,
+    position: 'absolute',
+    top: '30%',
+  },
+
+  loginContainer: {
+    width: '100%',
+    alignItems: 'center',
+    position: 'absolute',
+    bottom: '5%',
   },
 
   title: {
@@ -130,13 +142,14 @@ const styles = StyleSheet.create({
   },
 
   input: {
-    width: '100%',
+    width: '80%',
     height: 50,
     borderWidth: 1,
     borderColor: '#00c5e3',
     borderRadius: 8,
     paddingHorizontal: 15,
     fontSize: 16,
+    marginVertical: 8,
     backgroundColor: '#f9f9f9',
   },
 
@@ -148,9 +161,9 @@ const styles = StyleSheet.create({
   button: {
     backgroundColor: '#00c5e3',
     paddingVertical: 10,
-    paddingHorizontal: 30,
     borderRadius: 8,
-    width: '100%',
+    marginVertical: 8,
+    width: '80%',
     alignItems: 'center',
   },
 
@@ -175,8 +188,6 @@ const styles = StyleSheet.create({
     color: '#00c5e3',
     fontSize: 16,
     fontWeight: '500',
-    marginTop: 5,
-    marginBottom: 20,
   },
 });
 

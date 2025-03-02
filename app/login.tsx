@@ -11,7 +11,7 @@ const LoginPage = () => {
 
     return (
         <View style={styles.container}>
-            <View>
+            <View style={styles.logoContainer}>
                 <Image
                     source={require('@/assets/images/PurePost-Transparent-Edgeless.png')}
                     style={styles.absoluteImage}
@@ -57,11 +57,12 @@ const LoginPage = () => {
                 </TouchableOpacity>
             </View>
 
-            <TouchableOpacity
-                onPress={() => router.replace("/register")}
-            >
-                <Text style={styles.registerText}>Don't have an account? Create one!</Text>
-            </TouchableOpacity>
+            <View style={styles.registerContainer}>
+                <TouchableOpacity onPress={() => router.replace("/register")}>
+                    <Text style={styles.registerText}>Don't have an account? Create one!</Text>
+                </TouchableOpacity>
+            </View>
+            
         </View>
 
     );
@@ -77,9 +78,23 @@ const styles = StyleSheet.create({
         flexDirection: 'column',
         padding: 0,
     },
+    logoContainer: {
+        width: '100%',
+        alignItems: 'center',
+        position: 'absolute',
+        top: '5%',
+    },
     inputContainer: {
         width: '100%',
         alignItems: 'center',
+        position: 'absolute',
+        top: '30%',
+    },
+    registerContainer: {
+        width: '100%',
+        alignItems: 'center',
+        position: 'absolute',
+        bottom: '5%',
     },
     title: {
         fontSize: 32,
@@ -88,15 +103,14 @@ const styles = StyleSheet.create({
         fontStyle: 'italic',
     },
     input: {
-        width: '90%',
+        width: '80%',
         height: 50,
         borderWidth: 1,
         borderColor: '#00c5e3',
         borderRadius: 8,
         paddingHorizontal: 15,
         fontSize: 16,
-        marginVertical: 10,
-        marginTop: 10,
+        marginVertical: 8,
         backgroundColor: '#f9f9f9',
     },
     description: {
@@ -104,25 +118,24 @@ const styles = StyleSheet.create({
         textAlign: 'center',
     },
     button: {
-        width: '90%',
+        width: '80%',
         backgroundColor: '#00c5e3',
         paddingVertical: 10,
         alignItems: 'center',
         borderRadius: 8,
+        marginVertical: 8,
     },
     registerText: {
         color: '#00c5e3',
         fontSize: 16,
         fontWeight: '500',
-        marginTop: 5,
-        marginBottom: 20,
+        marginVertical: 10,
     },
     forgotPasswordText: {
         color: '#00c5e3',
         fontSize: 16,
         fontWeight: '500',
-        marginTop: 10,
-        marginBottom: 20,
+        marginVertical: 5,
     },
     loginText: {
         color: '#fff',
