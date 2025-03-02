@@ -1,7 +1,9 @@
 import { router } from 'expo-router';
-import { Text, View, Image, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Keyboard } from 'react-native';
+import { Text, View, Image, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Keyboard, Dimensions } from 'react-native';
 import { useState, useEffect } from 'react';
+import Animated, { useSharedValue, useAnimatedStyle, withTiming, withSpring, runOnJS } from 'react-native-reanimated';
 import axiosInstance from '@/utils/axiosInstance';
+import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 
 const RegisterPage = () => {
   // State variables for form fields
@@ -15,9 +17,57 @@ const RegisterPage = () => {
   
   // Loading state for registration process
   const [isLoading, setIsLoading] = useState(false);
-  
+
   // State to track if form is valid
   const [isFormValid, setIsFormValid] = useState(false);
+
+  // Default logo size, input position and keyboard height
+  const logoSize = useSharedValue(150);
+  const inputTranslateY = useSharedValue(0);
+  const keyboardHeight = useSharedValue(0);
+  const isKeyboardVisible = useSharedValue(false); // Track keyboard state
+  var cnt=0;
+
+  // Get Screen
+  const { height: screenHeight } = Dimensions.get("window");
+
+  const bottomMargin = 0.19*screenHeight;
+
+  useEffect(() => {
+    const showListener = Keyboard.addListener(
+        Platform.OS === 'ios' ? "keyboardWillShow" : "keyboardDidShow", (event) => {
+        
+        const keyboardHeightValue = event.endCoordinates.height; //Get keyboard height
+        if(keyboardHeightValue>keyboardHeight.value)
+            keyboardHeight.value = keyboardHeightValue; // Store the fully expanded keyboard height
+        logoSize.value = withSpring(80, { damping: 15, stiffness: 100 });  // Shrink logo
+        inputTranslateY.value = withSpring(-keyboardHeight.value+bottomMargin, { damping: 12, stiffness: 80 });  // Move inputs up
+    });
+
+    const hideListener = Keyboard.addListener(
+        Platform.OS === 'ios' ? "keyboardWillHide" : "keyboardDidHide", () => {
+        
+        logoSize.value = withSpring(150, { damping: 15, stiffness: 100 }); // Restore logo
+        inputTranslateY.value = withSpring(0, { damping: 12, stiffness: 80 }); // Move inputs back
+      });
+
+    return () => {
+      showListener.remove();
+      hideListener.remove();
+    };
+  }, []);
+
+  // Logo animation
+  const animatedLogoStyle = useAnimatedStyle(() => ({
+    width: logoSize.value,
+    height: logoSize.value,
+  }));
+  
+  // Input animation
+  const animatedInputStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: inputTranslateY.value }],
+  }));
+
 
   // Validate email format
   const validateEmail = (email:any) => {
@@ -114,15 +164,15 @@ const RegisterPage = () => {
     >
       {/* Logo and App Name */}
       <View style={styles.logoContainer}>
-        <Image
+        <Animated.Image
           source={require('@/assets/images/PurePost-Transparent-Edgeless.png')}
-          style={styles.logoImage}
+          style={[styles.logoImage, animatedLogoStyle]}
         />
         <Text style={styles.title}>PurePost</Text>
       </View>
 
       {/* Input Fields */}
-      <View style={styles.inputContainer}>
+      <Animated.View style={[styles.inputContainer, animatedInputStyle]}>
         <TextInput
           style={[styles.input, errors.email && styles.inputError]}
           placeholder="Enter Email"
@@ -190,7 +240,7 @@ const RegisterPage = () => {
             <Text style={styles.registerText}>Register</Text>
           )}
         </TouchableOpacity>
-      </View>
+      </Animated.View>
 
       {/* Login Button */}
       <View style={styles.loginContainer}>
@@ -224,7 +274,7 @@ const styles = StyleSheet.create({
     width: '100%',
     alignItems: 'center',
     position: 'absolute',
-    top: '30%',
+    bottom: '27%',
   },
 
   loginContainer: {
