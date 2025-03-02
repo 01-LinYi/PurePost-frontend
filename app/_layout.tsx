@@ -53,7 +53,6 @@ function RootLayoutNav() {
   const colorScheme = useColorScheme();
   const [isLoggedIn, setIsLoggedIn]=useState(false);
   const router=useRouter();
-  //router.replace("/login");
 
   useEffect(() => {
     const checkAuth = async() => {
@@ -62,7 +61,7 @@ function RootLayoutNav() {
       if(userToken)
         router.replace("/(tabs)");
       else
-        router.replace("/login");
+        router.replace("/posting");
 
       SplashScreen.hideAsync();
     }
@@ -75,8 +74,9 @@ function RootLayoutNav() {
   return (
     <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
       <Stack>
-        <Stack.Screen name="login" options={{headerShown: false}}/>
+        <Stack.Screen name="login" options={{ headerShown: false }}/>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="posting" options={{ headerShown: false }} />
         <Stack.Screen name="modal" options={{ presentation: "modal" }} />
       </Stack>
     </ThemeProvider>
