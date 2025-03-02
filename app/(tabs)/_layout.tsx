@@ -18,14 +18,14 @@ function TabBarIcon(props: {
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
-  const { session, isSessionLoading } = useSession();
+  const { session, isSessionLoading, user, isUserLoading } = useSession();
 
-  if (isSessionLoading) {
+  if (isSessionLoading || isUserLoading) {
     SplashScreen.preventAutoHideAsync();
     return null;
   }
 
-  if (!session) {
+  if (!session || !user) {
     return <Redirect href={"/login"} />;
   }
 
