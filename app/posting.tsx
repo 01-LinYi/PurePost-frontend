@@ -1,164 +1,248 @@
-import React, { useState } from 'react';
-import {View, Text, TextInput, StyleSheet, Image, TouchableOpacity, Alert} from 'react-native';
-import Video from 'react-native-video';
-import { launchImageLibrary } from 'react-native-image-picker';
+import React, { useState, useCallback } from 'react';
+import { View, Text } from '@/components/Themed';
+import {
+  TextInput,
+  StyleSheet,
+  Alert,
+  StatusBar,
+  ScrollView,
+  Platform,
+  KeyboardAvoidingView,
+} from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-const Posting = () => {
+import MediaPreview from '@/components/MediaPreview';
+import ActionButton from '@/components/ActionButton';
 
-    const [postText, setPostText] = useState('');
-    const [media, setMedia] = useState(null);
-
-    
-    /*const pickMedia = () => {
-        launchImageLibrary({ mediaType: 'mixed' }, (response) => {
-            if (response.didCancel)
-                console.log('User cancelled Media picker');
-            else
-            { 
-                if (response.errorCode)
-                    console.log('Media Picker Error:', response.errorCode);
-                else 
-                {
-                    const asset = response.assets[0];
-                    setMedia({ uri: asset.uri, type: asset.type });
-                }
-            }
-        });
-    };*/
-
-    const pickMedia = async () => {
-        // Request permissions
-        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-        if (status !== 'granted')
-        {
-            Alert.alert('Permission Denied', 'Please allow access to media files in settings.');
-            return;
-        }
-
-        // Open media picker
-        const result = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ImagePicker.MediaTypeOptions.All, // Support both images and videos
-            allowsEditing: true,
-            quality: 1,
-        });
-
-        if (!result.canceled)
-        {
-            const asset = result.assets[0]; // Get the selected file
-            setMedia({ uri: asset.uri, type: asset.type });
-        }
-    };
-
-
-    
-    const handlePost = () => {
-        if (!postText.trim())
-        {
-            Alert.alert('Error', 'Please write something before posting.');
-            return;
-        }
-        Alert.alert('Success', 'Your post has been submitted!');
-        setPostText('');
-        setMedia(null);
-    };
-
-    return (
-        <View style={styles.container}>
-            <Text style={styles.header}>Create a Post</Text>
-
-            {/* Text Input */}
-            <TextInput
-                style={styles.textInput}
-                placeholder="What's on your mind?"
-                placeholderTextColor="#888"
-                multiline
-                value={postText}
-                onChangeText={setPostText}
-            />
-
-            {/* Media Preview (Image or Video) */}
-            {media && media.type.startsWith('image') && (
-                <Image source={{ uri: media.uri }} style={styles.mediaPreview} />
-            )}
-            {media && media.type.startsWith('video') && (
-                <Video
-                    source={{ uri: media.uri }}
-                    style={styles.mediaPreview}
-                    controls
-                    resizeMode="contain"
-                />
-            )}
-
-            {/* Media Upload Button */}
-            <TouchableOpacity style={styles.uploadButton} onPress={pickMedia}>
-                <Text style={styles.uploadText}>Add Image/Video</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.postButton} onPress={handlePost}>
-                <Text style={styles.postText}>Post</Text>
-            </TouchableOpacity>
-        </View>
-    );
+interface Media {
+  uri: string;
+  type: string;
 }
 
+const getMediaType = (uri: string): string => {
+    if (uri.endsWith('.mp4')) return 'video/mp4';
+    if (uri.endsWith('.mov')) return 'video/quicktime';
+    if (uri.endsWith('.jpg') || uri.endsWith('.jpeg')) return 'image/jpeg';
+    if (uri.endsWith('.png')) return 'image/png';
+    return 'image/jpeg'; // Default type
+  };
 
+const Posting = () => {
+  const [postText, setPostText] = useState<string>('');
+  const [media, setMedia] = useState<Media | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const insets = useSafeAreaInsets();
+
+  const pickMedia = useCallback(async () => {
+    try {
+      // check permission
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert(
+          'Permission Denied',
+          'Please allow access to media files in settings.'
+        );
+        return;
+      }
+
+      setIsLoading(true);
+
+      // launch media picker
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images', 'videos'],
+        allowsEditing: true,
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const asset = result.assets[0];
+        const type = asset.type || getMediaType(asset.uri);
+        setMedia({ uri: asset.uri, type: type });
+      }
+    } catch (error) {
+      Alert.alert(
+        'Error',
+        'Failed to select media: ' + ((error as Error).message || 'Unknown error')
+      );
+      console.error('Media picker error:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const removeMedia = useCallback(() => {
+    setMedia(null);
+  }, []);
+
+  const handlePost = useCallback(() => {
+    if (!postText.trim() && !media) {
+      Alert.alert('Error', 'Please write something or add media before posting.');
+      return;
+    }
+
+    setIsLoading(true);
+
+    // simulate post request
+    // replace this with your actual post request
+    setTimeout(() => {
+      Alert.alert('Success', 'Your post has been published!');
+      setPostText('');
+      setMedia(null);
+      setIsLoading(false);
+    }, 500);
+  }, [postText, media]);
+
+  const isPostDisabled = !postText.trim() && !media;
+
+  return (
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
+    >
+      <StatusBar
+        barStyle="dark-content"
+        backgroundColor="#FFFFFF"
+        translucent={false}
+      />
+
+      {/* Header */}
+      <View style={[styles.header, { paddingTop: Math.max(16, insets.top) }]}>
+        <Text style={styles.headerTitle}>Create New Post</Text>
+      </View>
+
+      <ScrollView
+        style={styles.scrollContainer}
+        contentContainerStyle={[
+          styles.contentContainer,
+          { paddingBottom: Math.max(20, insets.bottom) },
+        ]}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Text input */}
+        <TextInput
+          style={styles.textInput}
+          placeholder="What's on your mind?"
+          placeholderTextColor="#9E9E9E"
+          multiline
+          value={postText}
+          onChangeText={setPostText}
+          maxLength={2000}
+          returnKeyType="default"
+          textAlignVertical="top"
+          autoCapitalize="sentences"
+        />
+
+        {/* Preview your media */}
+        <MediaPreview media={media} onRemove={removeMedia} />
+
+        {/* Action Bar */}
+        <View style={styles.actionBar}>
+          <ActionButton
+            icon={<Ionicons name="image-outline" size={24} color="#00c5e3" />}
+            text="Photo/Video"
+            onPress={pickMedia}
+            disabled={isLoading}
+            style={styles.mediaButton}
+            textStyle={styles.mediaButtonText}
+          />
+
+          <ActionButton
+            text="Post"
+            onPress={handlePost}
+            disabled={isPostDisabled}
+            loading={isLoading}
+            style={[styles.postButton, isPostDisabled && styles.postButtonDisabled]}
+            textStyle={styles.postButtonText}
+          />
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
+  );
+};
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#fff',
-        alignItems: 'center',
-        padding: 20,
-    },
-    header: {
-        fontSize: 24,
-        fontWeight: 'bold',
-        color: '#00c5e3',
-        marginBottom: 20,
-        marginTop: 100,
-    },
-    textInput: {
-        width: '100%',
-        height: 120,
-        borderWidth: 1,
-        borderColor: '#00c5e3',
-        borderRadius: 8,
-        padding: 10,
-        fontSize: 16,
-        backgroundColor: '#f9f9f9',
-        textAlignVertical: 'top',
-    },
-    mediaPreview: {
-        width: '100%',
-        aspectRatio: undefined,
-        resizeMode: 'contain',
-        borderRadius: 10,
-        marginTop: 10,
-    },
-    uploadButton: {
-        backgroundColor: '#f0f0f0',
-        padding: 12,
-        borderRadius: 8,
-        marginTop: 10,
-    },
-    uploadText: {
-        fontSize: 16,
-        fontWeight: '500',
-        color: '#333',
-    },
-    postButton: {
-        backgroundColor: '#00c5e3',
-        paddingVertical: 12,
-        paddingHorizontal: 30,
-        borderRadius: 8,
-        marginTop: 20,
-    },
-    postText: {
-        color: '#fff',
-        fontSize: 18,
-        fontWeight: '600',
-    },
+  container: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+    backgroundColor: '#FFFFFF',
+    zIndex: 1,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#00c5e3',
+  },
+  scrollContainer: {
+    flex: 1,
+  },
+  contentContainer: {
+    padding: 20,
+  },
+  textInput: {
+    width: '100%',
+    minHeight: 120,
+    borderWidth: 1,
+    borderColor: '#00c5e3',
+    borderRadius: 12,
+    padding: 16,
+    fontSize: 16,
+    backgroundColor: '#f9f9f9',
+    textAlignVertical: 'top',
+    marginBottom: 16,
+    color: '#333333',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.1,
+        shadowRadius: 1,
+      },
+      android: {
+        elevation: 1,
+      },
+    }),
+  },
+  actionBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  mediaButton: {
+    backgroundColor: '#F0F8FA',
+    paddingHorizontal: 16,
+  },
+  mediaButtonText: {
+    marginLeft: 8,
+    color: '#00c5e3',
+    fontWeight: '500',
+  },
+  postButton: {
+    backgroundColor: '#00c5e3',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 24,
+    minWidth: 100,
+  },
+  postButtonDisabled: {
+    backgroundColor: '#B0E0E8',
+  },
+  postButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+    fontSize: 16,
+  },
 });
 
 export default Posting;
