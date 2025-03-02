@@ -1,13 +1,79 @@
 import { useSession } from '@/components/SessionProvider';
 import { router } from 'expo-router';
-import React, { useState } from 'react';
-import { Image, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-
+import React, { useState, useEffect } from 'react';
+import { Image, StyleSheet, Text, TextInput, TouchableOpacity, View, ActivityIndicator, Alert } from 'react-native';
 
 const LoginPage = () => {
     const { logIn } = useSession();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
+    const [errors, setErrors] = useState({});
+    const [isFormValid, setIsFormValid] = useState(false);
+
+    // Check form validity whenever inputs change
+    useEffect(() => {
+        const isValid = email.trim() !== '' && password.trim() !== '';
+        setIsFormValid(isValid);
+    }, [email, password]);
+
+    // Validate form inputs
+    const validateInputs = () => {
+        const newErrors = {};
+        
+        if (!email) newErrors.email = "Email/Username is required";
+        if (!password) newErrors.password = "Password is required";
+        
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+    };
+
+    // Handle login process
+    const handleLogin = async () => {
+        if (!validateInputs()) return;
+        
+        setIsLoading(true);
+        
+        try {
+            await logIn(email, password);
+            router.replace("/(tabs)");
+        } catch (error) {
+            // Handle different error cases
+            if (error.message && error.message.includes('401')) {
+                Alert.alert("Login Failed", "Invalid email or password.");
+            } else {
+                Alert.alert("Login Error", error.message || "An unexpected error occurred. Please try again.");
+            }
+            console.error("Login error:", error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    // Handle password reset
+    const handleForgotPassword = () => {
+        if (!email.trim()) {
+            Alert.alert(
+                "Email Required", 
+                "Please enter your email address first.",
+                [{ text: "OK" }]
+            );
+            return;
+        }
+        
+        // This would typically connect to a password reset API
+        Alert.alert(
+            "Password Reset",
+            `We'll send password reset instructions to ${email}`,
+            [
+                { text: "Cancel", style: "cancel" },
+                { 
+                    text: "Send", 
+                    onPress: () => Alert.alert("Email Sent(Not really)", "Please check your email for password reset instructions.") 
+                }
+            ]
+        );
+    };
 
     return (
         <View style={styles.container}>
@@ -21,38 +87,48 @@ const LoginPage = () => {
 
             <View style={styles.inputContainer}>
                 <TextInput
-                    style={styles.input}
+                    style={[styles.input, errors.email && styles.inputError]}
                     placeholder="Enter Username/Email"
                     placeholderTextColor="#888"
                     keyboardType="email-address"
+                    autoCapitalize="none"
                     value={email}
-                    onChangeText={setEmail}
+                    onChangeText={(text) => {
+                        setEmail(text);
+                        if (errors.email) setErrors({...errors, email: null});
+                    }}
                 />
+                {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
 
                 <TextInput
-                    style={styles.input}
+                    style={[styles.input, errors.password && styles.inputError]}
                     placeholder="Enter Password"
                     placeholderTextColor="#888"
                     secureTextEntry
                     value={password}
-                    onChangeText={setPassword}
+                    onChangeText={(text) => {
+                        setPassword(text);
+                        if (errors.password) setErrors({...errors, password: null});
+                    }}
                 />
+                {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
 
                 <TouchableOpacity
-                    style={styles.button}
-                    onPress={() => {
-                        logIn(email, password)
-                        .then(
-                            () => router.replace("/(tabs)"),
-                            () => alert("Invalid email or password.")
-                        )
-                        .catch((error) => alert(error.message));
-                    }}
+                    style={[
+                        styles.button, 
+                        (isLoading || !isFormValid) && styles.buttonDisabled
+                    ]}
+                    onPress={handleLogin}
+                    disabled={isLoading || !isFormValid}
                 >
-                    <Text style={styles.loginText}>Login</Text>
+                    {isLoading ? (
+                        <ActivityIndicator color="#fff" size="small" />
+                    ) : (
+                        <Text style={styles.loginText}>Login</Text>
+                    )}
                 </TouchableOpacity>
 
-                <TouchableOpacity onPress={() => alert("Resetting password...")}>
+                <TouchableOpacity onPress={handleForgotPassword}>
                     <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
                 </TouchableOpacity>
             </View>
@@ -62,9 +138,7 @@ const LoginPage = () => {
                     <Text style={styles.registerText}>Don't have an account? Create one!</Text>
                 </TouchableOpacity>
             </View>
-            
         </View>
-
     );
 }
 
@@ -113,9 +187,16 @@ const styles = StyleSheet.create({
         marginVertical: 8,
         backgroundColor: '#f9f9f9',
     },
-    description: {
-        fontSize: 16,
-        textAlign: 'center',
+    inputError: {
+        borderColor: '#ff3b30',
+        backgroundColor: '#fff0f0',
+    },
+    errorText: {
+        color: '#ff3b30',
+        fontSize: 14,
+        alignSelf: 'flex-start',
+        marginLeft: '10%',
+        marginBottom: 5,
     },
     button: {
         width: '80%',
@@ -124,6 +205,12 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         borderRadius: 8,
         marginVertical: 8,
+        height: 50,
+        justifyContent: 'center',
+    },
+    buttonDisabled: {
+        backgroundColor: '#87d9e8',
+        opacity: 0.7,
     },
     registerText: {
         color: '#00c5e3',

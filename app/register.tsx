@@ -1,19 +1,117 @@
-import { Redirect, router } from 'expo-router';
-import { Text, View, Image, TextInput, TouchableOpacity, StyleSheet, useColorScheme } from 'react-native';
-
-import { useState } from 'react';
+import { router } from 'expo-router';
+import { Text, View, Image, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Keyboard } from 'react-native';
+import { useState, useEffect } from 'react';
 import axiosInstance from '@/utils/axiosInstance';
 
 const RegisterPage = () => {
-
+  // State variables for form fields
   const [email, setEmail] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [passwordConfirm, setPasswordConfirm] = useState('');
+  
+  // State for form validation errors
+  const [errors, setErrors] = useState({});
+  
+  // Loading state for registration process
+  const [isLoading, setIsLoading] = useState(false);
+  
+  // State to track if form is valid
+  const [isFormValid, setIsFormValid] = useState(false);
+
+  // Validate email format
+  const validateEmail = (email:any) => {
+    const re = /\S+@\S+\.\S+/;
+    return re.test(email);
+  };
+
+  // Check form validity whenever inputs change
+  useEffect(() => {
+    // Check if all fields are filled and there are no errors
+    const isValid = email.trim() !== '' && 
+                    username.trim() !== '' && 
+                    password.trim() !== '' && 
+                    passwordConfirm.trim() !== '' &&
+                    validateEmail(email) &&
+                    username.length >= 3 &&
+                    password.length >= 8 &&
+                    password === passwordConfirm;
+    
+    setIsFormValid(isValid);
+  }, [email, username, password, passwordConfirm]);
+
+  // Validate form inputs
+  const validateInputs = () => {
+    const newErrors = {};
+    
+    if (!email) newErrors.email = "Email is required";
+    else if (!validateEmail(email)) newErrors.email = "Invalid email format";
+    
+    if (!username) newErrors.username = "Username is required";
+    else if (username.length < 3) newErrors.username = "Username must be at least 3 characters";
+    
+    if (!password) newErrors.password = "Password is required";
+    else if (password.length < 8) newErrors.password = "Password must be at least 8 characters";
+    
+    if (!passwordConfirm) newErrors.passwordConfirm = "Please confirm your password";
+    else if (password !== passwordConfirm) newErrors.passwordConfirm = "Passwords do not match";
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  // Handle registration process
+  const handleRegister = async () => {
+    Keyboard.dismiss();
+    if (!validateInputs()) return;
+    
+    setIsLoading(true);
+    
+    try {
+      const response = await axiosInstance.post("auth/register/", {
+        "email": email,
+        "password": password,
+        "username": username,
+      });
+
+      if (response.status === 201) {
+        Alert.alert(
+          "Registration Successful",
+          "Your account has been created successfully. Please login.",
+          [{ text: "OK", onPress: () => router.replace("/login") }]
+        );
+      } else {
+        Alert.alert("Registration Failed", "Please try again later.");
+      }
+    } catch (error) {
+      console.error("Registration error:", error);
+      
+      // Handle different types of errors
+      if (error.response) {
+        // Server responded with an error status
+        const responseData = error.response.data;
+        if (responseData.email) {
+          Alert.alert("Registration Failed", "This email is already registered.");
+        } else if (responseData.username) {
+          Alert.alert("Registration Failed", "This username is already taken.");
+        } else {
+          Alert.alert("Registration Failed", "Please check your information and try again.");
+        }
+      } else {
+        // Network error or other issues
+        Alert.alert("Connection Error", "Please check your internet connection and try again.");
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
-    <View style={styles.container}>
-
+    <KeyboardAvoidingView 
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      style={styles.container}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 64 : 0}
+    >
       {/* Logo and App Name */}
       <View style={styles.logoContainer}>
         <Image
@@ -26,79 +124,81 @@ const RegisterPage = () => {
       {/* Input Fields */}
       <View style={styles.inputContainer}>
         <TextInput
-          style={styles.input}
+          style={[styles.input, errors.email && styles.inputError]}
           placeholder="Enter Email"
           placeholderTextColor="#888"
           keyboardType="email-address"
+          autoCapitalize="none"
           value={email}
-          onChangeText={setEmail}
+          onChangeText={(text) => {
+            setEmail(text);
+            if (errors.email) setErrors({...errors, email: null});
+          }}
         />
+        {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
         
         <TextInput
-          style={styles.input}
+          style={[styles.input, errors.username && styles.inputError]}
           placeholder="Enter Username"
           placeholderTextColor="#888"
-          secureTextEntry
+          autoCapitalize="none"
           value={username}
-          onChangeText={setUsername}
+          onChangeText={(text) => {
+            setUsername(text);
+            if (errors.username) setErrors({...errors, username: null});
+          }}
         />
+        {errors.username && <Text style={styles.errorText}>{errors.username}</Text>}
 
         <TextInput
-          style={styles.input}
-          placeholder="Enter Password"
+          style={[styles.input, errors.password && styles.inputError]}
+          placeholder="Enter Password (min 8 characters)"
           placeholderTextColor="#888"
           secureTextEntry
           value={password}
-          onChangeText={setPassword}
+          onChangeText={(text) => {
+            setPassword(text);
+            if (errors.password) setErrors({...errors, password: null});
+          }}
         />
+        {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
 
         <TextInput
-          style={styles.input}
-          placeholder="Enter Password Again"
+          style={[styles.input, errors.passwordConfirm && styles.inputError]}
+          placeholder="Confirm Password"
           placeholderTextColor="#888"
           secureTextEntry
           value={passwordConfirm}
-          onChangeText={setPasswordConfirm}
+          onChangeText={(text) => {
+            setPasswordConfirm(text);
+            if (errors.passwordConfirm) setErrors({...errors, passwordConfirm: null});
+          }}
         />
+        {errors.passwordConfirm && <Text style={styles.errorText}>{errors.passwordConfirm}</Text>}
 
         <TouchableOpacity
-          style={styles.button}
-          onPress={
-            async () => {
-              if (password !== passwordConfirm) {
-                alert("Passwords do not match");
-                return;
-              }
-
-              const response = await axiosInstance.post("auth/register/", {
-                "email": email,
-                "password": password,
-                "username": username,
-              });
-
-              if (response.status !== 201) {
-                console.error("Registration failed:", response);
-                alert("Registration failed");
-                return;
-              }
-              
-              // TODO: Show a success notification
-              router.replace("/login");
-          }}
+          style={[
+            styles.button, 
+            (isLoading || !isFormValid) && styles.buttonDisabled
+          ]}
+          onPress={handleRegister}
+          disabled={isLoading || !isFormValid}
         >
-          <Text style={styles.registerText}>Register</Text>
+          {isLoading ? (
+            <ActivityIndicator color="#fff" size="small" />
+          ) : (
+            <Text style={styles.registerText}>Register</Text>
+          )}
         </TouchableOpacity>
       </View>
 
       {/* Login Button */}
       <View style={styles.loginContainer}>
-        <TouchableOpacity onPress={ () => router.replace("/login")}>
+        <TouchableOpacity onPress={() => router.replace("/login")}>
           <Text style={styles.loginText}>Have an account? Login!</Text>
         </TouchableOpacity>
       </View>
-      
-    
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -152,10 +252,18 @@ const styles = StyleSheet.create({
     marginVertical: 8,
     backgroundColor: '#f9f9f9',
   },
-
-  description: {
-    fontSize: 16,
-    textAlign: 'center',
+  
+  inputError: {
+    borderColor: '#ff3b30',
+    backgroundColor: '#fff0f0',
+  },
+  
+  errorText: {
+    color: '#ff3b30',
+    fontSize: 14,
+    alignSelf: 'flex-start',
+    marginLeft: '10%',
+    marginBottom: 5,
   },
 
   button: {
@@ -165,12 +273,13 @@ const styles = StyleSheet.create({
     marginVertical: 8,
     width: '80%',
     alignItems: 'center',
+    height: 50,
+    justifyContent: 'center',
   },
-
-  forgotPasswordText: {
-    color: '#00c5e3',
-    fontSize: 16,
-    fontWeight: '500',
+  
+  buttonDisabled: {
+    backgroundColor: '#87d9e8',
+    opacity: 0.7,
   },
 
   registerText: {
