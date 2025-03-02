@@ -5,9 +5,9 @@ import {
   ThemeProvider,
 } from "@react-navigation/native";
 import { useFonts } from "expo-font";
-import { Stack } from "expo-router";
+import { Stack, useRouter } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import "react-native-reanimated";
 
 import { useColorScheme } from "@/components/useColorScheme";
@@ -19,7 +19,7 @@ export {
 
 export const unstable_settings = {
   // Ensure that reloading on `/modal` keeps a back button present.
-  initialRouteName: "(tabs)",
+  initialRouteName: "login",
 };
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
@@ -36,11 +36,11 @@ export default function RootLayout() {
     if (error) throw error;
   }, [error]);
 
-  useEffect(() => {
+  /*useEffect(() => {
     if (loaded) {
       SplashScreen.hideAsync();
     }
-  }, [loaded]);
+  }, [loaded]);*/
 
   if (!loaded) {
     return null;
@@ -51,11 +51,32 @@ export default function RootLayout() {
 
 function RootLayoutNav() {
   const colorScheme = useColorScheme();
+  const [isLoggedIn, setIsLoggedIn]=useState(false);
+  const router=useRouter();
+
+  useEffect(() => {
+    const checkAuth = async() => {
+      const userToken=false;
+      setIsLoggedIn(userToken);
+      if(userToken)
+        router.replace("/(tabs)");
+      else
+        router.replace("/posting");
+
+      SplashScreen.hideAsync();
+    }
+    
+    checkAuth();
+  }, []);
+
+
 
   return (
     <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
       <Stack>
+        <Stack.Screen name="login" options={{ headerShown: false }}/>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="posting" options={{ headerShown: false }} />
         <Stack.Screen name="modal" options={{ presentation: "modal" }} />
       </Stack>
     </ThemeProvider>
