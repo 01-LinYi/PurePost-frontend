@@ -2,7 +2,7 @@ import React from 'react';
 import { StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Text, View } from '@/components/Themed';
-import { Author } from '@/post/[id]';
+import { Author } from '@/types/postType';
 
 interface AuthorInfoProps {
   author: Author;

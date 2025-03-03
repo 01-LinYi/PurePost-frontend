@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, StyleSheet, ScrollView, Platform } from 'react-native';
 import { Text } from '@/components/Themed';
-import { Post, Comment } from '@/post/[id]';
+import { Post, Comment } from '@/app/post/[id]';
 import AuthorInfo from './AuthorInfo';
 import PostActions from './PostActions';
 import CommentsList from './CommentList';

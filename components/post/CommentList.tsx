@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Text } from '../Themed';
-import { Comment } from '@/post/[id]';
+import { Comment } from '@/types/postType';
 
 interface CommentsListProps {
   comments: Comment[];
