@@ -138,6 +138,15 @@ const LoginPage = () => {
                     <Text style={styles.registerText}>Don't have an account? Create one!</Text>
                 </TouchableOpacity>
             </View>
+
+            {/* Added Terms & Privacy Policy link */}
+            <View style={styles.policyContainer}>
+                <TouchableOpacity onPress={() => router.push("/guidePolicy?tab=termsOfService")}>
+                    <Text style={styles.policyText}>
+                        Terms of Service & Privacy Policy
+                    </Text>
+                </TouchableOpacity>
+            </View>
         </View>
     );
 }
@@ -169,6 +178,13 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         position: 'absolute',
         bottom: '5%',
+    },
+    // Added policy container styles
+    policyContainer: {
+        width: '100%',
+        alignItems: 'center',
+        position: 'absolute',
+        bottom: '12%', // Position it above the register container
     },
     title: {
         fontSize: 32,
@@ -223,6 +239,12 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '500',
         marginVertical: 5,
+    },
+    // Added policy text styles
+    policyText: {
+        color: '#888',
+        fontSize: 14,
+        textDecorationLine: 'underline',
     },
     loginText: {
         color: '#fff',
