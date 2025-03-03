@@ -58,10 +58,10 @@ function RootLayoutNav() {
     const checkAuth = async() => {
       const userToken=false;
       setIsLoggedIn(userToken);
-      if(userToken)
+      if(isLoggedIn)
         router.replace("/(tabs)");
       else
-        router.replace("/posting");
+        router.replace("/post/");
 
       SplashScreen.hideAsync();
     }
@@ -77,6 +77,7 @@ function RootLayoutNav() {
         <Stack.Screen name="login" options={{ headerShown: false }}/>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="posting" options={{ headerShown: false }} />
+        <Stack.Screen name="post" options={{ headerShown: false }} />
         <Stack.Screen name="modal" options={{ presentation: "modal" }} />
       </Stack>
     </ThemeProvider>

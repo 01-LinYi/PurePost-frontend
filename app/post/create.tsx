@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text } from '@/components/Themed';
+import { View } from '@/components/Themed';
 import {
   TextInput,
   StyleSheet,
@@ -12,6 +12,7 @@ import {
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { router } from 'expo-router';
 
 import MediaPreview from '@/components/MediaPreview';
 import ActionButton from '@/components/ActionButton';
@@ -22,34 +23,30 @@ interface Media {
 }
 
 const getMediaType = (uri: string): string => {
-    if (uri.endsWith('.mp4')) return 'video/mp4';
-    if (uri.endsWith('.mov')) return 'video/quicktime';
-    if (uri.endsWith('.jpg') || uri.endsWith('.jpeg')) return 'image/jpeg';
-    if (uri.endsWith('.png')) return 'image/png';
-    return 'image/jpeg'; // Default type
-  };
+  if (uri.endsWith('.mp4')) return 'video/mp4';
+  if (uri.endsWith('.mov')) return 'video/quicktime';
+  if (uri.endsWith('.jpg') || uri.endsWith('.jpeg')) return 'image/jpeg';
+  if (uri.endsWith('.png')) return 'image/png';
+  return 'image/jpeg'; // Default type
+};
 
-const Posting = () => {
+const CreatePost = () => {
   const [postText, setPostText] = useState<string>('');
   const [media, setMedia] = useState<Media | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const insets = useSafeAreaInsets();
 
+  // No back navigation confirmation functionality
+
   const pickMedia = useCallback(async () => {
     try {
-      // check permission
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert(
-          'Permission Denied',
-          'Please allow access to media files in settings.'
-        );
+        Alert.alert('Permission Denied', 'Please allow access to media files in settings.');
         return;
       }
 
       setIsLoading(true);
-
-      // launch media picker
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images', 'videos'],
         allowsEditing: true,
@@ -62,10 +59,7 @@ const Posting = () => {
         setMedia({ uri: asset.uri, type: type });
       }
     } catch (error) {
-      Alert.alert(
-        'Error',
-        'Failed to select media: ' + ((error as Error).message || 'Unknown error')
-      );
+      Alert.alert('Error', 'Failed to select media: ' + ((error as Error).message || 'Unknown error'));
       console.error('Media picker error:', error);
     } finally {
       setIsLoading(false);
@@ -83,11 +77,11 @@ const Posting = () => {
     }
 
     setIsLoading(true);
-
-    // simulate post request
-    // replace this with your actual post request
+    // Simulate post request
     setTimeout(() => {
-      Alert.alert('Success', 'Your post has been published!');
+      Alert.alert('Success', 'Your post has been published!', [
+        { text: 'OK', onPress: () => router.push('/(tabs)') }
+      ]);
       setPostText('');
       setMedia(null);
       setIsLoading(false);
@@ -102,16 +96,7 @@ const Posting = () => {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
     >
-      <StatusBar
-        barStyle="dark-content"
-        backgroundColor="#FFFFFF"
-        translucent={false}
-      />
-
-      {/* Header */}
-      <View style={[styles.header, { paddingTop: Math.max(16, insets.top) }]}>
-        <Text style={styles.headerTitle}>Create New Post</Text>
-      </View>
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" translucent={false} />
 
       <ScrollView
         style={styles.scrollContainer}
@@ -136,10 +121,10 @@ const Posting = () => {
           autoCapitalize="sentences"
         />
 
-        {/* Preview your media */}
+        {/* Media preview */}
         <MediaPreview media={media} onRemove={removeMedia} />
 
-        {/* Action Bar */}
+        {/* Action bar */}
         <View style={styles.actionBar}>
           <ActionButton
             icon={<Ionicons name="image-outline" size={24} color="#00c5e3" />}
@@ -168,21 +153,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#FFFFFF',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
-    backgroundColor: '#FFFFFF',
-    zIndex: 1,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#00c5e3',
   },
   scrollContainer: {
     flex: 1,
@@ -245,4 +215,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default Posting;
+export default CreatePost;
