@@ -300,7 +300,7 @@ const RegisterPage = () => {
               <Text
                 style={styles.termsLink}
                 onPress={() =>
-                  router.push("/user-guide-policy?tab=termsOfService")
+                  router.push("/guidePolicy?tab=termsOfService")
                 }
               >
                 {" Terms of Service"}
@@ -309,7 +309,7 @@ const RegisterPage = () => {
               <Text
                 style={styles.termsLink}
                 onPress={() =>
-                  router.push("/user-guide-policy?tab=privacyPolicy")
+                  router.push("/guidePolicy?tab=privacyPolicy")
                 }
               >
                 Privacy Policy
