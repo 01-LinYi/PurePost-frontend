@@ -63,6 +63,13 @@ export default function PostsIndex() {
         />
       </View>
 
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Go Home</Text>
+            <TouchableOpacity
+              style={styles.routeButton}
+              onPress={() => router.push("/(tabs)")}/>
+      </View>
+
       <View style={styles.redirectSection}>
         <Text style={styles.redirectTitle}>Redirect Space</Text>
         <Text style={styles.redirectHint}>
