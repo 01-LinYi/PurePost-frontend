@@ -1,8 +1,9 @@
+import { API_URL } from '@/constants/Api';
 import { getStorageItemAsync } from '@/hooks/useStorageState';
 import axios from 'axios';
 
 const axiosInstance = axios.create({
-  baseURL: 'http://localhost:8000/', // Base URL for your API
+  baseURL: API_URL, // Base URL for your API
 });
 
 axiosInstance.interceptors.request.use(
