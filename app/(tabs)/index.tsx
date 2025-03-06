@@ -4,7 +4,7 @@ import EditScreenInfo from '@/components/EditScreenInfo';
 import { useSession } from '@/components/SessionProvider';
 import { Text, View } from '@/components/Themed';
 
-export default function TabOneScreen() {
+export default function HomeScreen() {
   const { logOut, user } = useSession();
   return (
     <View style={styles.container}>
