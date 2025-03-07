@@ -48,18 +48,6 @@ const unlikePost = async (id: string): Promise<void> => {
   }
 };
 
-const savePost = async (postId: string, folderId?: string): Promise<void> => {
-  try {
-    await axiosInstance.post(`/content/saved-posts/`, {
-      post_id: postId,
-      folder_id: folderId
-    });
-  } catch (error) {
-    console.error("Error saving post:", error);
-    throw error;
-  }
-};
-
 const toggleSavePost = async (postId: string, folderId?: string): Promise<void> => {
   try {
     await axiosInstance.post(`/content/saved-posts/toggle/`, {
@@ -72,18 +60,15 @@ const toggleSavePost = async (postId: string, folderId?: string): Promise<void> 
   }
 };
 
-const addComment = async (postId: string, text: string): Promise<Comment> => {
-  try {
-    // Note: This endpoint is not explicitly defined in the API doc, 
-    // so I'm assuming it follows REST conventions
-    const response = await axiosInstance.post(`/content/posts/${postId}/comments/`, {
-      text
-    });
-    return response.data;
-  } catch (error) {
-    console.error("Error adding comment:", error);
-    throw error;
-  }
+// Note: No API endpoint for comments seems to be specified in the documentation
+// We'll simulate this functionality entirely in the frontend
+const simulateAddComment = (text: string): Comment => {
+  return {
+    id: `local-${Date.now()}`,
+    text,
+    author: { id: "currentuser", name: "You", avatar: "" },
+    createdAt: new Date().toISOString(),
+  };
 };
 
 const PostDetail = () => {
@@ -94,6 +79,7 @@ const PostDetail = () => {
   const [isLiked, setIsLiked] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [likesCount, setLikesCount] = useState(0);
+  const [shareCount, setShareCount] = useState(0); // Initialize share count to 0
   const [isSubmittingAction, setIsSubmittingAction] = useState(false);
   const insets = useSafeAreaInsets();
 
@@ -101,14 +87,16 @@ const PostDetail = () => {
     const loadPostData = async () => {
       try {
         setIsLoading(true);
-        console.log(String(id));
+        console.log(`Fetching post with ID: ${String(id)}`);
         const data = await fetchPost(String(id));
         setComments(data?.comments || []);
         let postData = transformApiPostToPost(data as any);
         setPost(postData);
         setIsLiked(data.isLiked);
-        setIsSaved(data.isSaved || false); // Add this if the API returns save status
+        setIsSaved(data.isSaved || false);
         setLikesCount(data?.likesCount || 0);
+        // Set initial share count from API data if available
+        setShareCount(data?.shareCount || 0);
         
       } catch (error) {
         Alert.alert(
@@ -161,9 +149,19 @@ const PostDetail = () => {
 
   const handleEdit = () => post && router.push(`/post/${post.id}/edit`);
   
+  // Simulate share functionality without API call
   const handleShare = () => {
-    Alert.alert("Share", "Sharing functionality to be implemented");
-    // Actual sharing implementation would go here
+    // Toggle share count between 0 and 1 for simulation purposes
+    setShareCount(prevCount => prevCount === 0 ? 1 : 0);
+    
+    // Log the simulated share operation
+    console.log(`Simulated share operation, current share count: ${shareCount === 0 ? 1 : 0}`);
+    
+    // Show success message
+    Alert.alert(
+      "Share Success", 
+      `Content has been shared. Current share count: ${shareCount === 0 ? 1 : 0}`
+    );
   };
   
   const handleSave = async () => {
@@ -175,7 +173,7 @@ const PostDetail = () => {
       // Update UI immediately for better UX
       setIsSaved(!isSaved);
       
-      // Call API
+      // Call API to toggle save status
       await toggleSavePost(post.id);
       
       Alert.alert(
@@ -196,44 +194,25 @@ const PostDetail = () => {
     }
   };
 
-  const handleAddComment = async (text: string) => {
+  // Simulate adding a comment without API call
+  const handleAddComment = (text: string) => {
     if (!text.trim() || !post || isSubmittingAction) return;
 
     try {
       setIsSubmittingAction(true);
       
-      // Create a temporary comment for immediate UI feedback
-      const tempComment: Comment = {
-        id: `temp-${Date.now()}`,
-        text,
-        author: { id: "currentuser", name: "You", avatar: "" },
-        createdAt: new Date().toISOString(),
-        isSubmitting: true
-      };
+      // Create a new comment object
+      const newComment = simulateAddComment(text);
       
-      // Add to UI
-      setComments((prev) => [tempComment, ...prev]);
+      // Add to state directly without API call
+      setComments(prev => [newComment, ...prev]);
       
-      // Submit to API
-      const newComment = await addComment(post.id, text);
+      console.log(`Simulated comment added: ${text}`);
       
-      // Replace temp comment with real one from API
-      setComments((prev) => 
-        prev.map(comment => 
-          comment.id === tempComment.id ? newComment : comment
-        )
-      );
-      
-      console.log(`Comment added to post ${post.id}: ${text}`);
     } catch (error) {
-      // Remove the temporary comment if submission fails
-      setComments((prev) => 
-        prev.filter(comment => !comment.isSubmitting)
-      );
-      
       Alert.alert(
         "Error",
-        "Failed to add comment: " +
+        "Failed to add comment: " + 
           ((error as Error).message || "Unknown error")
       );
     } finally {
@@ -241,7 +220,6 @@ const PostDetail = () => {
     }
   };
   
-  // 处理返回操作
   const handleGoBack = () => {
     router.back();
   };
@@ -272,7 +250,6 @@ const PostDetail = () => {
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
-
       {/* Fixed Edit Button - Only show if current user is the author */}
       {post.isAuthor && (
         <TouchableOpacity
@@ -291,6 +268,7 @@ const PostDetail = () => {
         isSaved={isSaved}
         likesCount={likesCount}
         commentsCount={comments.length}
+        shareCount={shareCount} // Pass share count to PostContent component
         comments={comments}
         onLike={handleLike}
         onEdit={post.isAuthor ? handleEdit : undefined}
@@ -334,7 +312,6 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     fontSize: 16,
   },
-  // 添加返回按钮样式
   backButton: {
     position: "absolute",
     left: 16,

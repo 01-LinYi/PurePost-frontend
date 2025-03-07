@@ -13,6 +13,7 @@ interface PostContentProps {
   isSaved: boolean;
   likesCount: number;
   commentsCount: number;
+  shareCount: number;
   comments: Comment[];
   onLike: () => void;
   onEdit?: () => void;
@@ -27,6 +28,7 @@ const PostContent: React.FC<PostContentProps> = ({
   isSaved,
   likesCount,
   commentsCount,
+  shareCount,
   comments,
   onLike,
   onEdit,

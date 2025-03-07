@@ -6,13 +6,16 @@ import {
   TouchableOpacity,
   View,
   SafeAreaView,
+  Alert,
 } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { useSession } from "@/components/SessionProvider";
 
 const UserGuidePolicy = () => {
   const { tab } = useLocalSearchParams();
   const [activeTab, setActiveTab] = useState(tab || "termsOfService");
+  const { user, logOut } = useSession();
 
   useEffect(() => {
     if (tab) {
@@ -104,6 +107,20 @@ const UserGuidePolicy = () => {
             onPress={() => router.back()}
           >
             <Text style={styles.agreementButtonText}>I AGREE</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.notagreementButton}
+            onPress={() => {
+              Alert.alert("Bye");
+              if (user !== null) {
+                logOut();
+                router.push("/login");
+              } else {
+                router.back();
+              }
+            }}
+          >
+            <Text style={styles.agreementButtonText}>DECLINE</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -415,6 +432,12 @@ const styles = StyleSheet.create({
   },
   agreementButton: {
     backgroundColor: "#00c5e3",
+    paddingVertical: 14,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  notagreementButton: {
+    backgroundColor: "red",
     paddingVertical: 14,
     borderRadius: 8,
     alignItems: "center",
