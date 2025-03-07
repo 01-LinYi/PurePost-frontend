@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   StyleSheet,
   Alert,
@@ -9,12 +9,14 @@ import {
   Image,
   Modal,
   TextInput,
+  RefreshControl,
 } from "react-native";
 import { useLocalSearchParams, router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { Text, View } from "@/components/Themed";
 import ActionButton from "@/components/ActionButton";
+import axiosInstance from "@/utils/axiosInstance";
 
 // Import existing types from postType.ts
 import { Author, Post } from "@/types/postType";
@@ -23,18 +25,15 @@ import { Author, Post } from "@/types/postType";
 export interface SavedFolder {
   id: string;
   name: string;
-  postCount: number;
-  createdAt: string;
+  post_count: number;
+  created_at: string;
 }
 
 export interface SavedPost extends Post {
-  title?: string; // Optional title derived from post text
-  excerpt?: string; // Optional excerpt derived from post text
-  thumbnail?: string; // Thumbnail for displaying in list
-  savedAt: string; // When the post was saved
+  saved_at: string; // When the post was saved
 }
 
-// Create a new component for saved post items
+// Create a component for saved post items
 const SavedPostItem = ({
   post,
   onPress,
@@ -42,13 +41,19 @@ const SavedPostItem = ({
   post: SavedPost;
   onPress: () => void;
 }) => {
-  // Derive title and excerpt from post text if not provided
-  const title = post.title || post.text?.split("\n")[0] || "Untitled Post";
-  const excerpt = post.excerpt || post.text?.substring(0, 100) || "";
+  // Derive title from the first line of post content
+  const title = post.text?.split("\n")[0] || "Post";
+  
+  // Create excerpt from post content
+  const excerpt = post.text && post.text.length > title.length 
+    ? post.text.substring(title.length, title.length + 100) 
+    : "No description";
 
-  // Use post media as thumbnail if available, otherwise use a placeholder
-  const thumbnail =
-    post.media?.uri || post.thumbnail || "https://picsum.photos.com/100";
+  // Get thumbnail from media if available
+  const thumbnail = post.media?.uri || "https://picsum.photos/100";
+
+  // Format author's first letter for avatar if no image available
+  const authorInitial = post.author.name.charAt(0).toUpperCase();
 
   return (
     <TouchableOpacity
@@ -65,13 +70,19 @@ const SavedPostItem = ({
           {excerpt}
         </Text>
         <View style={[styles.postMeta, { backgroundColor: "transparent" }]}>
-          <Image
-            source={{ uri: post.author.avatar }}
-            style={styles.authorAvatar}
-          />
+          {post.author.avatar ? (
+            <Image
+              source={{ uri: post.author.avatar }}
+              style={styles.authorAvatar}
+            />
+          ) : (
+            <View style={styles.authorAvatarPlaceholder}>
+              <Text style={styles.authorAvatarText}>{authorInitial}</Text>
+            </View>
+          )}
           <Text style={styles.authorName}>{post.author.name}</Text>
           <Text style={styles.postDate}>
-            {new Date(post.savedAt).toLocaleDateString()}
+            {new Date(post.saved_at).toLocaleDateString()}
           </Text>
         </View>
       </View>
@@ -79,125 +90,125 @@ const SavedPostItem = ({
   );
 };
 
-// Mock API for fetching folder details
-const fetchFolderDetails = async (folderId: string): Promise<SavedFolder> => {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve({
-        id: folderId,
-        name:
-          folderId === "folder1"
-            ? "Favorite Posts"
-            : folderId === "folder2"
-            ? "Read Later"
-            : folderId === "folder3"
-            ? "Inspiration"
-            : "Educational",
-        postCount: Math.floor(Math.random() * 20) + 1,
-        createdAt: new Date().toISOString(),
-      });
-    }, 300);
-  });
-};
-
-// Mock API for fetching saved posts in a folder
-const fetchSavedPosts = async (folderId: string): Promise<SavedPost[]> => {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      // Generate random number of posts (3-10)
-      const count = Math.floor(Math.random() * 8) + 3;
-      const posts: SavedPost[] = [];
-
-      for (let i = 0; i < count; i++) {
-        posts.push({
-          id: `post-${folderId}-${i}`,
-          text: `This is a sample post that was saved in your "${folderId}" folder. It contains interesting content that you wanted to revisit later.`,
-          title: `Saved Post ${i + 1} in ${folderId}`,
-          excerpt: `This is a sample post that was saved in your "${folderId}" folder. It contains interesting content...`,
-          thumbnail: `https://picsum.photos/400/300?random=${i + 10}`,
-          media: {
-            uri: `https://picsum.photos/400/300?random=${i + 10}`,
-            type: "image/jpeg",
-          },
-          author: {
-            id: `author${i}`,
-            name: `Author ${i + 1}`,
-            avatar: `https://picsum.photos/200?random=${i}`,
-          },
-          createdAt: new Date(Date.now() - i * 86400000).toISOString(), // days ago
-          savedAt: new Date(Date.now() - i * 43200000).toISOString(), // half days ago
-          likesCount: Math.floor(Math.random() * 100),
-          commentsCount: Math.floor(Math.random() * 20),
-          isLiked: Math.random() > 0.5,
-        });
-      }
-
-      resolve(posts);
-    }, 600);
-  });
-};
-
 const SavedFolderDetail = () => {
   const { folderId } = useLocalSearchParams();
   const [folder, setFolder] = useState<SavedFolder | null>(null);
   const [posts, setPosts] = useState<SavedPost[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [renameModalVisible, setRenameModalVisible] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
+  const [error, setError] = useState<string | null>(null);
 
   const insets = useSafeAreaInsets();
 
-  useEffect(() => {
-    const loadFolderData = async () => {
-      try {
-        setIsLoading(true);
-        const folderData = await fetchFolderDetails(String(folderId));
-        const postsData = await fetchSavedPosts(String(folderId));
-
-        setFolder(folderData);
-        setPosts(postsData);
-      } catch (error) {
-        Alert.alert(
-          "Error",
-          "Failed to load folder: " +
-            ((error as Error).message || "Unknown error")
-        );
-        console.error("Folder loading error:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadFolderData();
+  // Fetch folder details from API
+  const fetchFolderDetails = useCallback(async () => {
+    try {
+      const response = await axiosInstance.get(`/saved/folders/${folderId}`);
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching folder details:", error);
+      const errorMessage = (error as any)?.response?.data?.message || "Failed to load folder details";
+      throw new Error(errorMessage);
+    }
   }, [folderId]);
 
+  // Fetch saved posts in folder from API
+  const fetchSavedPosts = useCallback(async () => {
+    try {
+      const response = await axiosInstance.get(`/saved/folders/${folderId}/posts`);
+      return response.data.posts;
+    } catch (error) {
+      console.error("Error fetching saved posts:", error);
+      const errorMessage = (error as any)?.response?.data?.message || "Failed to load saved posts";
+      throw new Error(errorMessage);
+    }
+  }, [folderId]);
+
+  // Load folder data
+  const loadFolderData = useCallback(async (showFullLoading = true) => {
+    try {
+      if (showFullLoading) {
+        setIsLoading(true);
+        setError(null);
+      }
+      
+      const [folderData, postsData] = await Promise.all([
+        fetchFolderDetails(),
+        fetchSavedPosts()
+      ]);
+
+      setFolder(folderData);
+      setPosts(postsData);
+    } catch (error) {
+      setError((error as Error).message);
+      console.error("Folder loading error:", error);
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
+  }, [fetchFolderDetails, fetchSavedPosts]);
+
+  // Initial data load
+  useEffect(() => {
+    loadFolderData();
+  }, [loadFolderData]);
+
+  // Handle pull-to-refresh
+  const handleRefresh = useCallback(() => {
+    setIsRefreshing(true);
+    loadFolderData(false);
+  }, [loadFolderData]);
+
+  // Rename folder
   const handleRenameFolder = () => {
     if (!folder) return;
     setNewFolderName(folder.name);
     setRenameModalVisible(true);
   };
 
-  const confirmRename = () => {
+  // Confirm rename folder
+  const confirmRename = async () => {
     if (!folder || !newFolderName.trim()) return;
 
-    // Update the folder name in the state
-    setFolder({
-      ...folder,
-      name: newFolderName.trim(),
-    });
+    try {
+      setIsLoading(true);
+      
+      // Send request to rename folder
+      await axiosInstance.put(`/saved/folders/${folderId}`, {
+        name: newFolderName.trim()
+      });
 
-    // Close the modal and reset the state
-    setRenameModalVisible(false);
-    setNewFolderName("");
+      // Update the folder name in the state
+      setFolder({
+        ...folder,
+        name: newFolderName.trim(),
+      });
 
-    // Display success message
-    Alert.alert("Success", "Folder renamed successfully");
+      // Close the modal and reset the state
+      setRenameModalVisible(false);
+      setNewFolderName("");
+
+      // Display success message
+      Alert.alert("Success", "Folder renamed successfully");
+    } catch (error) {
+      console.error("Error renaming folder:", error);
+      Alert.alert(
+        "Error",
+        (error as any)?.response?.data?.message || "Failed to rename folder"
+      );
+    } finally {
+      setIsLoading(false);
+    }
   };
 
+  // Navigate to post detail
   const handlePostPress = (postId: string) => {
     router.push(`/post/${postId}`);
   };
 
+  // Delete folder
   const handleDeleteFolder = () => {
     Alert.alert(
       "Delete Folder",
@@ -207,20 +218,81 @@ const SavedFolderDetail = () => {
         {
           text: "Delete",
           style: "destructive",
-          onPress: () => {
-            // Navigate back after deletion
-            router.replace("/post/saved");
+          onPress: async () => {
+            try {
+              setIsLoading(true);
+              
+              // Send request to delete folder
+              await axiosInstance.delete(`/saved/folders/${folderId}`);
 
-            // Show success message
-            setTimeout(() => {
-              Alert.alert("Success", "Folder deleted successfully");
-            }, 500);
+              // Navigate back after deletion
+              router.replace("/post/saved");
+
+              // Show success message
+              setTimeout(() => {
+                Alert.alert("Success", "Folder deleted successfully");
+              }, 500);
+            } catch (error) {
+              console.error("Error deleting folder:", error);
+              Alert.alert(
+                "Error",
+                (error as any)?.response?.data?.message || "Failed to delete folder"
+              );
+              setIsLoading(false);
+            }
           },
         },
       ]
     );
   };
 
+  // Remove post from folder
+  const handleRemovePost = (postId: string) => {
+    Alert.alert(
+      "Remove from Folder",
+      "Are you sure you want to remove this post from this folder?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Remove",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              setIsLoading(true);
+              
+              // Send request to remove post from folder
+              await axiosInstance.delete(`/saved/folders/${folderId}/posts/${postId}`);
+              
+              // Update the posts list
+              setPosts(posts.filter(post => post.id !== postId));
+              
+              // Update folder post count
+              if (folder) {
+                setFolder({
+                  ...folder,
+                  post_count: folder.post_count - 1
+                });
+              }
+              
+              setIsLoading(false);
+              
+              // Show success message
+              Alert.alert("Success", "Post removed from folder");
+            } catch (error) {
+              console.error("Error removing post:", error);
+              Alert.alert(
+                "Error",
+                (error as any)?.response?.data?.message || "Failed to remove post"
+              );
+              setIsLoading(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  // Empty state component
   const renderEmptyState = () => (
     <View style={[styles.emptyState, { backgroundColor: "transparent" }]}>
       <Ionicons name="document-text-outline" size={60} color="#aaa" />
@@ -231,7 +303,8 @@ const SavedFolderDetail = () => {
     </View>
   );
 
-  if (isLoading) {
+  // Loading state
+  if (isLoading && !isRefreshing) {
     return (
       <View style={[styles.container, styles.centerContent]}>
         <ActivityIndicator size="large" color="#00c5e3" />
@@ -239,10 +312,17 @@ const SavedFolderDetail = () => {
     );
   }
 
-  if (!folder) {
+  // Error state
+  if (error && !folder) {
     return (
       <View style={[styles.container, styles.centerContent]}>
-        <Text style={styles.errorText}>Folder not found</Text>
+        <Text style={styles.errorText}>{error}</Text>
+        <ActionButton
+          text="Try Again"
+          onPress={() => loadFolderData()}
+          style={styles.tryAgainButton}
+          textStyle={styles.tryAgainButtonText}
+        />
         <ActionButton
           text="Go back to Saved Folders"
           onPress={() => router.push("/post/saved")}
@@ -253,6 +333,7 @@ const SavedFolderDetail = () => {
     );
   }
 
+  // Render main content
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
@@ -273,8 +354,10 @@ const SavedFolderDetail = () => {
         <View
           style={[styles.titleContainer, { backgroundColor: "transparent" }]}
         >
-          <Text style={styles.title}>{folder.name}</Text>
-          <Text style={styles.subtitle}>{folder.postCount} posts</Text>
+          <Text style={styles.title}>{folder?.name || "Loading..."}</Text>
+          <Text style={styles.subtitle}>
+            {folder ? `${folder.post_count} posts` : ""}
+          </Text>
         </View>
 
         <View
@@ -283,6 +366,7 @@ const SavedFolderDetail = () => {
           <TouchableOpacity
             style={styles.actionButton}
             onPress={handleRenameFolder}
+            disabled={isLoading}
           >
             <Ionicons name="pencil" size={22} color="#00c5e3" />
           </TouchableOpacity>
@@ -290,6 +374,7 @@ const SavedFolderDetail = () => {
           <TouchableOpacity
             style={styles.actionButton}
             onPress={handleDeleteFolder}
+            disabled={isLoading}
           >
             <Ionicons name="trash-outline" size={22} color="#FF6B6B" />
           </TouchableOpacity>
@@ -299,12 +384,23 @@ const SavedFolderDetail = () => {
       <FlatList
         data={posts}
         renderItem={({ item }) => (
-          <SavedPostItem post={item} onPress={() => handlePostPress(item.id)} />
+          <SavedPostItem 
+            post={item} 
+            onPress={() => handlePostPress(item.id)} 
+          />
         )}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.postList}
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={renderEmptyState}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={handleRefresh}
+            colors={["#00c5e3"]}
+            tintColor="#00c5e3"
+          />
+        }
       />
 
       {/* Rename Modal */}
@@ -323,6 +419,7 @@ const SavedFolderDetail = () => {
               onChangeText={setNewFolderName}
               placeholder="Enter new folder name"
               autoFocus
+              maxLength={50}
             />
             <View
               style={[styles.modalButtons, { backgroundColor: "transparent" }]}
@@ -336,6 +433,7 @@ const SavedFolderDetail = () => {
               <TouchableOpacity
                 style={[styles.modalButton, styles.confirmButton]}
                 onPress={confirmRename}
+                disabled={!newFolderName.trim() || newFolderName.trim() === folder?.name}
               >
                 <Text style={styles.confirmButtonText}>Save</Text>
               </TouchableOpacity>
@@ -343,6 +441,12 @@ const SavedFolderDetail = () => {
           </View>
         </View>
       </Modal>
+      
+      {isLoading && (
+        <View style={styles.loadingOverlay}>
+          <ActivityIndicator size="large" color="#00c5e3" />
+        </View>
+      )}
     </View>
   );
 };
@@ -391,6 +495,7 @@ const styles = StyleSheet.create({
   },
   postList: {
     padding: 16,
+    flexGrow: 1,
   },
   postItem: {
     flexDirection: "row",
@@ -403,6 +508,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 2,
     elevation: 2,
+    height: 120,
   },
   postThumbnail: {
     width: 100,
@@ -432,6 +538,20 @@ const styles = StyleSheet.create({
     height: 20,
     borderRadius: 10,
     marginRight: 6,
+  },
+  authorAvatarPlaceholder: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: "#00c5e3",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 6,
+  },
+  authorAvatarText: {
+    color: "#FFFFFF",
+    fontSize: 10,
+    fontWeight: "bold",
   },
   authorName: {
     fontSize: 12,
@@ -465,16 +585,31 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: "#FF6B6B",
     marginBottom: 20,
+    textAlign: "center",
+    paddingHorizontal: 30,
   },
-  goBackButton: {
+  tryAgainButton: {
     backgroundColor: "#00c5e3",
     paddingVertical: 12,
     paddingHorizontal: 24,
     borderRadius: 24,
-    marginTop: 20,
+    marginBottom: 16,
+  },
+  tryAgainButtonText: {
+    color: "#FFFFFF",
+    fontWeight: "600",
+    fontSize: 16,
+  },
+  goBackButton: {
+    backgroundColor: "transparent",
+    borderWidth: 1,
+    borderColor: "#00c5e3",
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 24,
   },
   goBackButtonText: {
-    color: "#FFFFFF",
+    color: "#00c5e3",
     fontWeight: "600",
     fontSize: 16,
   },
@@ -536,6 +671,16 @@ const styles = StyleSheet.create({
   confirmButtonText: {
     color: "#fff",
     fontWeight: "600",
+  },
+  loadingOverlay: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.7)',
   },
 });
 

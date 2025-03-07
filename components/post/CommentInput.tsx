@@ -1,24 +1,32 @@
 import React, { useState } from 'react';
-import { View, TextInput, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, TextInput, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 interface CommentInputProps {
   onSubmit: (text: string) => void;
   bottomInset: number;
+  isSubmitting?: boolean;
 }
 
-const CommentInput: React.FC<CommentInputProps> = ({ onSubmit, bottomInset }) => {
+const CommentInput: React.FC<CommentInputProps> = ({ 
+  onSubmit, 
+  bottomInset, 
+  isSubmitting = false 
+}) => {
   const [text, setText] = useState('');
 
   const handleSubmit = () => {
-    if (!text.trim()) return;
+    if (!text.trim() || isSubmitting) return;
     onSubmit(text);
     setText('');
   };
 
   return (
     <View style={[styles.container, { paddingBottom: bottomInset }]}>
-      <View style={styles.inputWrapper}>
+      <View style={[
+        styles.inputWrapper, 
+        isSubmitting && styles.inputWrapperDisabled
+      ]}>
         <TextInput
           placeholder="Add a comment..."
           placeholderTextColor="#9E9E9E"
@@ -26,17 +34,22 @@ const CommentInput: React.FC<CommentInputProps> = ({ onSubmit, bottomInset }) =>
           multiline
           value={text}
           onChangeText={setText}
+          editable={!isSubmitting}
         />
         <TouchableOpacity 
           style={styles.sendButton}
           onPress={handleSubmit}
-          disabled={!text.trim()}
+          disabled={!text.trim() || isSubmitting}
         >
-          <Ionicons 
-            name="send" 
-            size={24} 
-            color={text.trim() ? "#00c5e3" : "#CCCCCC"} 
-          />
+          {isSubmitting ? (
+            <ActivityIndicator size="small" color="#00c5e3" />
+          ) : (
+            <Ionicons 
+              name="send" 
+              size={24} 
+              color={text.trim() ? "#00c5e3" : "#CCCCCC"} 
+            />
+          )}
         </TouchableOpacity>
       </View>
     </View>
@@ -63,6 +76,10 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     paddingHorizontal: 16,
   },
+  inputWrapperDisabled: {
+    borderColor: '#CCCCCC',
+    backgroundColor: '#F2F2F2',
+  },
   input: {
     flex: 1,
     fontSize: 14,
@@ -71,6 +88,10 @@ const styles = StyleSheet.create({
   },
   sendButton: {
     padding: 8,
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
 

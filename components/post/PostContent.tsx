@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, StyleSheet, ScrollView, Platform } from 'react-native';
 import { Text } from '@/components/Themed';
-import { Post, Comment } from '@/app/post/[id]';
+import { Post, Comment, Author } from '@/types/postType';
 import AuthorInfo from './AuthorInfo';
 import PostActions from './PostActions';
 import CommentsList from './CommentList';
@@ -10,11 +10,12 @@ import MediaPreview from '@/components/MediaPreview';
 interface PostContentProps {
   post: Post;
   isLiked: boolean;
+  isSaved: boolean;
   likesCount: number;
   commentsCount: number;
   comments: Comment[];
   onLike: () => void;
-  onEdit: () => void;
+  onEdit?: () => void;
   onShare: () => void;
   onSave: () => void;
   bottomPadding: number;
@@ -23,6 +24,7 @@ interface PostContentProps {
 const PostContent: React.FC<PostContentProps> = ({
   post,
   isLiked,
+  isSaved,
   likesCount,
   commentsCount,
   comments,
@@ -32,7 +34,11 @@ const PostContent: React.FC<PostContentProps> = ({
   onSave,
   bottomPadding,
 }) => {
-  const isCurrentUser = post.author.id === 'currentuser';
+  // 添加安全检查，确保 post.author 存在
+  const author = post.author || { id: 'unknown', name: 'Unknown', avatar: '' };
+  
+  // 使用可选链运算符，避免 undefined 错误
+  const canEdit = post.isAuthor || author?.id === 'currentuser';
 
   return (
     <ScrollView
@@ -45,10 +51,12 @@ const PostContent: React.FC<PostContentProps> = ({
     >
       {/* Author info */}
       <AuthorInfo 
-        author={post.author} 
+        author={author} // 使用我们已验证的 author 对象
         createdAt={post.createdAt}
+        updatedAt={post.updatedAt || post.createdAt} // 提供默认值
+        isEdited={post.isEdited || false}
         onEdit={onEdit}
-        showEditButton={isCurrentUser}
+        showEditButton={canEdit}
       />
 
       {/* Post content */}
@@ -64,8 +72,10 @@ const PostContent: React.FC<PostContentProps> = ({
       {/* Interaction bar */}
       <PostActions
         isLiked={isLiked}
+        isSaved={isSaved}
         likesCount={likesCount}
         commentsCount={commentsCount}
+        shareCount={post.shareCount || 0}
         onLike={onLike}
         onShare={onShare}
         onSave={onSave}
@@ -73,8 +83,10 @@ const PostContent: React.FC<PostContentProps> = ({
 
       {/* Comments section */}
       <View style={styles.commentsContainer}>
-        <Text style={styles.commentsTitle}>Comments</Text>
-        <CommentsList comments={comments} />
+        <Text style={styles.commentsTitle}>
+          Comments ({commentsCount})
+        </Text>
+        <CommentsList comments={comments || []} />
       </View>
     </ScrollView>
   );

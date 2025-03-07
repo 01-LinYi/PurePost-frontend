@@ -8,7 +8,14 @@ export default function PostLayout() {
         name="index"
         options={{
           title: "All Posts",
-          headerShown: true,
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="my_posts"
+        options={{
+          title: "My Posts",
+          headerShown: false,
         }}
       />
       <Stack.Screen

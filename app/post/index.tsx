@@ -24,10 +24,10 @@ export default function PostsIndex() {
   // Placeholder for redirection logic
   // You can implement redirect logic here
   // For example:
-  // React.useEffect(() => {
-  //   // Uncomment to enable redirect
-  //   // router.replace('/post/list');
-  // }, []);
+  React.useEffect(() => {
+    // Uncomment to enable redirect
+    router.push("/post/create");
+  }, []);
 
   return (
     <View style={styles.container}>
@@ -65,9 +65,10 @@ export default function PostsIndex() {
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Go Home</Text>
-            <TouchableOpacity
-              style={styles.routeButton}
-              onPress={() => router.push("/(tabs)")}/>
+        <TouchableOpacity
+          style={styles.routeButton}
+          onPress={() => router.push("/(tabs)")}
+        />
       </View>
 
       <View style={styles.redirectSection}>
@@ -78,13 +79,13 @@ export default function PostsIndex() {
         </Text>
 
         {/* Space for additional redirect implementation */}
-        {/* 
+        {/*
           // This is where you would implement redirect logic
           // Example implementation:
           
           import { Redirect } from 'expo-router';
           
-          // To use redirect component:
+          // To use redirect  component:
           return <Redirect href="/post/list" />;
         */}
       </View>

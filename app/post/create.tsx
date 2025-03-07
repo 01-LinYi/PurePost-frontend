@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import { View } from "@/components/Themed";
 import {
   TextInput,
@@ -8,35 +8,82 @@ import {
   ScrollView,
   Platform,
   KeyboardAvoidingView,
+  TouchableOpacity,
+  Text as Text,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { router } from "expo-router";
-
+import { router, useNavigation } from "expo-router";
+import axiosInstance from "@/utils/axiosInstance";
 import MediaPreview from "@/components/MediaPreview";
 import ActionButton from "@/components/ActionButton";
-
-interface Media {
-  uri: string;
-  type: string;
-}
+import { Media, PostRequest } from "@/types/postType";
 
 const getMediaType = (uri: string): string => {
-  if (uri.endsWith(".mp4")) return "video/mp4";
-  if (uri.endsWith(".mov")) return "video/quicktime";
-  if (uri.endsWith(".jpg") || uri.endsWith(".jpeg")) return "image/jpeg";
-  if (uri.endsWith(".png")) return "image/png";
-  return "image/jpeg"; // Default type
+  const uriLower = uri.toLowerCase();
+  if (uriLower.endsWith(".mp4")) return "video/mp4";
+  if (uriLower.endsWith(".mov")) return "video/quicktime";
+  if (uriLower.endsWith(".jpg") || uriLower.endsWith(".jpeg"))
+    return "image/jpeg";
+  if (uriLower.endsWith(".png")) return "image/png";
+  if (uriLower.endsWith(".gif")) return "image/gif";
+  return "image/jpeg";
+};
+
+const createMediaFormData = (media: Media) => {
+  const formData = new FormData();
+  const uriParts = media.uri.split("/");
+  const fileName = uriParts[uriParts.length - 1];
+
+  // @ts-ignore - RN doesn't have `Platform` type
+  formData.append("media", {
+    uri:
+      Platform.OS === "android" ? media.uri : media.uri.replace("file://", ""),
+    name: fileName,
+    type: media.type,
+  });
+
+  return formData;
 };
 
 const CreatePost = () => {
   const [postText, setPostText] = useState<string>("");
   const [media, setMedia] = useState<Media | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [visibility, setVisibility] = useState<"public" | "private">("public");
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState<boolean>(false);
   const insets = useSafeAreaInsets();
+  const navigation = useNavigation();
 
-  // No back navigation confirmation functionality
+  useEffect(() => {
+    const hasContent = postText.trim().length > 0 || media !== null;
+    setHasUnsavedChanges(hasContent);
+
+    const unsubscribe = navigation.addListener("beforeRemove", (e) => {
+      if (!hasContent) {
+        return;
+      }
+
+      e.preventDefault();
+
+      Alert.alert(
+        "Discard changes?",
+        "You have unsaved changes. Are you sure you want to discard them?",
+        [
+          { text: "Don't leave", style: "cancel", onPress: () => {} },
+          {
+            text: "Discard",
+            style: "destructive",
+            
+            onPress: () => navigation.dispatch(e.data.action),
+          },
+        ]
+      );
+    });
+
+    return unsubscribe;
+  }, [navigation, postText, media]);
 
   const pickMedia = useCallback(async () => {
     try {
@@ -55,12 +102,13 @@ const CreatePost = () => {
         mediaTypes: ["images", "videos"],
         allowsEditing: true,
         quality: 0.8,
+        aspect: [4, 3],
       });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const asset = result.assets[0];
         const type = asset.type || getMediaType(asset.uri);
-        setMedia({ uri: asset.uri, type: type });
+        setMedia({ uri: asset.uri, type });
       }
     } catch (error) {
       Alert.alert(
@@ -78,7 +126,11 @@ const CreatePost = () => {
     setMedia(null);
   }, []);
 
-  const handlePost = useCallback(() => {
+  const toggleVisibility = useCallback(() => {
+    setVisibility((prev) => (prev === "public" ? "private" : "public"));
+  }, []);
+
+  const handlePost = useCallback(async () => {
     if (!postText.trim() && !media) {
       Alert.alert(
         "Error",
@@ -87,19 +139,61 @@ const CreatePost = () => {
       return;
     }
 
-    setIsLoading(true);
-    // Simulate post request
-    setTimeout(() => {
+    try {
+      setIsLoading(true);
+
+      const postData: PostRequest = {
+        content: postText.trim(),
+        visibility: visibility,
+      };
+
+      let response;
+
+      if (media) {
+        const formData = createMediaFormData(media);
+        const mediaResponse = await axiosInstance.post(
+          "/content/media/upload/",
+          formData,
+          {
+            headers: {
+              "Content-Type": "multipart/form-data",
+            },
+          }
+        );
+
+        postData.media_id = mediaResponse.data.id;
+      }
+
+      response = await axiosInstance.post("/content/posts/", postData);
+
       Alert.alert("Success", "Your post has been published!", [
-        { text: "OK", onPress: () => router.push("/(tabs)") },
+        {
+          text: "View Post",
+          onPress: () => router.push(`/post/${response.data.id}`),
+        },
+        {
+          text: "Go Home",
+          onPress: () => router.push("/(tabs)"),
+        },
       ]);
+
       setPostText("");
       setMedia(null);
-      setIsLoading(false);
-    }, 500);
-  }, [postText, media]);
+      setHasUnsavedChanges(false);
+    } catch (error) {
+      const errorMessage =
+        (error as any)?.response?.data?.message ||
+        (error as Error).message ||
+        "Unknown error occurred";
 
-  const isPostDisabled = !postText.trim() && !media;
+      Alert.alert("Error", `Failed to publish post: ${errorMessage}`);
+      console.error("Post creation error:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [postText, media, visibility]);
+
+  const isPostDisabled = (!postText.trim() && !media) || isLoading;
 
   return (
     <KeyboardAvoidingView
@@ -122,7 +216,6 @@ const CreatePost = () => {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        {/* Text input */}
         <TextInput
           style={styles.textInput}
           placeholder="What's on your mind?"
@@ -136,10 +229,35 @@ const CreatePost = () => {
           autoCapitalize="sentences"
         />
 
-        {/* Media preview */}
+        <Text style={styles.charCount}>{postText.length}/2000</Text>
+
         <MediaPreview media={media} onRemove={removeMedia} />
 
-        {/* Action bar */}
+        <View style={styles.visibilityContainer}>
+          <TouchableOpacity
+            style={styles.visibilityButton}
+            onPress={toggleVisibility}
+          >
+            <Ionicons
+              name={
+                visibility === "public"
+                  ? "globe-outline"
+                  : "lock-closed-outline"
+              }
+              size={20}
+              color="#666666"
+            />
+            <Text style={styles.visibilityText}>
+              {visibility === "public" ? "Public" : "Private"}
+            </Text>
+          </TouchableOpacity>
+          <Text style={styles.visibilityHint}>
+            {visibility === "public"
+              ? "Anyone can see this post"
+              : "Only you can see this post"}
+          </Text>
+        </View>
+
         <View style={styles.actionBar}>
           <ActionButton
             icon={<Ionicons name="image-outline" size={24} color="#00c5e3" />}
@@ -162,6 +280,15 @@ const CreatePost = () => {
             textStyle={styles.postButtonText}
           />
         </View>
+
+        {/* Back to Tabs Button */}
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => router.push("/(tabs)")}
+        >
+          <Ionicons name="arrow-back-outline" size={20} color="#FFFFFF" />
+          <Text style={styles.backButtonText}>Back to Tabs</Text>
+        </TouchableOpacity>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -188,7 +315,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     backgroundColor: "#f9f9f9",
     textAlignVertical: "top",
-    marginBottom: 16,
+    marginBottom: 4,
     color: "#333333",
     ...Platform.select({
       ios: {
@@ -202,10 +329,37 @@ const styles = StyleSheet.create({
       },
     }),
   },
+  charCount: {
+    alignSelf: "flex-end",
+    fontSize: 12,
+    color: "#9E9E9E",
+    marginBottom: 16,
+  },
+  visibilityContainer: {
+    marginTop: 8,
+    marginBottom: 16,
+  },
+  visibilityButton: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  visibilityText: {
+    fontSize: 14,
+    color: "#666666",
+    marginLeft: 6,
+    fontWeight: "500",
+  },
+  visibilityHint: {
+    fontSize: 12,
+    color: "#9E9E9E",
+    marginTop: 4,
+    marginLeft: 26,
+  },
   actionBar: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    marginTop: 8,
   },
   mediaButton: {
     backgroundColor: "#F0F8FA",
@@ -230,6 +384,21 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontWeight: "600",
     fontSize: 16,
+  },
+  backButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 24,
+    backgroundColor: "#00c5e3",
+    paddingVertical: 12,
+    borderRadius: 24,
+  },
+  backButtonText: {
+    color: "#FFFFFF",
+    marginLeft: 8,
+    fontSize: 16,
+    fontWeight: "600",
   },
 });
 

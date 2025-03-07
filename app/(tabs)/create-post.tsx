@@ -8,7 +8,7 @@ import { View } from 'react-native';
 export default function CreatePostRedirect() {
   useEffect(() => {
     // when the component is mounted, redirect the user to the /post route
-    router.replace('/post');
+    router.replace('/post/create');
   }, []);
 
   // return an empty view

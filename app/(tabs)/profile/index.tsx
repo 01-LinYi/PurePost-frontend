@@ -273,7 +273,7 @@ export default function ProfileScreen() {
           <View style={styles.statsContainer}>
             <TouchableOpacity
               style={styles.stat}
-              onPress={() => navigateTo("/post")}
+              onPress={() => navigateTo("/post/my_posts")}
             >
               <Text style={styles.statNumber}>
                 {userData?.stats?.posts || "0"}

@@ -11,7 +11,7 @@ interface Media {
 
 interface MediaPreviewProps {
   media: Media | null;
-  onRemove: () => void;
+  onRemove?: () => void;
 }
 
 const MediaPreview = memo(({ media, onRemove }: MediaPreviewProps) => {

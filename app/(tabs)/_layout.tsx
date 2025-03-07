@@ -196,7 +196,7 @@ export default function TabLayout() {
           tabPress: (e) => {
             // Prevent default action
             e.preventDefault();
-            router.push("/post" as any);
+            router.push("/post/create" as any);
           },
         }}
       />

@@ -14,6 +14,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { Text, View } from "@/components/Themed";
 import ActionButton from "@/components/ActionButton";
+import axiosInstance from "@/utils/axiosInstance";
 
 // Define the SavedFolder type
 type SavedFolder = {
@@ -23,38 +24,54 @@ type SavedFolder = {
   createdAt: string;
 };
 
-// Mock API for fetching saved folders
+// API for fetching, creating, renaming, and deleting saved folders
 const fetchSavedFolders = async (): Promise<SavedFolder[]> => {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve([
-        {
-          id: "folder1",
-          name: "Favorite Posts",
-          postCount: 12,
-          createdAt: new Date().toISOString(),
-        },
-        {
-          id: "folder2",
-          name: "Read Later",
-          postCount: 5,
-          createdAt: new Date().toISOString(),
-        },
-        {
-          id: "folder3",
-          name: "Inspiration",
-          postCount: 8,
-          createdAt: new Date().toISOString(),
-        },
-        {
-          id: "folder4",
-          name: "Educational",
-          postCount: 15,
-          createdAt: new Date().toISOString(),
-        },
-      ]);
-    }, 500);
-  });
+  try {
+    const response = await axiosInstance.get("/content/folders/");
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching folders:", error);
+    throw error;
+  }
+};
+
+const createFolder = async (name: string): Promise<SavedFolder> => {
+  try {
+    const response = await axiosInstance.post("/content/folders/", { name });
+    return response.data;
+  } catch (error) {
+    console.error("Error creating folder:", error);
+    throw error;
+  }
+};
+
+const renameFolder = async (id: string, name: string): Promise<SavedFolder> => {
+  try {
+    const response = await axiosInstance.patch(`/content/folders/${id}/`, { name });
+    return response.data;
+  } catch (error) {
+    console.error("Error renaming folder:", error);
+    throw error;
+  }
+};
+
+const deleteFolder = async (id: string): Promise<void> => {
+  try {
+    await axiosInstance.delete(`/content/folders/${id}/`);
+  } catch (error) {
+    console.error("Error deleting folder:", error);
+    throw error;
+  }
+};
+
+const getFolderPosts = async (id: string): Promise<any[]> => {
+  try {
+    const response = await axiosInstance.get(`/content/folders/${id}/posts/`);
+    return response.data;
+  } catch (error) {
+    console.error("Error getting folder posts:", error);
+    throw error;
+  }
 };
 
 const SavedFolders = () => {
@@ -62,6 +79,7 @@ const SavedFolders = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [renameModalVisible, setRenameModalVisible] = useState(false);
   const [createModalVisible, setCreateModalVisible] = useState(false);
+  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [selectedFolder, setSelectedFolder] = useState<SavedFolder | null>(
     null
   );
@@ -70,24 +88,24 @@ const SavedFolders = () => {
 
   const insets = useSafeAreaInsets();
 
-  useEffect(() => {
-    const loadFolders = async () => {
-      try {
-        setIsLoading(true);
-        const data = await fetchSavedFolders();
-        setFolders(data);
-      } catch (error) {
-        Alert.alert(
-          "Error",
-          "Failed to load saved folders: " +
-            ((error as Error).message || "Unknown error")
-        );
-        console.error("Folders loading error:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  const loadFolders = async () => {
+    try {
+      setIsLoading(true);
+      const data = await fetchSavedFolders();
+      setFolders(data);
+    } catch (error) {
+      Alert.alert(
+        "Error",
+        "Failed to load saved folders: " +
+          ((error as Error).message || "Unknown error")
+      );
+      console.error("Folders loading error:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
+  useEffect(() => {
     loadFolders();
   }, []);
 
@@ -96,29 +114,31 @@ const SavedFolders = () => {
     setCreateModalVisible(true);
   };
 
-  const confirmCreateFolder = () => {
+  const confirmCreateFolder = async () => {
     if (!createFolderName.trim()) return;
 
-    // Generate a unique ID for the new folder
-    const newFolderId = `folder-${Date.now()}`;
-
-    // Create the new folder
-    const newFolder: SavedFolder = {
-      id: newFolderId,
-      name: createFolderName.trim(),
-      postCount: 0,
-      createdAt: new Date().toISOString(),
-    };
-
-    // Add it to the state
-    setFolders((prevFolders) => [...prevFolders, newFolder]);
-
-    // Close the modal and reset
-    setCreateModalVisible(false);
-    setCreateFolderName("");
-
-    // Display success message
-    Alert.alert("Success", `Folder "${createFolderName}" created successfully`);
+    try {
+      setIsLoading(true);
+      const newFolder = await createFolder(createFolderName.trim());
+      
+      // Add the new folder to the state
+      setFolders((prevFolders) => [...prevFolders, newFolder]);
+      
+      // Close the modal and reset
+      setCreateModalVisible(false);
+      setCreateFolderName("");
+      
+      // Display success message
+      Alert.alert("Success", `Folder "${createFolderName}" created successfully`);
+    } catch (error) {
+      Alert.alert(
+        "Error",
+        "Failed to create folder: " +
+          ((error as Error).message || "Unknown error")
+      );
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleRenameFolder = (folder: SavedFolder) => {
@@ -127,25 +147,70 @@ const SavedFolders = () => {
     setRenameModalVisible(true);
   };
 
-  const confirmRename = () => {
+  const confirmRename = async () => {
     if (!selectedFolder || !newFolderName.trim()) return;
 
-    // Update the folder name in the state
-    setFolders((prevFolders) =>
-      prevFolders.map((folder) =>
-        folder.id === selectedFolder.id
-          ? { ...folder, name: newFolderName.trim() }
-          : folder
-      )
-    );
+    try {
+      setIsLoading(true);
+      const updatedFolder = await renameFolder(selectedFolder.id, newFolderName.trim());
+      
+      // Update the folder name in the state
+      setFolders((prevFolders) =>
+        prevFolders.map((folder) =>
+          folder.id === selectedFolder.id ? updatedFolder : folder
+        )
+      );
+      
+      // Close the modal and reset the state
+      setRenameModalVisible(false);
+      setSelectedFolder(null);
+      setNewFolderName("");
+      
+      // Display success message
+      Alert.alert("Success", "Folder renamed successfully");
+    } catch (error) {
+      Alert.alert(
+        "Error",
+        "Failed to rename folder: " +
+          ((error as Error).message || "Unknown error")
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-    // Close the modal and reset the state
-    setRenameModalVisible(false);
-    setSelectedFolder(null);
-    setNewFolderName("");
+  const handleDeleteFolder = (folder: SavedFolder) => {
+    setSelectedFolder(folder);
+    setDeleteModalVisible(true);
+  };
 
-    // Display success message
-    Alert.alert("Success", "Folder renamed successfully");
+  const confirmDelete = async () => {
+    if (!selectedFolder) return;
+
+    try {
+      setIsLoading(true);
+      await deleteFolder(selectedFolder.id);
+      
+      // Remove the folder from the state
+      setFolders((prevFolders) =>
+        prevFolders.filter((folder) => folder.id !== selectedFolder.id)
+      );
+      
+      // Close the modal and reset the state
+      setDeleteModalVisible(false);
+      setSelectedFolder(null);
+      
+      // Display success message
+      Alert.alert("Success", "Folder deleted successfully");
+    } catch (error) {
+      Alert.alert(
+        "Error",
+        "Failed to delete folder: " +
+          ((error as Error).message || "Unknown error")
+      );
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleFolderPress = (folderId: string) => {
@@ -167,12 +232,20 @@ const SavedFolders = () => {
           <Text style={styles.folderCount}>{item.postCount} posts</Text>
         </View>
       </View>
-      <TouchableOpacity
-        style={styles.renameButton}
-        onPress={() => handleRenameFolder(item)}
-      >
-        <Ionicons name="pencil" size={18} color="#666" />
-      </TouchableOpacity>
+      <View style={[styles.folderActions, { backgroundColor: "transparent" }]}>
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={() => handleRenameFolder(item)}
+        >
+          <Ionicons name="pencil" size={18} color="#666" />
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={() => handleDeleteFolder(item)}
+        >
+          <Ionicons name="trash-outline" size={18} color="#ff3b30" />
+        </TouchableOpacity>
+      </View>
     </TouchableOpacity>
   );
 
@@ -191,12 +264,12 @@ const SavedFolders = () => {
       <View
         style={[
           styles.header,
-          { paddingTop: 20, backgroundColor: "transparent" },
+          { paddingTop: 10, backgroundColor: "transparent" },
         ]}
       >
         <TouchableOpacity
           style={styles.backButton}
-          onPress={() => router.back()}
+          onPress={() => router.replace("/(tabs)/profile")}
         >
           <Ionicons name="arrow-back" size={24} color="#00c5e3" />
         </TouchableOpacity>
@@ -228,6 +301,8 @@ const SavedFolders = () => {
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.folderList}
           showsVerticalScrollIndicator={false}
+          refreshing={isLoading}
+          onRefresh={loadFolders}
         />
       )}
 
@@ -300,6 +375,39 @@ const SavedFolders = () => {
                 onPress={confirmCreateFolder}
               >
                 <Text style={styles.confirmButtonText}>Create</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Delete Folder Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={deleteModalVisible}
+        onRequestClose={() => setDeleteModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Delete Folder</Text>
+            <Text style={styles.modalMessage}>
+              Are you sure you want to delete "{selectedFolder?.name}"? This action cannot be undone.
+            </Text>
+            <View
+              style={[styles.modalButtons, { backgroundColor: "transparent" }]}
+            >
+              <TouchableOpacity
+                style={[styles.modalButton, styles.cancelButton]}
+                onPress={() => setDeleteModalVisible(false)}
+              >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.deleteButton]}
+                onPress={confirmDelete}
+              >
+                <Text style={styles.deleteButtonText}>Delete</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -383,9 +491,13 @@ const styles = StyleSheet.create({
     color: "#888",
     marginTop: 2,
   },
-  renameButton: {
+  folderActions: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  actionButton: {
     padding: 8,
-    backgroundColor: "transparent",
+    marginLeft: 4,
   },
   emptyState: {
     flex: 1,
@@ -434,6 +546,12 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     color: "#333",
   },
+  modalMessage: {
+    fontSize: 16,
+    color: "#666",
+    textAlign: "center",
+    marginBottom: 24,
+  },
   input: {
     borderWidth: 1,
     borderColor: "#ddd",
@@ -466,6 +584,13 @@ const styles = StyleSheet.create({
     backgroundColor: "#00c5e3",
   },
   confirmButtonText: {
+    color: "#fff",
+    fontWeight: "600",
+  },
+  deleteButton: {
+    backgroundColor: "#ff3b30",
+  },
+  deleteButtonText: {
     color: "#fff",
     fontWeight: "600",
   },

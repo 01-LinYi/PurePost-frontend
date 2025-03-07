@@ -5,8 +5,10 @@ import { Text } from '@/components/Themed';
 
 interface PostActionsProps {
   isLiked: boolean;
+  isSaved: boolean;
   likesCount: number;
   commentsCount: number;
+  shareCount: number;
   onLike: () => void;
   onShare: () => void;
   onSave: () => void;
@@ -14,8 +16,10 @@ interface PostActionsProps {
 
 const PostActions: React.FC<PostActionsProps> = ({
   isLiked,
+  isSaved,
   likesCount,
   commentsCount,
+  shareCount,
   onLike,
   onShare,
   onSave
@@ -38,10 +42,15 @@ const PostActions: React.FC<PostActionsProps> = ({
       
       <TouchableOpacity onPress={onShare} style={styles.button}>
         <Ionicons name="arrow-redo-outline" size={24} color="#666" />
+        {shareCount > 0 && <Text style={styles.count}>{shareCount}</Text>}
       </TouchableOpacity>
       
       <TouchableOpacity onPress={onSave} style={styles.button}>
-        <Ionicons name="bookmark-outline" size={24} color="#666" />
+        <Ionicons 
+          name={isSaved ? "bookmark" : "bookmark-outline"} 
+          size={24} 
+          color={isSaved ? "#00c5e3" : "#666"} 
+        />
       </TouchableOpacity>
     </View>
   );

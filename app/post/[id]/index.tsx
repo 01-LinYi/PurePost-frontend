@@ -13,52 +13,77 @@ import { Text, View } from "@/components/Themed";
 import ActionButton from "@/components/ActionButton";
 import PostContent from "@/components/post/PostContent";
 import CommentInput from "@/components/post/CommentInput";
+import axiosInstance from "@/utils/axiosInstance";
 // Import types from the separate file
 import { Post, Comment } from "@/types/postType";
-// mock API
-const fetchPost = async (
-  id: string
-): Promise<Post & { comments: Comment[] }> => {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve({
-        id,
-        text: "This is a sample post content. It demonstrates what a post looks like in the detail view.",
-        media: { uri: "https://picsum.photos/200", type: "image/jpeg" },
-        author: {
-          id: "user123",
-          name: "John Doe",
-          avatar: "https://picsum.photos/150",
-        },
-        createdAt: new Date().toISOString(),
-        likesCount: 42,
-        commentsCount: 7,
-        isLiked: false,
-        comments: [
-          {
-            id: "comment1",
-            text: "Great post!",
-            author: {
-              id: "user456",
-              name: "Jane Smith",
-              avatar: "https://picsum.photos/150",
-            },
-            createdAt: new Date().toISOString(),
-          },
-          {
-            id: "comment2",
-            text: "I completely agree with this.",
-            author: {
-              id: "user789",
-              name: "Alex Johnson",
-              avatar: "https://picsum.photos/150",
-            },
-            createdAt: new Date().toISOString(),
-          },
-        ],
-      });
-    }, 600);
-  });
+import { transformApiPostToPost } from "../my_posts";
+
+// API functions for interacting with posts
+const fetchPost = async (id: string): Promise<Post & { comments: Comment[] }> => {
+  try {
+    const response = await axiosInstance.get(`/content/posts/${id}/`);
+    console.log(response.data);
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching post:", error);
+    throw error;
+  }
+};
+
+const likePost = async (id: string): Promise<void> => {
+  try {
+    await axiosInstance.post(`/content/posts/${id}/like/`);
+  } catch (error) {
+    console.error("Error liking post:", error);
+    throw error;
+  }
+};
+
+const unlikePost = async (id: string): Promise<void> => {
+  try {
+    await axiosInstance.post(`/content/posts/${id}/unlike/`);
+  } catch (error) {
+    console.error("Error unliking post:", error);
+    throw error;
+  }
+};
+
+const savePost = async (postId: string, folderId?: string): Promise<void> => {
+  try {
+    await axiosInstance.post(`/content/saved-posts/`, {
+      post_id: postId,
+      folder_id: folderId
+    });
+  } catch (error) {
+    console.error("Error saving post:", error);
+    throw error;
+  }
+};
+
+const toggleSavePost = async (postId: string, folderId?: string): Promise<void> => {
+  try {
+    await axiosInstance.post(`/content/saved-posts/toggle/`, {
+      post_id: postId,
+      folder_id: folderId
+    });
+  } catch (error) {
+    console.error("Error toggling save status:", error);
+    throw error;
+  }
+};
+
+const addComment = async (postId: string, text: string): Promise<Comment> => {
+  try {
+    // Note: This endpoint is not explicitly defined in the API doc, 
+    // so I'm assuming it follows REST conventions
+    const response = await axiosInstance.post(`/content/posts/${postId}/comments/`, {
+      text
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Error adding comment:", error);
+    throw error;
+  }
 };
 
 const PostDetail = () => {
@@ -67,18 +92,24 @@ const PostDetail = () => {
   const [comments, setComments] = useState<Comment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isLiked, setIsLiked] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
   const [likesCount, setLikesCount] = useState(0);
+  const [isSubmittingAction, setIsSubmittingAction] = useState(false);
   const insets = useSafeAreaInsets();
 
   useEffect(() => {
     const loadPostData = async () => {
       try {
         setIsLoading(true);
+        console.log(String(id));
         const data = await fetchPost(String(id));
-        setPost(data);
+        setComments(data?.comments || []);
+        let postData = transformApiPostToPost(data as any);
+        setPost(postData);
         setIsLiked(data.isLiked);
-        setLikesCount(data.likesCount);
-        setComments(data.comments);
+        setIsSaved(data.isSaved || false); // Add this if the API returns save status
+        setLikesCount(data?.likesCount || 0);
+        
       } catch (error) {
         Alert.alert(
           "Error",
@@ -94,31 +125,125 @@ const PostDetail = () => {
     loadPostData();
   }, [id]);
 
-  const handleLike = () => {
-    if (!post) return;
-    const newIsLiked = !isLiked;
-    setIsLiked(newIsLiked);
-    setLikesCount((prev) => prev + (newIsLiked ? 1 : -1));
-    console.log(`Post ${post.id} ${newIsLiked ? "liked" : "unliked"}`);
+  const handleLike = async () => {
+    if (!post || isSubmittingAction) return;
+    
+    try {
+      setIsSubmittingAction(true);
+      const newIsLiked = !isLiked;
+      
+      // Update UI immediately for better UX
+      setIsLiked(newIsLiked);
+      setLikesCount((prev) => prev + (newIsLiked ? 1 : -1));
+      
+      // Call API
+      if (newIsLiked) {
+        await likePost(post.id);
+      } else {
+        await unlikePost(post.id);
+      }
+      
+      console.log(`Post ${post.id} ${newIsLiked ? "liked" : "unliked"}`);
+    } catch (error) {
+      // Revert UI changes if API call fails
+      setIsLiked(!isLiked);
+      setLikesCount((prev) => prev + (isLiked ? 1 : -1));
+      
+      Alert.alert(
+        "Error",
+        `Failed to ${isLiked ? "unlike" : "like"} post: ` +
+          ((error as Error).message || "Unknown error")
+      );
+    } finally {
+      setIsSubmittingAction(false);
+    }
   };
 
   const handleEdit = () => post && router.push(`/post/${post.id}/edit`);
-  const handleShare = () =>
+  
+  const handleShare = () => {
     Alert.alert("Share", "Sharing functionality to be implemented");
-  const handleSave = () => Alert.alert("Save", "Post saved successfully!");
+    // Actual sharing implementation would go here
+  };
+  
+  const handleSave = async () => {
+    if (!post || isSubmittingAction) return;
+    
+    try {
+      setIsSubmittingAction(true);
+      
+      // Update UI immediately for better UX
+      setIsSaved(!isSaved);
+      
+      // Call API
+      await toggleSavePost(post.id);
+      
+      Alert.alert(
+        "Success", 
+        isSaved ? "Post removed from saved items" : "Post saved successfully!"
+      );
+    } catch (error) {
+      // Revert UI changes if API call fails
+      setIsSaved(!isSaved);
+      
+      Alert.alert(
+        "Error",
+        `Failed to ${isSaved ? "unsave" : "save"} post: ` +
+          ((error as Error).message || "Unknown error")
+      );
+    } finally {
+      setIsSubmittingAction(false);
+    }
+  };
 
-  const handleAddComment = (text: string) => {
-    if (!text.trim() || !post) return;
+  const handleAddComment = async (text: string) => {
+    if (!text.trim() || !post || isSubmittingAction) return;
 
-    const newComment: Comment = {
-      id: `comment-${Date.now()}`,
-      text,
-      author: { id: "currentuser", name: "You", avatar: "" },
-      createdAt: new Date().toISOString(),
-    };
-
-    setComments((prev) => [newComment, ...prev]);
-    console.log(`Comment added to post ${post.id}: ${text}`);
+    try {
+      setIsSubmittingAction(true);
+      
+      // Create a temporary comment for immediate UI feedback
+      const tempComment: Comment = {
+        id: `temp-${Date.now()}`,
+        text,
+        author: { id: "currentuser", name: "You", avatar: "" },
+        createdAt: new Date().toISOString(),
+        isSubmitting: true
+      };
+      
+      // Add to UI
+      setComments((prev) => [tempComment, ...prev]);
+      
+      // Submit to API
+      const newComment = await addComment(post.id, text);
+      
+      // Replace temp comment with real one from API
+      setComments((prev) => 
+        prev.map(comment => 
+          comment.id === tempComment.id ? newComment : comment
+        )
+      );
+      
+      console.log(`Comment added to post ${post.id}: ${text}`);
+    } catch (error) {
+      // Remove the temporary comment if submission fails
+      setComments((prev) => 
+        prev.filter(comment => !comment.isSubmitting)
+      );
+      
+      Alert.alert(
+        "Error",
+        "Failed to add comment: " +
+          ((error as Error).message || "Unknown error")
+      );
+    } finally {
+      setIsSubmittingAction(false);
+    }
+  };
+  
+  // 处理返回操作
+  const handleGoBack = () => {
+    router.back();
   };
 
   if (isLoading) {
@@ -147,24 +272,28 @@ const PostDetail = () => {
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
-      {/* Fixed Edit Button */}
-      <TouchableOpacity
-        style={[styles.editButton, { top: insets.top + 10 }]}
-        onPress={handleEdit}
-        activeOpacity={0.7}
-      >
-        <Ionicons name="pencil" size={20} color="#FFFFFF" />
-        <Text style={styles.editButtonText}>Edit</Text>
-      </TouchableOpacity>
+
+      {/* Fixed Edit Button - Only show if current user is the author */}
+      {post.isAuthor && (
+        <TouchableOpacity
+          style={[styles.editButton, { top: insets.top + 10 }]}
+          onPress={handleEdit}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="pencil" size={20} color="#FFFFFF" />
+          <Text style={styles.editButtonText}>Edit</Text>
+        </TouchableOpacity>
+      )}
 
       <PostContent
         post={post}
         isLiked={isLiked}
+        isSaved={isSaved}
         likesCount={likesCount}
         commentsCount={comments.length}
         comments={comments}
         onLike={handleLike}
-        onEdit={handleEdit}
+        onEdit={post.isAuthor ? handleEdit : undefined}
         onShare={handleShare}
         onSave={handleSave}
         bottomPadding={Math.max(20, insets.bottom) + 70}
@@ -173,6 +302,7 @@ const PostDetail = () => {
       <CommentInput
         onSubmit={handleAddComment}
         bottomInset={Math.max(10, insets.bottom)}
+        isSubmitting={isSubmittingAction}
       />
     </View>
   );
@@ -203,6 +333,13 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontWeight: "600",
     fontSize: 16,
+  },
+  // 添加返回按钮样式
+  backButton: {
+    position: "absolute",
+    left: 16,
+    padding: 4,
+    zIndex: 10,
   },
   editButton: {
     position: "absolute",
