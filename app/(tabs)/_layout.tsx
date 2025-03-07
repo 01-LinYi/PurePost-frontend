@@ -70,7 +70,7 @@ export default function TabLayout() {
 
       {/* Message 页面 */}
       <Tabs.Screen
-        name="message"
+        name="(message)"
         options={{
           title: "Message",
           tabBarIcon: ({ color }) => <TabBarIcon name="th-large" color={color} />,

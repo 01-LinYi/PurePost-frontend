@@ -8,7 +8,7 @@ const AuthContext = createContext<{
   logOut: () => Promise<boolean>;
   session: string | null;
   isSessionLoading: boolean;
-  user: { id: string; username: string } | null;
+  user: { id: number; username: string } | null;
   isUserLoading: boolean;
 }>({
   logIn: async () => false,

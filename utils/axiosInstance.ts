@@ -13,6 +13,7 @@ axiosInstance.interceptors.request.use(
       if (session) {
         config.headers.Authorization = `Token ${session}`;
       }
+      console.log("header", config.headers.Authorization);
     } catch (error) {
       console.error('Error getting session:', error);
     }
