@@ -8,7 +8,6 @@ import {
   StyleSheet,
   ActivityIndicator,
   Alert,
-  KeyboardAvoidingView,
   Platform,
   Keyboard,
   Dimensions,
@@ -57,14 +56,9 @@ const RegisterPage = () => {
   useEffect(() => {
     const showListener = Keyboard.addListener(
       Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow",
-      (event) => {
-        const keyboardHeightValue = event.endCoordinates.height; //Get keyboard height
-        if (keyboardHeightValue > keyboardHeight.value)
-          keyboardHeight.value = keyboardHeightValue; // Store the fully expanded keyboard height
+      () => {
         logoSize.value = withSpring(80, { damping: 15, stiffness: 100 }); // Shrink logo
-        inputTranslateY.value = withSpring(
-          -keyboardHeight.value + bottomMargin,
-          { damping: 12, stiffness: 80 }
+        inputTranslateY.value = withSpring( -70, { damping: 12, stiffness: 80 }
         ); // Move inputs up
       }
     );
@@ -201,11 +195,12 @@ const RegisterPage = () => {
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      style={styles.container}
-      keyboardVerticalOffset={Platform.OS === "ios" ? 64 : 0}
-    >
+    <KeyboardAwareScrollView
+      contentContainerStyle={styles.container}
+      enableOnAndroid={true}  // Enables keyboard awareness on Android
+      extraScrollHeight={20}   // Adjust scrolling height
+      keyboardShouldPersistTaps="handled" // Allows tapping outside to dismiss keyboard
+    >>
       {/* Logo and App Name */}
       <View style={styles.logoContainer}>
         <Animated.Image
@@ -343,7 +338,7 @@ const RegisterPage = () => {
           <Text style={styles.loginText}>Have an account? Login!</Text>
         </TouchableOpacity>
       </View>
-    </KeyboardAvoidingView>
+    </KeyboardAwareScrollView>
   );
 };
 
@@ -369,7 +364,7 @@ const styles = StyleSheet.create({
     width: "100%",
     alignItems: "center",
     position: "absolute",
-    bottom: "27%",
+    bottom: "18%",
   },
 
   loginContainer: {
@@ -383,8 +378,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "flex-start",
     marginVertical: 10,
-    paddingHorizontal: "10%",
-    width: "100%",
+    width: "80%",
   },
 
   checkbox: {
