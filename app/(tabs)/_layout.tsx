@@ -8,7 +8,7 @@ import Colors from "@/constants/Colors";
 import { useClientOnlyValue } from "@/hooks/useClientOnlyValue";
 import { useColorScheme } from "@/hooks/useColorScheme";
 
-// TabBarIcon 组件
+// TabBarIcon
 function TabBarIcon(props: {
   name: React.ComponentProps<typeof FontAwesome>["name"];
   color: string;
@@ -36,7 +36,7 @@ export default function TabLayout() {
         headerShown: useClientOnlyValue(false, true),
       }}
     >
-      {/* 主页 */}
+      {/* Main Page */}
       <Tabs.Screen
         name="index"
         options={{
@@ -59,7 +59,7 @@ export default function TabLayout() {
         }}
       />
 
-      {/* Profile 页面 */}
+      {/* Profile Page */}
       <Tabs.Screen
         name="profile"
         options={{
@@ -68,16 +68,17 @@ export default function TabLayout() {
         }}
       />
 
-      {/* Message 页面 */}
+      {/* Message Page */}
       <Tabs.Screen
         name="(message)"
         options={{
           title: "Message",
+          headerShown: false,
           tabBarIcon: ({ color }) => <TabBarIcon name="th-large" color={color} />,
         }}
       />
 
-      {/* About 页面 ✅ 确保存在 */}
+      {/* About Page */}
       <Tabs.Screen
         name="about"
         options={{
