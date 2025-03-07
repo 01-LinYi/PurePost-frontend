@@ -8,10 +8,11 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { Text, View } from "@/components/Themed";
 import { useSession } from "@/components/SessionProvider";
-import { router } from "expo-router";
+import { useRouter } from "expo-router";
 const SettingsScreen = () => {
   const [isDeleting, setIsDeleting] = useState(false);
   const { logOut, deleteAccount } = useSession();
+  const router = useRouter();
 
   const handleLogout = () => {
     Alert.alert("Logout", "Are you sure you want to log out?", [

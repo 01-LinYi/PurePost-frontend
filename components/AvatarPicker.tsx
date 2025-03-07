@@ -28,12 +28,14 @@ interface AvatarPickerProps {
   currentAvatar?: string;
   onAvatarChange: (uri: string) => void;
   size?: number;
+  onError?: () => void;
 }
 
 const AvatarPicker: React.FC<AvatarPickerProps> = ({
   currentAvatar,
   onAvatarChange,
   size = 100,
+  onError
 }) => {
   const [avatar, setAvatar] = useState<string | null>(currentAvatar || null);
   const [isLoading, setIsLoading] = useState(false);
@@ -157,6 +159,9 @@ const AvatarPicker: React.FC<AvatarPickerProps> = ({
   // Display a placeholder for errors
   const handleImageError = () => {
     setImageError(true);
+    if (onError) {
+      onError();
+    }
   };
 
   // Determine the image source

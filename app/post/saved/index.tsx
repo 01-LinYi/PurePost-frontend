@@ -194,6 +194,12 @@ const SavedFolders = () => {
           { paddingTop: 20, backgroundColor: "transparent" },
         ]}
       >
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => router.back()}
+        >
+          <Ionicons name="arrow-back" size={24} color="#00c5e3" />
+        </TouchableOpacity>
         <Text style={styles.title}>Saved Folders</Text>
         <TouchableOpacity
           style={styles.createButton}
@@ -320,6 +326,9 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
     borderBottomWidth: 1,
     borderBottomColor: "#f0f0f0",
+  },
+  backButton: {
+    padding: 8,
   },
   title: {
     fontSize: 24,

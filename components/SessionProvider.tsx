@@ -101,13 +101,13 @@ export function SessionProvider({ children }: PropsWithChildren) {
 
   const deleteAccount = async (password: string): Promise<boolean> => {
     try {
-      // 确保用户已登录
+
       if (!user) {
         console.error("No user is logged in");
         return false;
       }
 
-      // 调用删除账号的接口，发送当前密码进行验证
+
       const response = await axiosInstance.post(
         authEndpoint + "delete-account/",
         {

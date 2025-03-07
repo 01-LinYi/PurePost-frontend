@@ -39,7 +39,7 @@ export default function PostLayout() {
         name="saved/index"
         options={{
           title: "Saved Posts",
-          headerShown: true,
+          headerShown: false,
         }}
       />
 
