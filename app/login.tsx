@@ -37,7 +37,7 @@ const LoginPage = () => {
         try {
             await logIn(email, password);
             router.replace("/(tabs)");
-        } catch (error) {
+        } catch (error: any) {
             // Handle different error cases
             if (error.message && error.message.includes('401')) {
                 Alert.alert("Login Failed", "Invalid email or password.");

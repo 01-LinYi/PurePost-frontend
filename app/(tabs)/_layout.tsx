@@ -77,7 +77,7 @@ const TABS_FIRST_HALF = [
     headerRight: true,
   },
   {
-    name: "message",
+    name: "(message)",
     title: "Message",
     iconName: "comments" as const,
     headerShown: false,

@@ -1,3 +1,9 @@
+/*
+  This is the old version of the chat interface with WebSocket connection.
+  The debug mode idea is super cool, 
+  so I will keep it here incase we need it in the future.
+*/
+
 import React, { useState, useEffect, useRef } from "react";
 import {
   TextInput,
@@ -14,6 +20,7 @@ import {
 } from "react-native";
 import { Text, View } from "@/components/Themed";
 import { Ionicons } from "@expo/vector-icons";
+import { useSession } from "@/components/SessionProvider";
 
 // Message type definition,
 // This is only used for local message objects
@@ -44,6 +51,7 @@ const BOT_RESPONSES = [
 
 export default function TabMessageScreen() {
   // State management for chat functionality
+  const { session } = useSession();
   const [roomName, setRoomName] = useState("");
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
@@ -91,7 +99,7 @@ export default function TabMessageScreen() {
     setIsConnecting(true);
 
     // Create WebSocket connection
-    const url = `ws://localhost:8000/ws/messages/${roomName}/`;
+    const url = `ws://localhost:8000/ws/messages/${roomName}/?token=${session}`; // TODO: refactor
     ws.current = new WebSocket(url);
 
     // Handle successful connection

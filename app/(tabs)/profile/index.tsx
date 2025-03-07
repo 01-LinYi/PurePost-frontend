@@ -387,7 +387,7 @@ export default function ProfileScreen() {
                 <TouchableOpacity
                   key={`post-${post.id}`}
                   style={styles.activityCard}
-                  onPress={() => navigateTo(`/posts/${post.id}`)}
+                  onPress={() => navigateTo(`/post/${post.id}`)}
                 >
                   <Image
                     source={{

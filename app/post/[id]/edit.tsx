@@ -14,7 +14,7 @@ import {
 import * as ImagePicker from "expo-image-picker";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useLocalSearchParams, router } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 
 import MediaPreview from "@/components/MediaPreview";
 import ActionButton from "@/components/ActionButton";
@@ -36,6 +36,7 @@ const EditPost = () => {
   const { id } = useLocalSearchParams();
   const [postText, setPostText] = useState<string>("");
   const [media, setMedia] = useState<Media | null>(null);
+  const router = useRouter();
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [originalPost, setOriginalPost] = useState<{
@@ -168,7 +169,6 @@ const EditPost = () => {
       ]
     );
   }, []);
-  /* 
   const handleCancel = useCallback(() => {
     if (postText !== originalPost.text || media !== originalPost.media) {
       Alert.alert(
@@ -183,7 +183,6 @@ const EditPost = () => {
       router.back();
     }
   }, [postText, media, originalPost]);
-  */
 
   const isUpdateDisabled =
     (!postText.trim() && !media) ||
