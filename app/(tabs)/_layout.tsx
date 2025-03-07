@@ -16,27 +16,32 @@ function TabBarIcon({
   name: React.ComponentProps<typeof FontAwesome>["name"];
   color: string;
 }) {
-  return <FontAwesome size={28} style={{ marginBottom: -3 }} name={name} color={color} />;
+  return (
+    <FontAwesome
+      size={28}
+      style={{ marginBottom: -3 }}
+      name={name}
+      color={color}
+    />
+  );
 }
 
 // Special new post button component using Expo Router navigation
 function NewPostButton({ colorScheme }: { colorScheme: "light" | "dark" }) {
   return (
-    <Pressable 
+    <Pressable
       style={styles.newPostButton}
       onPress={() => router.push("/post")}
     >
       {({ pressed }) => (
-        <View style={[
-          styles.newPostIconContainer,
-          { backgroundColor: Colors[colorScheme ?? "light"].tint },
-          pressed && styles.pressed
-        ]}>
-          <FontAwesome
-            name="plus"
-            size={22}
-            color="white"
-          />
+        <View
+          style={[
+            styles.newPostIconContainer,
+            { backgroundColor: Colors[colorScheme ?? "light"].tint },
+            pressed && styles.pressed,
+          ]}
+        >
+          <FontAwesome name="plus" size={22} color="white" />
         </View>
       )}
     </Pressable>
@@ -50,7 +55,7 @@ function InfoButton({ colorScheme }: { colorScheme: "light" | "dark" }) {
       onPress={() => router.push("/modal")}
       style={({ pressed }) => ({
         marginRight: 15,
-        opacity: pressed ? 0.5 : 1
+        opacity: pressed ? 0.5 : 1,
       })}
     >
       <FontAwesome
@@ -72,9 +77,9 @@ const TABS_FIRST_HALF = [
     headerRight: true,
   },
   {
-    name: "profile",
-    title: "Profile",
-    iconName: "user" as const,
+    name: "message",
+    title: "Message",
+    iconName: "comments" as const,
     headerShown: false,
   },
 ];
@@ -82,14 +87,16 @@ const TABS_FIRST_HALF = [
 // Second half of tabs (after new post button)
 const TABS_SECOND_HALF = [
   {
-    name: "message",
-    title: "Message",
-    iconName: "comments" as const,
+    name: "profile",
+    title: "Profile",
+    iconName: "user" as const,
+    headerShown: false,
   },
   {
-    name: "about",
-    title: "About",
-    iconName: "info-circle" as const,
+    name: "setting",
+    title: "Setting",
+    iconName: "cog" as const,
+    headerShown: false,
   },
 ];
 
@@ -97,7 +104,7 @@ export default function TabLayout() {
   const colorScheme = useColorScheme();
   const { session, isSessionLoading, user, isUserLoading } = useSession();
   const loading = isSessionLoading || isUserLoading;
-  
+
   // Handle splash screen with Expo
   useEffect(() => {
     if (loading) {
@@ -124,7 +131,7 @@ export default function TabLayout() {
 
   // Redirect to login if session or user is not available
   if (!session || !user) {
-    return null; // 让useEffect处理导航
+    return null;
   }
 
   const activeColor = Colors[colorScheme ?? "light"].tint;
@@ -136,19 +143,19 @@ export default function TabLayout() {
         headerShown: useClientOnlyValue(false, true),
         // Custom styles for header and tab bar
         headerStyle: {
-          height: Platform.OS === 'ios' ? 90 : 70, 
+          height: Platform.OS === "ios" ? 90 : 70,
         },
         headerTitleStyle: {
           fontSize: 18,
         },
-        headerStatusBarHeight: Platform.OS === 'ios' ? 40 : 20, 
-        tabBarStyle: { 
-          paddingBottom: Platform.OS === 'ios' ? 5 : 0, 
-          height: Platform.OS === 'ios' ? 85 : 65,
+        headerStatusBarHeight: Platform.OS === "ios" ? 40 : 20,
+        tabBarStyle: {
+          paddingBottom: Platform.OS === "ios" ? 5 : 0,
+          height: Platform.OS === "ios" ? 85 : 65,
         },
         tabBarLabelStyle: {
-          paddingBottom: Platform.OS === 'ios' ? 5 : 3,
-        }
+          paddingBottom: Platform.OS === "ios" ? 5 : 3,
+        },
       }}
     >
       {/* First half of tabs */}
@@ -158,8 +165,13 @@ export default function TabLayout() {
           name={tab.name}
           options={{
             title: tab.title,
-            tabBarIcon: ({ color }) => <TabBarIcon name={tab.iconName} color={color} />,
-            headerShown: tab.headerShown === false ? false : useClientOnlyValue(false, true),
+            tabBarIcon: ({ color }) => (
+              <TabBarIcon name={tab.iconName} color={color} />
+            ),
+            headerShown:
+              tab.headerShown === false
+                ? false
+                : useClientOnlyValue(false, true),
             ...(tab.headerRight && {
               headerRight: () => (
                 <InfoButton colorScheme={colorScheme ?? "light"} />
@@ -175,15 +187,16 @@ export default function TabLayout() {
         options={{
           title: "",
           tabBarIcon: () => null,
-          tabBarButton: () => <NewPostButton colorScheme={colorScheme ?? "light"} />,
+          tabBarButton: () => (
+            <NewPostButton colorScheme={colorScheme ?? "light"} />
+          ),
           headerShown: false,
         }}
         listeners={{
           tabPress: (e) => {
-            // 阻止默认的tab导航行为
+            // Prevent default action
             e.preventDefault();
-            // 导航到post页面
-            router.push("/post");
+            router.push("/post" as any);
           },
         }}
       />
@@ -195,8 +208,13 @@ export default function TabLayout() {
           name={tab.name}
           options={{
             title: tab.title,
-            tabBarIcon: ({ color }) => <TabBarIcon name={tab.iconName} color={color} />,
-            headerShown: tab.headerShown === false ? false : useClientOnlyValue(false, true),
+            tabBarIcon: ({ color }) => (
+              <TabBarIcon name={tab.iconName} color={color} />
+            ),
+            headerShown:
+              tab.headerShown === false
+                ? false
+                : useClientOnlyValue(false, true),
           }}
         />
       ))}
@@ -206,17 +224,17 @@ export default function TabLayout() {
 
 const styles = StyleSheet.create({
   newPostButton: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: '100%',
+    alignItems: "center",
+    justifyContent: "center",
+    height: "100%",
   },
   newPostIconContainer: {
     width: 52,
     height: 52,
     borderRadius: 26,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: Platform.OS === 'ios' ? 5 : 5, // Push the button up more on iOS
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: Platform.OS === "ios" ? 5 : 5, // Push the button up more on iOS
     // Cross-platform shadow
     ...Platform.select({
       ios: {
@@ -233,5 +251,5 @@ const styles = StyleSheet.create({
   pressed: {
     opacity: 0.8,
     transform: [{ scale: 0.96 }],
-  }
+  },
 });

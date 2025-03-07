@@ -93,7 +93,20 @@ const UserGuidePolicy = () => {
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.contentContainer}>{renderContent()}</ScrollView>
+      <View style={styles.contentWrapper}>
+        <ScrollView style={styles.contentContainer}>
+          {renderContent()}
+        </ScrollView>
+
+        <View style={styles.agreementButtonContainer}>
+          <TouchableOpacity
+            style={styles.agreementButton}
+            onPress={() => router.back()}
+          >
+            <Text style={styles.agreementButtonText}>I AGREE</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
     </SafeAreaView>
   );
 };
@@ -150,8 +163,9 @@ const TermsOfServiceContent = () => (
     <Text style={styles.lastUpdated}>Last updated: Mar 3, 2025</Text>
 
     <Text style={styles.paragraph}>
-      Welcome to PurePost! By creating a PurePost account or using our services,
-      you agree to these terms.
+      Welcome to PurePost! BY CLICKING “I AGREE,” YOU ACKNOWLEDGE THAT YOU HAVE
+      READ AND AGREE that the following terms and conditions govern the
+      examination, certification and any services under this terms.
     </Text>
 
     <Text style={styles.sectionSubtitle}>1. Acceptance of Terms</Text>
@@ -354,13 +368,18 @@ const styles = StyleSheet.create({
     color: "#00c5e3",
     fontWeight: "600",
   },
+  contentWrapper: {
+    flex: 1,
+    display: "flex",
+    flexDirection: "column",
+  },
   contentContainer: {
     flex: 1,
     paddingHorizontal: 16,
   },
   contentSection: {
     paddingVertical: 20,
-    paddingBottom: 50, // Extra padding at the bottom for better scrolling
+    paddingBottom: 80, // Extra padding at the bottom for better scrolling and button visibility
   },
   sectionTitle: {
     fontSize: 24,
@@ -386,6 +405,24 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     color: "#555",
     marginBottom: 8,
+  },
+  agreementButtonContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderTopWidth: 1,
+    borderTopColor: "#f0f0f0",
+    backgroundColor: "#fff",
+  },
+  agreementButton: {
+    backgroundColor: "#00c5e3",
+    paddingVertical: 14,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  agreementButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "600",
   },
 });
 
