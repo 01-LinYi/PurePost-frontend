@@ -16,7 +16,7 @@ import GradientButton from "@/components/GradientButton";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import axiosInstance from "@/utils/axiosInstance";
-import { Post, Author} from "@/types/postType";
+import { Post, Author } from "@/types/postType";
 import { UserProfile, UserStats } from "@/types/profileType";
 
 // Get the width of the screen
@@ -35,8 +35,7 @@ const COLORS = {
   divider: "#F3F4F6",
 };
 
-
-// Mock data for stats and recent posts
+// Mock data for stats
 const MOCK_STATS: UserStats = {
   posts: "120",
   followers: "350",
@@ -50,69 +49,12 @@ const MOCK_USER: Author = {
   avatar: "https://picsum.photos/200",
 };
 
-// Mock posts using the Post interface
-const MOCK_RECENT_POSTS: Post[] = [
-  {
-    id: "post1",
-    text: "Beautiful mountain drive today! The views were incredible.",
-    media: {
-      uri: "https://picsum.photos/300/200?random=1",
-      type: "image",
-    },
-    author: MOCK_USER,
-    createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(), // 2 days ago
-    likesCount: 42,
-    commentsCount: 7,
-    isLiked: true,
-  },
-  {
-    id: "post2",
-    text: "City skyline at sunset - always breathtaking!",
-    media: {
-      uri: "https://picsum.photos/300/200?random=2",
-      type: "image",
-    },
-    author: MOCK_USER,
-    createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(), // 5 days ago
-    likesCount: 38,
-    commentsCount: 5,
-    isLiked: false,
-  },
-  {
-    id: "post3",
-    text: "Perfect day at the beach. Sun, sand, and relaxation.",
-    media: {
-      uri: "https://picsum.photos/300/200?random=3",
-      type: "image",
-    },
-    author: MOCK_USER,
-    createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(), // 1 week ago
-    likesCount: 65,
-    commentsCount: 12,
-    isLiked: true,
-  },
-  {
-    id: "post4",
-    text: "Hiking through the forest - nature is the best therapy!",
-    media: {
-      uri: "https://picsum.photos/300/200?random=4",
-      type: "image",
-    },
-    author: MOCK_USER,
-    createdAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString(), // 2 weeks ago
-    likesCount: 29,
-    commentsCount: 3,
-    isLiked: false,
-  },
-];
-
 export default function ProfileScreen() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [imageError, setImageError] = useState(false);
   const [userData, setUserData] = useState<UserProfile | null>(null);
-  const [recentPosts, setRecentPosts] = useState<Post[]>([]);
   const [dataLoading, setDataLoading] = useState(true);
 
   // Fetch user data from API
@@ -146,9 +88,6 @@ export default function ProfileScreen() {
         });
       }
 
-      // Use mock data for recent posts
-      setRecentPosts(MOCK_RECENT_POSTS);
-
       setDataLoading(false);
     } catch (error) {
       console.error("Error fetching user data:", error);
@@ -167,7 +106,6 @@ export default function ProfileScreen() {
         verified: true,
         stats: MOCK_STATS,
       });
-      setRecentPosts(MOCK_RECENT_POSTS);
 
       Alert.alert(
         "Error",
@@ -368,84 +306,6 @@ export default function ProfileScreen() {
           )}
         </View>
 
-        {/* Recent Activity */}
-        <View style={styles.activitySection}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Recent Activity</Text>
-            <TouchableOpacity onPress={() => navigateTo("/post")}>
-              <Text style={styles.seeAllText}>See All</Text>
-            </TouchableOpacity>
-          </View>
-
-          {recentPosts.length > 0 ? (
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.activityList}
-            >
-              {recentPosts.map((post) => (
-                <TouchableOpacity
-                  key={`post-${post.id}`}
-                  style={styles.activityCard}
-                  onPress={() => navigateTo(`/post/${post.id}`)}
-                >
-                  <Image
-                    source={{
-                      uri:
-                        post.media?.uri ||
-                        `https://picsum.photos/300/200?random=${post.id}`,
-                    }}
-                    style={styles.activityImage}
-                  />
-                  <Text style={styles.activityTitle} numberOfLines={1}>
-                    {post.text.split(" ").slice(0, 3).join(" ") +
-                      (post.text.split(" ").length > 3 ? "..." : "")}
-                  </Text>
-                  <View style={styles.activityMeta}>
-                    <Text style={styles.activityDate}>
-                      {formatTimeAgo(post.createdAt)}
-                    </Text>
-                    <View style={styles.activityStats}>
-                      <Ionicons
-                        name="heart"
-                        size={10}
-                        color={post.isLiked ? "#F87171" : COLORS.textLight}
-                      />
-                      <Text style={styles.activityStatText}>
-                        {post.likesCount}
-                      </Text>
-                      <Ionicons
-                        name="chatbubble"
-                        size={10}
-                        color={COLORS.textLight}
-                        style={{ marginLeft: 4 }}
-                      />
-                      <Text style={styles.activityStatText}>
-                        {post.commentsCount}
-                      </Text>
-                    </View>
-                  </View>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          ) : (
-            <View style={styles.emptyActivity}>
-              <Ionicons
-                name="images-outline"
-                size={40}
-                color={COLORS.textLight}
-              />
-              <Text style={styles.emptyText}>No recent posts</Text>
-              <TouchableOpacity
-                style={styles.createPostButton}
-                onPress={() => navigateTo("/posts/create")}
-              >
-                <Text style={styles.createPostText}>Create a Post</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
-
         {/* Settings Options */}
         <View style={styles.settingsSection}>
           <TouchableOpacity
@@ -486,35 +346,6 @@ export default function ProfileScreen() {
     </View>
   );
 }
-
-// Helper function to format timestamps like "2d ago", "3h ago", etc.
-const formatTimeAgo = (dateString: string) => {
-  const now = new Date();
-  const past = new Date(dateString);
-  const diffInSeconds = Math.floor((now.getTime() - past.getTime()) / 1000);
-
-  if (diffInSeconds < 60) {
-    return "Just now";
-  }
-
-  const diffInMinutes = Math.floor(diffInSeconds / 60);
-  if (diffInMinutes < 60) {
-    return `${diffInMinutes}m ago`;
-  }
-
-  const diffInHours = Math.floor(diffInMinutes / 60);
-  if (diffInHours < 24) {
-    return `${diffInHours}h ago`;
-  }
-
-  const diffInDays = Math.floor(diffInHours / 24);
-  if (diffInDays < 30) {
-    return `${diffInDays}d ago`;
-  }
-
-  const diffInMonths = Math.floor(diffInDays / 30);
-  return `${diffInMonths}mo ago`;
-};
 
 const styles = StyleSheet.create({
   container: {
@@ -683,24 +514,6 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     marginTop: 2,
   },
-  activitySection: {
-    backgroundColor: COLORS.cardBackground,
-    borderRadius: 16,
-    margin: 12,
-    marginTop: 6,
-    padding: 16,
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.1,
-        shadowRadius: 2,
-      },
-      android: {
-        elevation: 1,
-      },
-    }),
-  },
   settingsSection: {
     backgroundColor: COLORS.cardBackground,
     borderRadius: 16,
@@ -732,93 +545,5 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     marginLeft: 12,
     flex: 1,
-  },
-  sectionHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 12,
-    backgroundColor: "transparent",
-  },
-  seeAllText: {
-    fontSize: 12,
-    fontWeight: "500",
-    color: COLORS.primary,
-  },
-  activityList: {
-    paddingVertical: 4,
-  },
-  activityCard: {
-    width: 140,
-    marginRight: 12,
-    borderRadius: 8,
-    overflow: "hidden",
-    backgroundColor: COLORS.background,
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.1,
-        shadowRadius: 1,
-      },
-      android: {
-        elevation: 1,
-      },
-    }),
-  },
-  activityImage: {
-    width: "100%",
-    height: 90,
-    borderTopLeftRadius: 8,
-    borderTopRightRadius: 8,
-  },
-  activityTitle: {
-    fontSize: 12,
-    fontWeight: "500",
-    padding: 8,
-    paddingBottom: 2,
-    color: COLORS.text,
-  },
-  activityDate: {
-    fontSize: 10,
-    color: COLORS.textLight,
-  },
-  activityMeta: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 8,
-    paddingBottom: 8,
-  },
-  activityStats: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  activityStatText: {
-    fontSize: 10,
-    marginLeft: 2,
-    color: COLORS.textLight,
-  },
-  emptyActivity: {
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 20,
-  },
-  emptyText: {
-    color: COLORS.textLight,
-    fontSize: 14,
-    marginTop: 8,
-    marginBottom: 16,
-  },
-  createPostButton: {
-    backgroundColor: COLORS.primary,
-    paddingHorizontal: 20,
-    paddingVertical: 8,
-    borderRadius: 20,
-  },
-  createPostText: {
-    color: "white",
-    fontWeight: "500",
-    fontSize: 14,
   },
 });
