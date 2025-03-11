@@ -200,7 +200,7 @@ const RegisterPage = () => {
       enableOnAndroid={true}  // Enables keyboard awareness on Android
       extraScrollHeight={20}   // Adjust scrolling height
       keyboardShouldPersistTaps="handled" // Allows tapping outside to dismiss keyboard
-    >>
+    >
       {/* Logo and App Name */}
       <View style={styles.logoContainer}>
         <Animated.Image
