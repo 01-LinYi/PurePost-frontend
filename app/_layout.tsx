@@ -10,16 +10,21 @@ import * as SplashScreen from "expo-splash-screen";
 import { useEffect } from "react";
 import "react-native-reanimated";
 
-import { useColorScheme } from "@/components/useColorScheme";
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+
+import { SessionProvider } from "@/components/SessionProvider";
+import { useColorScheme } from "@/hooks/useColorScheme";
+import { View } from "react-native";
 
 export {
   // Catch any errors thrown by the Layout component.
-  ErrorBoundary,
+  ErrorBoundary
 } from "expo-router";
 
 export const unstable_settings = {
   // Ensure that reloading on `/modal` keeps a back button present.
-  initialRouteName: "(tabs)",
+  initialRouteName: "login",
 };
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
@@ -50,14 +55,27 @@ export default function RootLayout() {
 }
 
 function RootLayoutNav() {
+  const insets = useSafeAreaInsets()
   const colorScheme = useColorScheme();
 
   return (
-    <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ presentation: "modal" }} />
-      </Stack>
-    </ThemeProvider>
+    <View
+      style={{
+        flex: 1,
+
+        // padding for iOS. Maybe custom for Android?
+        paddingTop: insets.top,
+        paddingRight: insets.right,
+        paddingBottom: insets.bottom,
+        paddingLeft: insets.left
+      }}
+    >
+      <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
+        <SessionProvider>
+          {/* File-based routing: tsx files in this dir is added to stack */}
+          <Stack screenOptions={{ headerShown: false }} />
+        </SessionProvider>
+      </ThemeProvider>
+    </View>
   );
 }
