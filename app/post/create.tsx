@@ -16,14 +16,19 @@ import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router, useNavigation } from "expo-router";
 import axiosInstance from "@/utils/axiosInstance";
+import { formatUploadFileName } from "@/utils/formatUploadFileName";
 import MediaPreview from "@/components/MediaPreview";
 import ActionButton from "@/components/ActionButton";
 import { Media } from "@/types/postType";
 
 const getMediaType = (uri: string): string => {
   const uriLower = uri.toLowerCase();
-  if (uriLower.endsWith(".mp4") || uriLower.endsWith(".mov") || 
-      uriLower.endsWith(".avi") || uriLower.endsWith(".wmv")) {
+  if (
+    uriLower.endsWith(".mp4") ||
+    uriLower.endsWith(".mov") ||
+    uriLower.endsWith(".avi") ||
+    uriLower.endsWith(".wmv")
+  ) {
     return "video";
   }
   return "image";
@@ -91,23 +96,26 @@ const CreatePost = () => {
         // Check file size limits
         const fileSize = asset.fileSize || 0;
         const mediaType = getMediaType(asset.uri);
-        
+
         if (mediaType === "image" && fileSize > 5 * 1024 * 1024) {
           Alert.alert("Error", "Image size cannot exceed 5MB");
           setIsLoading(false);
           return;
         }
-        
+
         if (mediaType === "video" && fileSize > 50 * 1024 * 1024) {
           Alert.alert("Error", "Video size cannot exceed 50MB");
           setIsLoading(false);
           return;
         }
-        
-        setMedia({ 
-          uri: asset.uri, 
+
+        setMedia({
+          uri: asset.uri,
           type: mediaType,
-          name: asset.fileName || `${Date.now()}.${asset.uri.split('.').pop()}` 
+          name: formatUploadFileName(
+            mediaType as "image" | "video",
+            asset.fileName || "media"
+          ),
         });
       }
     } catch (error) {
@@ -151,10 +159,13 @@ const CreatePost = () => {
         const uriParts = media.uri.split("/");
         const fileName = uriParts[uriParts.length - 1];
         const fileType = media.type === "video" ? "video" : "image";
-        
+
         // @ts-ignore - RN FormData type issue
         formData.append(fileType, {
-          uri: Platform.OS === "android" ? media.uri : media.uri.replace("file://", ""),
+          uri:
+            Platform.OS === "android"
+              ? media.uri
+              : media.uri.replace("file://", ""),
           name: media.name || fileName,
           type: media.type === "video" ? "video/mp4" : "image/jpeg", // Simplified for example
         });

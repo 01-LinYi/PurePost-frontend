@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   StyleSheet,
   ScrollView,
@@ -6,13 +6,18 @@ import {
   TouchableOpacity,
   Alert,
   Platform,
+  ActivityIndicator,
 } from "react-native";
 import { Text, View } from "@/components/Themed";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import GradientButton from "@/components/GradientButton";
 import AvatarPicker from "@/components/AvatarPicker";
-
+import axiosInstance from "@/utils/axiosInstance";
+import { formatUploadFileName } from "@/utils/formatUploadFileName";
+import { Media } from "@/types/postType";
+import { formatDate } from "@/utils/dateUtils"; // Use the previously created date formatting utility
+import useProfileCache from "@/hooks/useProfileCache"; // Use the previously created cache hook
 
 // Color palette based on #00c5e3
 const COLORS = {
@@ -31,65 +36,303 @@ const COLORS = {
 
 export default function EditProfileScreen() {
   const router = useRouter();
-  const [avatar, setAvatar] = useState("https://picsum.photos/200");
-  // repalce with your image
+  const params = useLocalSearchParams();
+
+  // Use the cache hook to get user profile data
+  const {
+    profileData: cachedProfile,
+    cacheStatus,
+    saveProfileToCache,
+  } = useProfileCache();
+
+  // Try to get profile data from route parameters
+  const routeProfileData = params.profileData
+    ? JSON.parse(params.profileData as string)
+    : null;
+
+  // Mark whether data is being loaded
+  const [isDataLoading, setIsDataLoading] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
 
-  // User profile data
-  const [email] = useState("johndoe@example.com"); // Static email
-  const [name, setName] = useState("John Doe");
-  const [username] = useState("@johndoe"); // Static username
-  const [bio, setBio] = useState(
-    "Software Developer | Tech Enthusiast | Coffee Lover"
-  );
-  const [location, setLocation] = useState("San Francisco, CA");
-  const [birthday, setBirthday] = useState("January 1, 1990");
+  // Form state
+  const [avatar, setAvatar] = useState("");
+  const [avatarFile, setAvatarFile] = useState<Media | null>(null);
+  const [email, setEmail] = useState("");
+  const [name, setName] = useState("");
+  const [username, setUsername] = useState("");
+  const [bio, setBio] = useState("");
+  const [location, setLocation] = useState("");
+  const [birthday, setBirthday] = useState("");
+  const [website, setWebsite] = useState("");
+
+  // Load initial data
+  useEffect(() => {
+    loadInitialData();
+  }, []);
+
+  /**
+   * Load initial profile data, prioritizing data passed through the route,
+   * then cached data, and finally attempting to fetch from the API
+   */
+  const loadInitialData = async () => {
+    setIsDataLoading(true);
+
+    try {
+      let profileData = null;
+
+      // Prioritize data passed through route parameters
+      if (routeProfileData) {
+        console.log("Using profile data from route params");
+        profileData = routeProfileData;
+      }
+      // Secondly, use cached data
+      else if (cachedProfile) {
+        console.log("Using cached profile data");
+        profileData = cachedProfile;
+      }
+      // If neither, fetch from API
+      else {
+        console.log("Fetching profile data from API");
+        const response = await axiosInstance.get("/users/my-profile/");
+        if (response.data) {
+          profileData = response.data;
+          // Update cache
+          saveProfileToCache(profileData);
+        }
+      }
+
+      // If data is successfully retrieved, fill the form
+      if (profileData) {
+        fillFormWithProfileData(profileData);
+      } else {
+        Alert.alert(
+          "Data Error",
+          "Could not load your profile data. Please try again later."
+        );
+      }
+    } catch (error) {
+      console.error("Error loading profile data:", error);
+      Alert.alert(
+        "Error",
+        "Failed to load your profile data. Please try again."
+      );
+    } finally {
+      setIsDataLoading(false);
+    }
+  };
+
+  /**
+   * Fill the form with the retrieved profile data
+   */
+  const fillFormWithProfileData = (data:any) => {
+    // Set avatar
+    if (data.avatar) {
+      setAvatar(data.avatar);
+    }
+
+    // Set other fields
+    setEmail(data.email || "");
+    setUsername(data.username ? `@${data.username.replace(/^@/, "")}` : "");
+    setName(data.name || data.display_name || "");
+    setBio(data.bio || "");
+    setLocation(data.location || "");
+    setWebsite(data.website || "");
+
+    // Handle birthday field (may have different field names)
+    const birthdayVal = data.date_of_birth || data.birthday || "";
+    setBirthday(birthdayVal ? formatDate(birthdayVal) : "");
+  };
 
   // Handle avatar change
-  const handleAvatarChange = (uri: string) => {
+  const handleAvatarChange = (uri: string, file: any) => {
     setAvatar(uri);
-    Alert.alert("Avatar Changed", "Your profile photo has been updated!");
-    // In a real app, you might upload the image to a server here
-    // or prepare it for submission when the form is saved
+    setAvatarFile(file);
+  };
+
+  // Check if the form has changed
+  const hasFormChanged = (originalData: any) => {
+    if (!originalData) return true;
+
+    // Check if text fields have changed
+    if (name !== (originalData.name || originalData.display_name || ""))
+      return true;
+    if (bio !== (originalData.bio || "")) return true;
+    if (location !== (originalData.location || "")) return true;
+    if (website !== (originalData.website || "")) return true;
+
+    // Check birthday field
+    const originalBirthday =
+      originalData.date_of_birth || originalData.birthday || "";
+    const formattedOriginalBirthday = originalBirthday
+      ? formatDate(originalBirthday)
+      : "";
+    if (birthday !== formattedOriginalBirthday) return true;
+
+    // Check if there is a new avatar file
+    if (avatarFile) return true;
+
+    return false;
   };
 
   // Save changes
-  const handleSave = () => {
+  const handleSave = async () => {
+    // Check if there are changes to avoid unnecessary API requests
+    if (!hasFormChanged(routeProfileData || cachedProfile)) {
+      Alert.alert(
+        "No Changes",
+        "You haven't made any changes to your profile."
+      );
+      return;
+    }
+
     setIsLoading(true);
 
-    // Simulate API call delay
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      // Prepare form data
+      const formData = new FormData();
+
+      // Format avatar file
+      if (avatarFile) {
+        // Get original file name or create a default file name
+        const originalFileName =
+          avatarFile.name ||
+          `avatar.${avatarFile.uri.split(".").pop() || "png"}`;
+
+        // Generate unique file name
+        const uniqueFileName = formatUploadFileName("avatar", originalFileName);
+
+        // Format file object
+        const formattedFile = {
+          uri: avatarFile.uri,
+          type: avatarFile.type || "image/png",
+          name: uniqueFileName,
+        };
+
+        formData.append("avatar", formattedFile as any);
+      }
+
+      // Only add changed fields to reduce request payload
+      const originalData = routeProfileData || cachedProfile;
+
+      if (
+        !originalData ||
+        name !== (originalData.name || originalData.display_name || "")
+      ) {
+        formData.append("name", name);
+      }
+
+      if (!originalData || bio !== (originalData.bio || "")) {
+        formData.append("bio", bio);
+      }
+
+      if (!originalData || location !== (originalData.location || "")) {
+        formData.append("location", location);
+      }
+
+      if (!originalData || website !== (originalData.website || "")) {
+        formData.append("website", website);
+      }
+
+      // Handle birthday field
+      const originalBirthday =
+        originalData?.date_of_birth || originalData?.birthday || "";
+      const formattedOriginalBirthday = originalBirthday
+        ? formatDate(originalBirthday)
+        : "";
+
+      if (!originalData || birthday !== formattedOriginalBirthday) {
+        // Convert formatted date back to the format expected by the API
+        try {
+          // Try to convert readable date back to ISO format
+          const date = new Date(birthday);
+          if (!isNaN(date.getTime())) {
+            formData.append("birthday", date.toISOString().split("T")[0]);
+          } else {
+            formData.append("birthday", birthday);
+          }
+        } catch (e) {
+          formData.append("birthday", birthday);
+        }
+      }
+
+      // Send API request
+      const response = await axiosInstance.patch(
+        "users/update-profile/",
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
+
+      // Update cache
+      if (response.data) {
+        await saveProfileToCache(response.data);
+      }
+
       Alert.alert(
         "Profile Updated",
         "Your profile has been updated successfully!"
       );
+
       router.back();
-    }, 800);
+    } catch (error) {
+      console.error("Error updating profile:", error);
+      Alert.alert(
+        "Update Failed",
+        "There was a problem updating your profile. Please try again."
+      );
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // Cancel changes
   const handleCancel = () => {
-    Alert.alert(
-      "Discard Changes",
-      "Are you sure you want to discard your changes?",
-      [
-        { text: "No", style: "cancel" },
-        { text: "Yes", onPress: () => router.back() },
-      ]
-    );
+    // Only show confirmation dialog if there are changes
+    if (hasFormChanged(routeProfileData || cachedProfile)) {
+      Alert.alert(
+        "Discard Changes",
+        "Are you sure you want to discard your changes?",
+        [
+          { text: "No", style: "cancel" },
+          { text: "Yes", onPress: () => router.back() },
+        ]
+      );
+    } else {
+      router.back();
+    }
   };
+
+  // Show loading state
+  if (isDataLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
+        <Text style={styles.loadingText}>Loading profile data...</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity style={styles.backButton} onPress={handleCancel}>
+          <Ionicons name="arrow-back" size={24} color={COLORS.text} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Edit Profile</Text>
+        <View style={styles.placeholder} />
+      </View>
+
       <ScrollView
         contentContainerStyle={styles.scrollContainer}
         showsVerticalScrollIndicator={false}
       >
         {/* Profile Image Section */}
         <View style={styles.profileCard}>
-          {/* Replace the old avatar section with our new component */}
-          <AvatarPicker 
+          <AvatarPicker
             currentAvatar={avatar}
             onAvatarChange={handleAvatarChange}
             size={100}
@@ -108,18 +351,6 @@ export default function EditProfileScreen() {
             <Text style={styles.helperText}>Username cannot be changed</Text>
           </View>
 
-          {/* Name Input */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Full Name</Text>
-            <TextInput
-              style={styles.input}
-              value={name}
-              onChangeText={setName}
-              placeholder="Your name"
-              placeholderTextColor={COLORS.textLight}
-            />
-          </View>
-
           {/* Email Display */}
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Email</Text>
@@ -128,6 +359,18 @@ export default function EditProfileScreen() {
               <Ionicons name="lock-closed" size={16} color={COLORS.textLight} />
             </View>
             <Text style={styles.helperText}>Email cannot be changed</Text>
+          </View>
+
+          {/* Name Input */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Name</Text>
+            <TextInput
+              style={styles.input}
+              value={name}
+              onChangeText={setName}
+              placeholder="Your full name"
+              placeholderTextColor={COLORS.textLight}
+            />
           </View>
 
           {/* Bio Input */}
@@ -157,6 +400,19 @@ export default function EditProfileScreen() {
             />
           </View>
 
+          {/* Website Input */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Website</Text>
+            <TextInput
+              style={styles.input}
+              value={website}
+              onChangeText={setWebsite}
+              placeholder="Your website"
+              placeholderTextColor={COLORS.textLight}
+              keyboardType="url"
+            />
+          </View>
+
           {/* Birthday Input */}
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Birthday</Text>
@@ -167,6 +423,9 @@ export default function EditProfileScreen() {
               placeholder="Your birthday"
               placeholderTextColor={COLORS.textLight}
             />
+            <Text style={styles.helperText}>
+              Format: Month Day, Year (e.g. January 1, 1990)
+            </Text>
           </View>
         </View>
 
@@ -197,6 +456,17 @@ const styles = StyleSheet.create({
   },
   scrollContainer: {
     paddingBottom: 30,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: COLORS.background,
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: COLORS.textSecondary,
   },
   header: {
     flexDirection: "row",
@@ -233,65 +503,6 @@ const styles = StyleSheet.create({
     paddingVertical: 24,
     backgroundColor: COLORS.cardBackground,
     marginBottom: 12,
-  },
-  avatarSection: {
-    position: "relative",
-  },
-  avatarGradientBorder: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    padding: 3,
-    justifyContent: "center",
-    alignItems: "center",
-    ...Platform.select({
-      ios: {
-        shadowColor: COLORS.text,
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.2,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 4,
-      },
-    }),
-  },
-  avatar: {
-    width: 94,
-    height: 94,
-    borderRadius: 47,
-    borderWidth: 2,
-    borderColor: COLORS.cardBackground,
-  },
-  changeAvatarButton: {
-    position: "absolute",
-    bottom: 0,
-    right: 0,
-    backgroundColor: COLORS.primary,
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 2,
-    borderColor: COLORS.cardBackground,
-    ...Platform.select({
-      ios: {
-        shadowColor: COLORS.text,
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.2,
-        shadowRadius: 2,
-      },
-      android: {
-        elevation: 2,
-      },
-    }),
-  },
-  changePhotoText: {
-    marginTop: 12,
-    fontSize: 14,
-    fontWeight: "500",
-    color: COLORS.primary,
   },
   formSection: {
     backgroundColor: COLORS.cardBackground,

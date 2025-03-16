@@ -30,7 +30,7 @@ export default function ProfileLayout() {
       <Stack.Screen
         name="edit"
         options={{
-          headerTitle: "Edit Profile",
+          headerShown: false,
         }}
       />
     </Stack>

@@ -16,10 +16,12 @@ import GradientButton from "@/components/GradientButton";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import axiosInstance from "@/utils/axiosInstance";
-import { Post, Author } from "@/types/postType";
+import { Author } from "@/types/postType";
 import { UserProfile, UserStats } from "@/types/profileType";
+import useProfileCache from "@/hooks/useProfileCache";
+import { formatDate } from "@/utils/dateUtils";
 
-// Get the width of the screen
+// Get the width of the screen for responsive design
 const { width } = Dimensions.get("window");
 
 // Color palette based on #00c5e3
@@ -35,18 +37,11 @@ const COLORS = {
   divider: "#F3F4F6",
 };
 
-// Mock data for stats
+// Mock data for stats section
 const MOCK_STATS: UserStats = {
   posts: "120",
-  followers: "350",
-  following: "180",
-};
-
-// Mock user data using the Author interface
-const MOCK_USER: Author = {
-  id: "user123",
-  name: "johndoe",
-  avatar: "https://picsum.photos/200",
+  followers: "114",
+  following: "514",
 };
 
 export default function ProfileScreen() {
@@ -54,25 +49,54 @@ export default function ProfileScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [imageError, setImageError] = useState(false);
-  const [userData, setUserData] = useState<UserProfile | null>(null);
   const [dataLoading, setDataLoading] = useState(true);
+  const {
+    profileData,
+    cacheStatus,
+    cacheInfo,
+    saveProfileToCache,
+    loadProfileFromCache,
+    isCacheExpired,
+  } = useProfileCache();
 
-  // Fetch user data from API
-  const fetchUserData = async () => {
+  /**
+   * Fetch user profile data from API
+   * On success: sets user data with mock stats
+   * On failure: sets fallback data and shows alert
+   * @param forceRefresh Force API request bypassing cache
+   */
+  const fetchUserData = async (forceRefresh = false) => {
     try {
       setDataLoading(true);
+      setImageError(false); // Reset image error state on refresh
 
-      // Fetch user profile data
+      // If not forcing refresh, try to use cache first
+      if (!forceRefresh) {
+        const isExpired = await isCacheExpired();
+        // If cache is not expired, load from cache and return
+        if (!isExpired) {
+          const cachedData = await loadProfileFromCache();
+          if (cachedData) {
+            setDataLoading(false);
+            return;
+          }
+        }
+      }
+
+      // Fetch user profile data from API
       const response = await axiosInstance.get("/users/my-profile/");
       if (response.data) {
-        // Combine the API response with mock stats
-        setUserData({
+        // Combine API response with mock stats if needed
+        const userData = {
           ...response.data,
-          stats: MOCK_STATS, // Use mock stats
-        });
+          stats: response.data.stats || MOCK_STATS,
+        };
+
+        // Save to cache
+        await saveProfileToCache(userData);
       } else {
         // Fallback if API returns empty data
-        setUserData({
+        const fallbackData = {
           username: "johndoe",
           email: "johndoe@example.com",
           avatar: "https://picsum.photos/200",
@@ -85,27 +109,34 @@ export default function ProfileScreen() {
           is_active: true,
           verified: true,
           stats: MOCK_STATS,
-        });
+        };
+
+        await saveProfileToCache(fallbackData);
       }
 
       setDataLoading(false);
     } catch (error) {
       console.error("Error fetching user data:", error);
 
-      // Set fallback data on error
-      setUserData({
-        id: "user123",
-        name: "John Doe",
-        username: "johndoe",
-        email: "johndoe@example.com",
-        bio: "Software Developer | Tech Enthusiast | Coffee Lover",
-        avatarUrl: "https://picsum.photos/200",
-        location: "San Francisco, CA",
-        birthday: "January 1, 1990",
-        website: "https://johndoe.dev",
-        verified: true,
-        stats: MOCK_STATS,
-      });
+      // Try to get data from cache even if expired
+      const cachedData = await loadProfileFromCache();
+
+      if (!cachedData) {
+        // Set hardcoded fallback data if no cache
+        const fallbackData = {
+          username: "johndoe",
+          email: "johndoe@example.com",
+          bio: "Software Developer | Tech Enthusiast | Coffee Lover",
+          avatar: "https://picsum.photos/200",
+          location: "San Francisco, CA",
+          date_of_birth: "January 1, 1990",
+          website: "https://johndoe.dev",
+          verified: true,
+          stats: MOCK_STATS,
+        };
+
+        await saveProfileToCache(fallbackData);
+      }
 
       Alert.alert(
         "Error",
@@ -115,28 +146,68 @@ export default function ProfileScreen() {
     }
   };
 
+  // Load profile data on component mount
   useEffect(() => {
     fetchUserData();
   }, []);
 
-  const navigateTo = (path) => router.push(path);
+  /**
+   * Navigate to another screen
+   * @param path Destination path
+   */
+  const navigateTo = (path: any) => router.push(path);
 
+  /**
+   * Handle edit profile button press
+   * Shows loading state briefly before navigation
+   * Passes user data to edit screen
+   */
   const handleEditProfile = () => {
     setIsLoading(true);
     setTimeout(() => {
       setIsLoading(false);
-      navigateTo("/profile/edit");
+      // Pass current user data to edit screen
+      if (profileData) {
+        router.push({
+          pathname: "/profile/edit",
+          params: { profileData: JSON.stringify(profileData) },
+        });
+      } else {
+        navigateTo("/profile/edit");
+      }
     }, 0);
   };
 
+  /**
+   * Handle pull-to-refresh gesture
+   * Refreshes profile data and shows loading indicator
+   */
   const handleRefresh = async () => {
     setIsRefreshing(true);
-    await fetchUserData();
+    await fetchUserData(true); // Force refresh from API
     setIsRefreshing(false);
   };
 
-  // If data is still loading, show a loading indicator
-  if (dataLoading && !userData) {
+  /**
+   * Get avatar URL from user data handling different possible field names
+   * Falls back to placeholder if no avatar or on error
+   * @returns Avatar URL string
+   */
+  const getAvatarUrl = () => {
+    if (imageError) {
+      return "https://picsum.photos/200";
+    }
+
+    // Check different possible avatar field names
+    if (profileData?.avatar) {
+      return profileData.avatar;
+    }
+
+    return "https://picsum.photos/200";
+  };
+
+  // Show loading state while initial data is being fetched
+  if (dataLoading && !profileData) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={COLORS.primary} />
@@ -159,40 +230,50 @@ export default function ProfileScreen() {
           />
         }
       >
+        {/* Cache Info - Useful for debugging, can be removed in production */}
+        {cacheInfo && (
+          <View style={styles.cacheInfoContainer}>
+            <Text style={styles.cacheInfoText}>{cacheInfo}</Text>
+          </View>
+        )}
+
         {/* Profile Card */}
         <View style={styles.profileCard}>
-          {/* Avatar */}
+          {/* Avatar with gradient border */}
           <View style={styles.avatarSection}>
             <LinearGradient
               colors={[COLORS.primary, COLORS.accent]}
               style={styles.avatarGradientBorder}
             >
               <Image
-                source={{
-                  uri:
-                    imageError || !userData?.avatar
-                      ? "https://picsum.photos/200"
-                      : userData.avatar,
-                }}
+                source={{ uri: getAvatarUrl() }}
                 style={styles.avatar}
                 onError={() => setImageError(true)}
               />
             </LinearGradient>
           </View>
-          {/* User Info */}
+
+          {/* User Info Section */}
           <View style={styles.userInfo}>
             <View style={styles.nameContainer}>
-              <Text style={styles.name}>{userData?.username || "User"}</Text>
-              {userData?.verified && (
+              <Text style={styles.name}>{profileData?.username || "User"}</Text>
+              {profileData?.verified ? (
                 <Ionicons
                   name="checkmark-circle"
                   size={18}
                   color={COLORS.primary}
                   style={styles.verifiedIcon}
                 />
+              ) : (
+                <Ionicons
+                  name="alert-circle"
+                  size={18}
+                  color="#FFA500"
+                  style={styles.verifiedIcon}
+                />
               )}
             </View>
-            <Text style={styles.email}>{userData?.email || ""}</Text>
+            <Text style={styles.email}>{profileData?.email || ""}</Text>
           </View>
 
           {/* Action Buttons */}
@@ -207,14 +288,15 @@ export default function ProfileScreen() {
             />
           </View>
 
-          {/* Stats */}
+          {/* User Stats Section */}
           <View style={styles.statsContainer}>
             <TouchableOpacity
               style={styles.stat}
               onPress={() => navigateTo("/post/my_posts")}
+              activeOpacity={0.7}
             >
               <Text style={styles.statNumber}>
-                {userData?.stats?.posts || "0"}
+                {profileData?.stats?.posts || "0"}
               </Text>
               <Text style={styles.statLabel}>Posts</Text>
             </TouchableOpacity>
@@ -222,9 +304,10 @@ export default function ProfileScreen() {
             <TouchableOpacity
               style={styles.stat}
               onPress={() => navigateTo("/profile/followers")}
+              activeOpacity={0.7}
             >
               <Text style={styles.statNumber}>
-                {userData?.stats?.followers || "0"}
+                {profileData?.stats?.followers || "0"}
               </Text>
               <Text style={styles.statLabel}>Followers</Text>
             </TouchableOpacity>
@@ -232,9 +315,10 @@ export default function ProfileScreen() {
             <TouchableOpacity
               style={styles.stat}
               onPress={() => navigateTo("/profile/following")}
+              activeOpacity={0.7}
             >
               <Text style={styles.statNumber}>
-                {userData?.stats?.following || "0"}
+                {profileData?.stats?.following || "0"}
               </Text>
               <Text style={styles.statLabel}>Following</Text>
             </TouchableOpacity>
@@ -245,6 +329,7 @@ export default function ProfileScreen() {
         <View style={styles.bioSection}>
           <Text style={styles.sectionTitle}>About</Text>
 
+          {/* Bio Information */}
           <View style={styles.bioItem}>
             <Ionicons
               name="information-circle-outline"
@@ -255,12 +340,13 @@ export default function ProfileScreen() {
             <View style={styles.bioTextContainer}>
               <Text style={styles.bioLabel}>Bio</Text>
               <Text style={styles.bioValue}>
-                {userData?.bio || "No bio added yet"}
+                {profileData?.bio || "No bio added yet"}
               </Text>
             </View>
           </View>
 
-          {userData?.location && (
+          {/* Location Information */}
+          {profileData?.location && (
             <View style={styles.bioItem}>
               <Ionicons
                 name="location-outline"
@@ -270,12 +356,13 @@ export default function ProfileScreen() {
               />
               <View style={styles.bioTextContainer}>
                 <Text style={styles.bioLabel}>Location</Text>
-                <Text style={styles.bioValue}>{userData.location}</Text>
+                <Text style={styles.bioValue}>{profileData.location}</Text>
               </View>
             </View>
           )}
 
-          {userData?.date_of_birth && (
+          {/* Birthday Information - handle different field names and format date */}
+          {profileData?.date_of_birth && (
             <View style={styles.bioItem}>
               <Ionicons
                 name="calendar-outline"
@@ -285,12 +372,17 @@ export default function ProfileScreen() {
               />
               <View style={styles.bioTextContainer}>
                 <Text style={styles.bioLabel}>Birthday</Text>
-                <Text style={styles.bioValue}>{userData.date_of_birth}</Text>
+                <Text style={styles.bioValue}>
+                  {formatDate(
+                    profileData?.date_of_birth || profileData?.birthday
+                  )}
+                </Text>
               </View>
             </View>
           )}
 
-          {userData?.website && (
+          {/* Website Information */}
+          {profileData?.website && (
             <View style={styles.bioItem}>
               <Ionicons
                 name="globe-outline"
@@ -300,7 +392,7 @@ export default function ProfileScreen() {
               />
               <View style={styles.bioTextContainer}>
                 <Text style={styles.bioLabel}>Website</Text>
-                <Text style={styles.bioValue}>{userData.website}</Text>
+                <Text style={styles.bioValue}>{profileData.website}</Text>
               </View>
             </View>
           )}
@@ -311,6 +403,7 @@ export default function ProfileScreen() {
           <TouchableOpacity
             style={styles.settingItem}
             onPress={() => navigateTo("/(tabs)/setting")}
+            activeOpacity={0.7}
           >
             <Ionicons
               name="settings-outline"
@@ -326,8 +419,9 @@ export default function ProfileScreen() {
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={styles.settingItem}
+            style={[styles.settingItem, { borderBottomWidth: 0 }]}
             onPress={() => navigateTo("/post/saved")}
+            activeOpacity={0.7}
           >
             <Ionicons
               name="bookmark-outline"
@@ -348,6 +442,7 @@ export default function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
+  // 样式保持不变
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
@@ -365,6 +460,17 @@ const styles = StyleSheet.create({
     marginTop: 10,
     fontSize: 16,
     color: COLORS.textSecondary,
+  },
+  cacheInfoContainer: {
+    backgroundColor: "rgba(0,0,0,0.05)",
+    padding: 6,
+    alignItems: "center",
+    marginTop: 4,
+  },
+  cacheInfoText: {
+    fontSize: 12,
+    color: COLORS.textLight,
+    fontStyle: "italic",
   },
   profileCard: {
     backgroundColor: COLORS.cardBackground,
@@ -403,13 +509,6 @@ const styles = StyleSheet.create({
     borderRadius: 47,
     borderWidth: 2,
     borderColor: COLORS.cardBackground,
-  },
-  verifiedBadge: {
-    position: "absolute",
-    bottom: 0,
-    right: width / 2 - 60,
-    borderRadius: 10,
-    padding: 2,
   },
   userInfo: {
     alignItems: "center",
@@ -456,6 +555,9 @@ const styles = StyleSheet.create({
   },
   stat: {
     alignItems: "center",
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
   },
   statNumber: {
     fontSize: 16,
