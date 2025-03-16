@@ -57,9 +57,9 @@ export const transformApiPostToPost = (apiPost: ApiPost): Post => {
 
   let media = null;
   if (apiPost.image) {
-    media = { uri: apiPost.image, type: "image/jpeg" };
+    media = { uri: apiPost.image, name:"", type: "image/jpeg" };
   } else if (apiPost.video) {
-    media = { uri: apiPost.video, type: "video/mp4" };
+    media = { uri: apiPost.video,name:"", type: "video/mp4" };
   }
 
   return {
@@ -344,7 +344,7 @@ const MyPosts = () => {
     );
   };
 
-  // 渲染空状态
+  // render empty state
   const renderEmptyState = () => {
     if (isLoading) return null;
 
@@ -365,11 +365,11 @@ const MyPosts = () => {
     );
   };
 
-  // 移除列表底部加载器，因为没有分页
+
   // const renderFooter = () => {...};
 
   return (
-    <View style={[styles.container, { paddingTop: 20 }]}>
+    <View style={[styles.container, { paddingTop: 5 }]}>
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}
@@ -506,7 +506,7 @@ const MyPosts = () => {
 };
 
 const styles = StyleSheet.create({
-  // 样式保持不变
+  // keep the styles you already have
   container: {
     flex: 1,
     backgroundColor: "#FFFFFF",

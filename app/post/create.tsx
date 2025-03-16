@@ -18,33 +18,15 @@ import { router, useNavigation } from "expo-router";
 import axiosInstance from "@/utils/axiosInstance";
 import MediaPreview from "@/components/MediaPreview";
 import ActionButton from "@/components/ActionButton";
-import { Media, PostRequest } from "@/types/postType";
+import { Media } from "@/types/postType";
 
 const getMediaType = (uri: string): string => {
   const uriLower = uri.toLowerCase();
-  if (uriLower.endsWith(".mp4")) return "video/mp4";
-  if (uriLower.endsWith(".mov")) return "video/quicktime";
-  if (uriLower.endsWith(".jpg") || uriLower.endsWith(".jpeg"))
-    return "image/jpeg";
-  if (uriLower.endsWith(".png")) return "image/png";
-  if (uriLower.endsWith(".gif")) return "image/gif";
-  return "image/jpeg";
-};
-
-const createMediaFormData = (media: Media) => {
-  const formData = new FormData();
-  const uriParts = media.uri.split("/");
-  const fileName = uriParts[uriParts.length - 1];
-
-  // @ts-ignore - RN doesn't have `Platform` type
-  formData.append("media", {
-    uri:
-      Platform.OS === "android" ? media.uri : media.uri.replace("file://", ""),
-    name: fileName,
-    type: media.type,
-  });
-
-  return formData;
+  if (uriLower.endsWith(".mp4") || uriLower.endsWith(".mov") || 
+      uriLower.endsWith(".avi") || uriLower.endsWith(".wmv")) {
+    return "video";
+  }
+  return "image";
 };
 
 const CreatePost = () => {
@@ -75,7 +57,6 @@ const CreatePost = () => {
           {
             text: "Discard",
             style: "destructive",
-            
             onPress: () => navigation.dispatch(e.data.action),
           },
         ]
@@ -107,8 +88,27 @@ const CreatePost = () => {
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const asset = result.assets[0];
-        const type = asset.type || getMediaType(asset.uri);
-        setMedia({ uri: asset.uri, type });
+        // Check file size limits
+        const fileSize = asset.fileSize || 0;
+        const mediaType = getMediaType(asset.uri);
+        
+        if (mediaType === "image" && fileSize > 5 * 1024 * 1024) {
+          Alert.alert("Error", "Image size cannot exceed 5MB");
+          setIsLoading(false);
+          return;
+        }
+        
+        if (mediaType === "video" && fileSize > 50 * 1024 * 1024) {
+          Alert.alert("Error", "Video size cannot exceed 50MB");
+          setIsLoading(false);
+          return;
+        }
+        
+        setMedia({ 
+          uri: asset.uri, 
+          type: mediaType,
+          name: asset.fileName || `${Date.now()}.${asset.uri.split('.').pop()}` 
+        });
       }
     } catch (error) {
       Alert.alert(
@@ -142,29 +142,31 @@ const CreatePost = () => {
     try {
       setIsLoading(true);
 
-      const postData: PostRequest = {
-        content: postText.trim(),
-        visibility: visibility,
-      };
-
-      let response;
+      // Create form data object
+      const formData = new FormData();
+      formData.append("content", postText.trim());
+      formData.append("visibility", visibility);
 
       if (media) {
-        const formData = createMediaFormData(media);
-        const mediaResponse = await axiosInstance.post(
-          "/content/media/upload/",
-          formData,
-          {
-            headers: {
-              "Content-Type": "multipart/form-data",
-            },
-          }
-        );
-
-        postData.media_id = mediaResponse.data.id;
+        const uriParts = media.uri.split("/");
+        const fileName = uriParts[uriParts.length - 1];
+        const fileType = media.type === "video" ? "video" : "image";
+        
+        // @ts-ignore - RN FormData type issue
+        formData.append(fileType, {
+          uri: Platform.OS === "android" ? media.uri : media.uri.replace("file://", ""),
+          name: media.name || fileName,
+          type: media.type === "video" ? "video/mp4" : "image/jpeg", // Simplified for example
+        });
       }
 
-      response = await axiosInstance.post("/content/posts/", postData);
+      // Submit post with media if present
+      const response = await axiosInstance.post("/content/posts/", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+      console.log("Post created:", response.data);
 
       Alert.alert("Success", "Your post has been published!", [
         {
@@ -182,7 +184,7 @@ const CreatePost = () => {
       setHasUnsavedChanges(false);
     } catch (error) {
       const errorMessage =
-        (error as any)?.response?.data?.message ||
+        (error as any)?.response?.data?.detail ||
         (error as Error).message ||
         "Unknown error occurred";
 
@@ -263,7 +265,7 @@ const CreatePost = () => {
             icon={<Ionicons name="image-outline" size={24} color="#00c5e3" />}
             text="Photo/Video"
             onPress={pickMedia}
-            disabled={isLoading}
+            disabled={isLoading || media !== null}
             style={styles.mediaButton}
             textStyle={styles.mediaButtonText}
           />
@@ -279,6 +281,16 @@ const CreatePost = () => {
             ]}
             textStyle={styles.postButtonText}
           />
+        </View>
+
+        {/* Information about file limitations */}
+        <View style={styles.limitContainer}>
+          <Text style={styles.limitText}>
+            File limits: Images (5MB max), Videos (50MB max)
+          </Text>
+          <Text style={styles.limitText}>
+            Supported formats: JPG, JPEG, PNG, GIF, MP4, MOV, AVI, WMV
+          </Text>
         </View>
 
         {/* Back to Tabs Button */}
@@ -384,6 +396,19 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontWeight: "600",
     fontSize: 16,
+  },
+  limitContainer: {
+    marginTop: 16,
+    padding: 12,
+    backgroundColor: "#F0F8FA",
+    borderRadius: 8,
+    borderLeftWidth: 3,
+    borderLeftColor: "#00c5e3",
+  },
+  limitText: {
+    fontSize: 12,
+    color: "#666666",
+    marginBottom: 4,
   },
   backButton: {
     flexDirection: "row",

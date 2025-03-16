@@ -8,6 +8,7 @@ export interface Author {
 
 export interface Media {
   uri: string;
+  name: string;
   type: string; // "image/jpeg", "image/png", "video/mp4" 
 }
 
