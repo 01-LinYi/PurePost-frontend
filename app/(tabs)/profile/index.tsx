@@ -39,9 +39,9 @@ const COLORS = {
 
 // Mock data for stats section
 const MOCK_STATS: UserStats = {
-  posts: "120",
-  followers: "114",
-  following: "514",
+  posts_count: 120,
+  followers_count: 114,
+  following_count: 514,
 };
 
 export default function ProfileScreen() {

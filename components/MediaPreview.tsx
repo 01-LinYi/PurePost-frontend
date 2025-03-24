@@ -1,8 +1,8 @@
-import { memo } from 'react';
-import {View} from "./Themed";
-import { Image, TouchableOpacity, StyleSheet, Platform } from 'react-native';
-import Video from 'react-native-video';
-import { Ionicons } from '@expo/vector-icons';
+import { memo } from "react";
+import { View } from "./Themed";
+import { Image, TouchableOpacity, StyleSheet, Platform } from "react-native";
+import Video from "react-native-video";
+import { Ionicons } from "@expo/vector-icons";
 
 interface Media {
   uri: string;
@@ -19,7 +19,7 @@ const MediaPreview = memo(({ media, onRemove }: MediaPreviewProps) => {
 
   return (
     <View style={styles.mediaContainer}>
-      {media.type.startsWith('image') ? (
+      {media.type.startsWith("image") ? (
         <Image source={{ uri: media.uri }} style={styles.mediaPreview} />
       ) : (
         <Video
@@ -30,33 +30,33 @@ const MediaPreview = memo(({ media, onRemove }: MediaPreviewProps) => {
           repeat
         />
       )}
-
-      <TouchableOpacity
-        style={styles.removeMediaButton}
-        onPress={onRemove}
-        hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}
-      >
-        <Ionicons name="close-circle" size={24} color="#FFF" />
-      </TouchableOpacity>
+      {onRemove && (
+        <TouchableOpacity
+          style={styles.removeMediaButton}
+          onPress={onRemove}
+          hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}
+        >
+          <Ionicons name="close-circle" size={24} color="#FFF" />
+        </TouchableOpacity>
+      )}
     </View>
   );
 });
 
-
-MediaPreview.displayName = 'MediaPreview';
+MediaPreview.displayName = "MediaPreview";
 
 const styles = StyleSheet.create({
   mediaContainer: {
-    position: 'relative',
+    position: "relative",
     borderRadius: 12,
-    overflow: 'hidden',
+    overflow: "hidden",
     marginBottom: 16,
-    backgroundColor: '#F0F0F0',
+    backgroundColor: "#F0F0F0",
     borderWidth: 1,
-    borderColor: '#00c5e3',
+    borderColor: "#00c5e3",
     ...Platform.select({
       ios: {
-        shadowColor: '#000',
+        shadowColor: "#000",
         shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.2,
         shadowRadius: 2,
@@ -67,15 +67,15 @@ const styles = StyleSheet.create({
     }),
   },
   mediaPreview: {
-    width: '100%',
+    width: "100%",
     height: 240,
-    backgroundColor: '#E0E0E0',
+    backgroundColor: "#E0E0E0",
   },
   removeMediaButton: {
-    position: 'absolute',
+    position: "absolute",
     top: 8,
     right: 8,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: "rgba(0,0,0,0.5)",
     borderRadius: 20,
     padding: 4,
     zIndex: 2,
