@@ -1,16 +1,14 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   FlatList,
   TouchableOpacity,
-  StyleSheet,
   Image,
   Alert,
   TextInput,
   Modal,
-  Button,
   SafeAreaView,
   StatusBar,
-  Platform,
+  ActivityIndicator,
 } from "react-native";
 import { router } from "expo-router";
 import axiosInstance from "@/utils/axiosInstance";
@@ -19,6 +17,7 @@ import { API_URL } from "@/constants/Api";
 import axios from "axios";
 import { Ionicons } from "@expo/vector-icons";
 import { useSession } from "@/components/SessionProvider";
+import styles from "@/components/message/conversationStyle";
 
 type Conversation = {
   id: string;
@@ -34,8 +33,7 @@ type User = {
   avatar: string;
 };
 
-// add UserListItem component, which is a list item for selecting users
-// can be extracted to a separate file if needed
+// UserListItem component for selecting users in conversation creation
 const UserListItem = ({
   item,
   isSelected,
@@ -59,24 +57,6 @@ const UserListItem = ({
 };
 
 export default function ConversationListScreen() {
-  const getAllConversation = async () => {
-    try {
-      const response = await axiosInstance.get(API_URL + "messages/conv/");
-      if (response.status === 200) {
-        return response.data;
-      } else {
-        console.error("Conversation fetch failed:", response.statusText);
-      }
-    } catch (error) {
-      if (axios.isAxiosError(error) && error.response) {
-        console.error("Conversation fetch failed:", error.response.data);
-      } else {
-        console.error("Conversation fetch failed:", error);
-      }
-    }
-    return [];
-  };
-
   const { user } = useSession();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedConversation, setSelectedConversation] =
@@ -91,21 +71,88 @@ export default function ConversationListScreen() {
   const [searchConversation, setSearchConversation] = useState("");
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
 
-  React.useEffect(() => {
-    const fetchConversations = async () => {
+  // States to handle loading, errors and retry operations
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isRetrying, setIsRetrying] = useState(false);
+
+  // Function to get all conversations with error handling
+  const getAllConversation = async () => {
+    try {
+      // Set a timeout for the request to prevent hanging
+      const response = await axiosInstance.get(API_URL + "messages/conv/", {
+        timeout: 10000, // 10 seconds timeout
+      });
+
+      if (response.status === 200) {
+        setError(null);
+        return response.data;
+      } else {
+        // Handle non-200 status codes
+        throw new Error(`Request failed with status code ${response.status}`);
+      }
+    } catch (error) {
+      // Handle different types of axios errors
+      if (axios.isAxiosError(error)) {
+        if (error.code === "ECONNABORTED") {
+          throw new Error(
+            "Request timeout. The server took too long to respond."
+          );
+        } else if (!error.response) {
+          // Network error or server not responding
+          throw new Error(
+            "Network error. Please check your connection and try again."
+          );
+        } else {
+          // Server returned an error response
+          throw new Error(
+            `Server error: ${error.response.data?.message || error.message}`
+          );
+        }
+      } else {
+        // For non-axios errors
+        throw error;
+      }
+    }
+  };
+
+  // Function to fetch conversations with proper error handling
+  const fetchConversations = async () => {
+    setIsLoading(true);
+    setIsRetrying(false);
+    try {
       const data = await getAllConversation();
       setConversations(data);
-    };
+      setError(null);
+    } catch (error) {
+      console.error("Error fetching conversations:", error);
+      setError(
+        error instanceof Error ? error.message : "An unknown error occurred"
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
+  // Initial data fetch on component mount
+  useEffect(() => {
     fetchConversations();
   }, []);
 
+  // Handle manual retry by user
+  const handleRetry = () => {
+    setIsRetrying(true);
+    fetchConversations();
+  };
+
+  // Handler for editing conversation name
   const handleEditName = (conversation: Conversation) => {
     setSelectedConversation(conversation);
     setNewName(conversation.name);
     setModalVisible(true);
   };
 
+  // Save the edited conversation name
   const handleSaveName = async () => {
     if (selectedConversation) {
       try {
@@ -124,48 +171,37 @@ export default function ConversationListScreen() {
             )
           );
           setModalVisible(false);
+          setError(null);
         } else {
-          console.error(
-            "Failed to update conversation name:",
-            response.statusText
-          );
+          throw new Error(`Failed to update: ${response.statusText}`);
         }
       } catch (error) {
-        console.error("Failed to update conversation name:", error);
+        let errorMessage = "Failed to update conversation name";
+        if (axios.isAxiosError(error)) {
+          errorMessage += `: ${error.response?.data?.message || error.message}`;
+        }
+        console.error(errorMessage, error);
+        Alert.alert("Error", errorMessage);
       }
     }
   };
 
+  // Delete conversation handler (not fully implemented)
   const handleDeleteConversation = async () => {
     Alert.alert(
       "Delete Conversation is not implemented",
       "This feature is not implemented yet. Please check back later.",
       [{ text: "OK", onPress: () => setDeleteModalVisible(false) }]
     );
-    /*
-    if (selectedConversation) {
-      try {
-        const response = await axiosInstance.delete(`${API_URL}messages/conv/${selectedConversation.id}/`);
-        if (response.status === 204) {
-          setConversations((prevConversations) =>
-            prevConversations.filter((conv) => conv.id !== selectedConversation.id)
-          );
-          setDeleteModalVisible(false);
-        } else {
-          console.error('Failed to delete conversation:', response.statusText);
-        }
-      } catch (error) {
-        console.error('Failed to delete conversation:', error);
-      }
-    }
-    */
   };
 
+  // Show delete confirmation modal
   const confirmDelete = (conversation: Conversation) => {
     setSelectedConversation(conversation);
     setDeleteModalVisible(true);
   };
 
+  // Search for users to add to conversation
   const handleSearchUser = async () => {
     try {
       const response = await axiosInstance.get(`${API_URL}users/search/`, {
@@ -173,14 +209,21 @@ export default function ConversationListScreen() {
       });
       if (response.status === 200) {
         setSearchResults(response.data);
+        setError(null);
       } else {
-        console.error("User search failed:", response.statusText);
+        throw new Error(`User search failed: ${response.statusText}`);
       }
     } catch (error) {
-      console.error("User search failed:", error);
+      let errorMessage = "User search failed";
+      if (axios.isAxiosError(error)) {
+        errorMessage += `: ${error.response?.data?.message || error.message}`;
+      }
+      console.error(errorMessage, error);
+      Alert.alert("Error", errorMessage);
     }
   };
 
+  // Handle user selection for new conversation
   const handleUserSelect = (userId: number) => {
     setSelectedUsers((prevSelectedUsers) =>
       prevSelectedUsers.includes(userId)
@@ -189,6 +232,7 @@ export default function ConversationListScreen() {
     );
   };
 
+  // Create a new conversation
   const handleCreateConversation = async () => {
     try {
       console.log("Selected users:", selectedUsers);
@@ -210,8 +254,11 @@ export default function ConversationListScreen() {
             image: response.data.image,
           },
         });
+        setError(null);
       } else {
-        console.error("Failed to create conversation:", response.statusText);
+        throw new Error(
+          `Failed to create conversation: ${response.statusText}`
+        );
       }
       setConversations((prevConversations) =>
         prevConversations.includes(response.data)
@@ -221,20 +268,23 @@ export default function ConversationListScreen() {
       setNewConversationModalVisible(false);
       setSelectedUsers([]);
     } catch (error) {
-      if (axios.isAxiosError(error) && error.response) {
-        console.error("Conversation creation error:", error.response.data);
-      } else {
-        console.error("Conversation creation error:", error);
+      let errorMessage = "Conversation creation error";
+      if (axios.isAxiosError(error)) {
+        errorMessage += `: ${error.response?.data?.message || error.message}`;
       }
+      console.error(errorMessage, error);
+      Alert.alert("Error", errorMessage);
     }
   };
 
+  // Filter conversations based on search input
   const filteredConversations = searchConversation
     ? conversations.filter((conv) =>
         conv.name.toLowerCase().includes(searchConversation.toLowerCase())
       )
     : conversations;
 
+  // Render each conversation item
   const renderItem = ({ item }: { item: Conversation }) => (
     <View style={styles.conversationItem}>
       <TouchableOpacity
@@ -276,11 +326,38 @@ export default function ConversationListScreen() {
     </View>
   );
 
+  // Render loading state
+  const renderLoadingContent = () => (
+    <View style={styles.loadingContainer}>
+      <ActivityIndicator size="large" color="#00c5e3" />
+      <Text style={styles.loadingText}>Loading messages...</Text>
+    </View>
+  );
+
+  // Render error state
+  const renderErrorContent = () => (
+    <View style={styles.errorContainer}>
+      <Ionicons name="alert-circle" size={50} color="#FF3B30" />
+      <Text style={styles.errorTitle}>Couldn't Load Messages</Text>
+      <Text style={styles.errorMessage}>{error}</Text>
+      <TouchableOpacity style={styles.retryButton} onPress={handleRetry}>
+        <Text style={styles.retryButtonText}>Try Again</Text>
+        {isRetrying && (
+          <ActivityIndicator
+            size="small"
+            color="#fff"
+            style={{ marginLeft: 8 }}
+          />
+        )}
+      </TouchableOpacity>
+    </View>
+  );
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" />
 
-      {/* Dynamic Island Friendly Header */}
+      {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Messages</Text>
         <View style={styles.headerRight}>
@@ -289,6 +366,28 @@ export default function ConversationListScreen() {
           </TouchableOpacity>
         </View>
       </View>
+
+      {/* Error Banner - Shows when there's an error but content is still available */}
+      {error && conversations.length > 0 && (
+        <TouchableOpacity
+          style={styles.errorBanner}
+          onPress={handleRetry}
+          activeOpacity={0.7}
+        >
+          <View style={styles.errorBannerContent}>
+            <Ionicons
+              name="warning"
+              size={18}
+              color="#fff"
+              style={styles.errorBannerIcon}
+            />
+            <Text style={styles.errorBannerText}>Connection error</Text>
+          </View>
+          <Text style={styles.errorBannerAction}>
+            {isRetrying ? "Retrying..." : "Tap to retry"}
+          </Text>
+        </TouchableOpacity>
+      )}
 
       {/* Search Bar */}
       <View style={styles.searchContainer}>
@@ -306,12 +405,39 @@ export default function ConversationListScreen() {
         />
       </View>
 
-      <FlatList
-        data={filteredConversations}
-        keyExtractor={(item) => item.id}
-        renderItem={renderItem}
-        contentContainerStyle={styles.listContent}
-      />
+      {/* Main Content - Conditional Rendering */}
+      {isLoading ? (
+        renderLoadingContent()
+      ) : error && conversations.length === 0 ? (
+        renderErrorContent()
+      ) : (
+        <FlatList
+          data={filteredConversations}
+          keyExtractor={(item) => item.id}
+          renderItem={renderItem}
+          contentContainerStyle={[
+            styles.listContent,
+            filteredConversations.length === 0 && styles.emptyListContent,
+          ]}
+          ListEmptyComponent={() => (
+            <View style={styles.emptyContainer}>
+              <Ionicons
+                name="chatbubble-ellipses-outline"
+                size={50}
+                color="#c7c7cc"
+              />
+              <Text style={styles.emptyText}>No conversations yet</Text>
+              <Text style={styles.emptySubText}>
+                Start a new conversation by tapping the + button
+              </Text>
+            </View>
+          )}
+          refreshing={isRetrying}
+          onRefresh={handleRetry}
+        />
+      )}
+
+      {/* New Conversation Button */}
       <TouchableOpacity
         style={styles.newConversationButton}
         onPress={() => setNewConversationModalVisible(true)}
@@ -426,6 +552,15 @@ export default function ConversationListScreen() {
                 />
               )}
               contentContainerStyle={styles.userListContent}
+              ListEmptyComponent={() => (
+                <View style={styles.emptySearchContainer}>
+                  <Text style={styles.emptySearchText}>
+                    {searchUsername.length > 0
+                      ? "No users found. Try a different search term."
+                      : "Search for users to add to your conversation"}
+                  </Text>
+                </View>
+              )}
             />
 
             <View style={styles.modalActionsContainer}>
@@ -456,298 +591,3 @@ export default function ConversationListScreen() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: "#fff",
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingTop: Platform.OS === "ios" ? 8 : 16,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
-    backgroundColor: "#fff",
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: "bold",
-    alignContent: "center",
-    color: "#00c5e3",
-  },
-  headerRight: {
-    flexDirection: "row",
-  },
-  headerButton: {
-    marginLeft: 16,
-  },
-  searchContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#f5f5f5",
-    marginHorizontal: 16,
-    marginVertical: 12,
-    paddingHorizontal: 12,
-    borderRadius: 10,
-    height: 40,
-    borderWidth: 1,
-    borderColor: "#e0e0e0",
-  },
-  searchIcon: {
-    marginRight: 8,
-  },
-  searchInput: {
-    flex: 1,
-    height: 40,
-    fontSize: 16,
-    color: "#333",
-  },
-  container: {
-    flex: 1,
-    backgroundColor: "#fff",
-  },
-  listContent: {
-    padding: 10,
-  },
-  conversationItem: {
-    flexDirection: "row",
-    padding: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
-    alignItems: "center",
-    backgroundColor: "#fff",
-  },
-  conversationContent: {
-    flexDirection: "row",
-    flex: 1,
-  },
-  conversationImage: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    marginRight: 14,
-    borderWidth: 2,
-    borderColor: "#00c5e3",
-  },
-  conversationDetails: {
-    flex: 1,
-    justifyContent: "center",
-  },
-  conversationName: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#333",
-    marginBottom: 4,
-  },
-  conversationLastMessage: {
-    fontSize: 14,
-    color: "#666",
-    marginBottom: 2,
-  },
-  conversationTimestamp: {
-    fontSize: 12,
-    color: "#00c5e3",
-    alignSelf: "flex-end",
-  },
-  actionButtons: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  actionButton: {
-    padding: 8,
-    marginLeft: 4,
-  },
-  modalContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-  },
-  modalContent: {
-    width: "85%",
-    backgroundColor: "#fff",
-    padding: 20,
-    borderRadius: 16,
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  largeModalContent: {
-    height: "70%",
-    width: "90%",
-    justifyContent: "flex-start",
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: "bold",
-    marginBottom: 16,
-    color: "#00c5e3",
-    alignSelf: "flex-start",
-  },
-  modalText: {
-    textAlign: "center",
-    marginBottom: 20,
-    color: "#333",
-    lineHeight: 20,
-  },
-  input: {
-    width: "100%",
-    height: 50,
-    borderColor: "#ddd",
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 15,
-    marginBottom: 20,
-    fontSize: 16,
-    backgroundColor: "#f9f9f9",
-  },
-  modalButtons: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    width: "100%",
-  },
-  modalButton: {
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-    alignItems: "center",
-    justifyContent: "center",
-    flex: 1,
-    marginHorizontal: 5,
-  },
-  confirmButton: {
-    backgroundColor: "#00c5e3",
-  },
-  cancelButton: {
-    backgroundColor: "#f0f0f0",
-  },
-  deleteButton: {
-    backgroundColor: "#FF3B30",
-  },
-  disabledButton: {
-    backgroundColor: "#b7e5ee",
-    opacity: 0.7,
-  },
-  buttonText: {
-    color: "#333",
-    fontWeight: "600",
-    fontSize: 16,
-  },
-  buttonTextWhite: {
-    color: "#fff",
-    fontWeight: "600",
-    fontSize: 16,
-  },
-  newConversationButton: {
-    position: "absolute",
-    bottom: 20,
-    right: 20,
-    backgroundColor: "#00c5e3",
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 3,
-    elevation: 5,
-  },
-  userItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    width: "100%",
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#ccc",
-    backgroundColor: "#fff",
-  },
-  userAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    marginRight: 12,
-    borderWidth: 2,
-    borderColor: "#e0e0e0",
-  },
-  username: {
-    fontSize: 16,
-    color: "#333",
-    flex: 1,
-    marginLeft: 8,
-    fontWeight: "500",
-  },
-
-  checkIcon: {
-    marginLeft: 10,
-  },
-  selectedUserItem: {
-    width: "100%",
-    backgroundColor: "rgba(0, 197, 227, 0.1)",
-  },
-  searchUserContainer: {
-    flexDirection: "row",
-    width: "100%",
-    marginBottom: 10,
-  },
-  searchUserInput: {
-    flex: 1,
-    height: 50,
-    borderColor: "#ddd",
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 15,
-    fontSize: 16,
-    backgroundColor: "#f9f9f9",
-    marginRight: 8,
-  },
-  searchButton: {
-    width: 50,
-    height: 50,
-    backgroundColor: "#00c5e3",
-    borderRadius: 10,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  userListContent: {
-    width: "100%",
-    flexGrow: 1,
-  },
-  modalActionsContainer: {
-    width: "100%",
-    flexDirection: "column",
-    marginTop: 15,
-  },
-  cancelActionButton: {
-    backgroundColor: "#f0f0f0",
-    paddingVertical: 14,
-    borderRadius: 10,
-    marginBottom: 10,
-    alignItems: "center",
-  },
-  createActionButton: {
-    backgroundColor: "#00c5e3",
-    paddingVertical: 14,
-    borderRadius: 10,
-    alignItems: "center",
-  },
-  cancelActionText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#333",
-  },
-  createActionText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#fff",
-  },
-});
