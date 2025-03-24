@@ -72,9 +72,9 @@ function InfoButton({ colorScheme }: { colorScheme: "light" | "dark" }) {
 const TABS_FIRST_HALF = [
   {
     name: "index",
-    title: "Home",
-    iconName: "home" as const,
-    headerRight: true,
+    title: "Feed",
+    iconName: "feed" as const,
+    headerShown: false,
   },
   {
     name: "(message)",
@@ -172,11 +172,6 @@ export default function TabLayout() {
               tab.headerShown === false
                 ? false
                 : useClientOnlyValue(false, true),
-            ...(tab.headerRight && {
-              headerRight: () => (
-                <InfoButton colorScheme={colorScheme ?? "light"} />
-              ),
-            }),
           }}
         />
       ))}
