@@ -1,28 +1,32 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import {
-  StyleSheet,
   ScrollView,
   Image,
   TouchableOpacity,
   Alert,
   RefreshControl,
   Dimensions,
-  Platform,
   ActivityIndicator,
 } from "react-native";
-import { Text, View } from "@/components/Themed";
 import { useRouter } from "expo-router";
-import GradientButton from "@/components/GradientButton";
-import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
+import { Ionicons } from "@expo/vector-icons";
+
+import { Text, View } from "@/components/Themed";
+import GradientButton from "@/components/GradientButton";
+import { styles } from "@/components/profile/profileStyle";
+import PinnedPostItem from "@/components/profile/PinnedPostItem";
+import FollowButton from "@/components/FollowButton";
+
 import axiosInstance from "@/utils/axiosInstance";
+import { formatDate } from "@/utils/dateUtils";
+import * as api from "@/utils/api";
+
+import { DefaultProfile, MOCK_STATS } from "@/constants/DefaultProfile";
+import useProfileCache from "@/hooks/useProfileCache";
+
 import { Author } from "@/types/postType";
 import { UserProfile, UserStats } from "@/types/profileType";
-import useProfileCache from "@/hooks/useProfileCache";
-import { formatDate } from "@/utils/dateUtils";
-
-// Get the width of the screen for responsive design
-const { width } = Dimensions.get("window");
 
 // Color palette based on #00c5e3
 const COLORS = {
@@ -37,19 +41,14 @@ const COLORS = {
   divider: "#F3F4F6",
 };
 
-// Mock data for stats section
-const MOCK_STATS: UserStats = {
-  posts_count: 120,
-  followers_count: 114,
-  following_count: 514,
-};
-
 export default function ProfileScreen() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [imageError, setImageError] = useState(false);
   const [dataLoading, setDataLoading] = useState(true);
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [isFollowLoading, setIsFollowLoading] = useState(false);
   const {
     profileData,
     cacheStatus,
@@ -84,7 +83,7 @@ export default function ProfileScreen() {
       }
 
       // Fetch user profile data from API
-      const response = await axiosInstance.get("/users/my-profile/");
+      const response = await api.fetchMyProfile();
       if (response.data) {
         // Combine API response with mock stats if needed
         const userData = {
@@ -96,20 +95,7 @@ export default function ProfileScreen() {
         await saveProfileToCache(userData);
       } else {
         // Fallback if API returns empty data
-        const fallbackData = {
-          username: "johndoe",
-          email: "johndoe@example.com",
-          avatar: "https://picsum.photos/200",
-          bio: "Software Developer | Tech Enthusiast | Coffee Lover",
-          location: "San Francisco, CA",
-          website: "https://johndoe.dev",
-          date_of_birth: "2000-01-01",
-          created_at: "2023-01-01T12:00:00Z",
-          updated_at: "2023-02-01T12:00:00Z",
-          is_active: true,
-          verified: true,
-          stats: MOCK_STATS,
-        };
+        const fallbackData = DefaultProfile;
 
         await saveProfileToCache(fallbackData);
       }
@@ -123,17 +109,7 @@ export default function ProfileScreen() {
 
       if (!cachedData) {
         // Set hardcoded fallback data if no cache
-        const fallbackData = {
-          username: "johndoe",
-          email: "johndoe@example.com",
-          bio: "Software Developer | Tech Enthusiast | Coffee Lover",
-          avatar: "https://picsum.photos/200",
-          location: "San Francisco, CA",
-          date_of_birth: "January 1, 1990",
-          website: "https://johndoe.dev",
-          verified: true,
-          stats: MOCK_STATS,
-        };
+        const fallbackData = DefaultProfile;
 
         await saveProfileToCache(fallbackData);
       }
@@ -152,12 +128,6 @@ export default function ProfileScreen() {
   }, []);
 
   /**
-   * Navigate to another screen
-   * @param path Destination path
-   */
-  const navigateTo = (path: any) => router.push(path);
-
-  /**
    * Handle edit profile button press
    * Shows loading state briefly before navigation
    * Passes user data to edit screen
@@ -173,7 +143,7 @@ export default function ProfileScreen() {
           params: { profileData: JSON.stringify(profileData) },
         });
       } else {
-        navigateTo("/profile/edit");
+        router.push("/profile/edit");
       }
     }, 0);
   };
@@ -215,6 +185,20 @@ export default function ProfileScreen() {
       </View>
     );
   }
+
+  const handleFollowToggle = async () => {
+    try {
+      setIsFollowLoading(true);
+      // TODO: API call to follow/unfollow the user
+      // API call to follow/unfollow the user
+      // const response = await followUserAPI(userId);
+      setIsFollowing((prevState) => !prevState);
+    } catch (error) {
+      console.error("Error toggling follow status:", error);
+      Alert.alert("Error", "Failed to toggle follow status. Please try again.");
+    }
+    setIsFollowLoading(false);
+  };
 
   return (
     <View style={styles.container}>
@@ -276,15 +260,45 @@ export default function ProfileScreen() {
             <Text style={styles.email}>{profileData?.email || ""}</Text>
           </View>
 
-          {/* Action Buttons */}
-          <View style={styles.actionButtons}>
+          {/* Action Buttons Row */}
+          <View style={styles.actionButtonsRow}>
+            {/* Edit Profile Button */}
             <GradientButton
               text="Edit Profile"
               onPress={handleEditProfile}
               loading={isLoading}
               gradientColors={[COLORS.primary, COLORS.accent]}
-              style={styles.mainButton}
+              style={styles.actionButton}
               borderRadius={8}
+            />
+
+            {/* Follow Button with lock functionality */}
+            {/* size = "large", "medium", "small" */}
+            <FollowButton
+              userId={profileData.id}
+              initialFollowStatus={profileData.isFollowing}
+              isLocked={
+                profileData.isPrivate && !profileData.isFollowRequestSent
+              }
+              lockReason={
+                profileData.isPrivate
+                  ? "This is a private account. Send a follow request to follow this user."
+                  : ""
+              }
+              style={styles.actionButton}
+              gradientProps={{
+                gradientColors: ["#00c5e3", "#0072ff"],
+              }}
+              // API Calls
+              followUser={api.followUser}
+              unfollowUser={api.unfollowUser}
+              // State Update
+              onFollowStatusChange={(newStatus, userId) => {
+                // Update follow status in local state
+                setIsFollowing(newStatus);
+                // Update follow status in profile data
+                profileData.isFollowing = newStatus;
+              }}
             />
           </View>
 
@@ -292,7 +306,7 @@ export default function ProfileScreen() {
           <View style={styles.statsContainer}>
             <TouchableOpacity
               style={styles.stat}
-              onPress={() => navigateTo("/post/my_posts")}
+              onPress={() => router.push("/post/my_posts")}
               activeOpacity={0.7}
             >
               <Text style={styles.statNumber}>
@@ -303,7 +317,7 @@ export default function ProfileScreen() {
 
             <TouchableOpacity
               style={styles.stat}
-              onPress={() => navigateTo("/profile/followers")}
+              onPress={() => router.push("/profile/followers")}
               activeOpacity={0.7}
             >
               <Text style={styles.statNumber}>
@@ -314,7 +328,7 @@ export default function ProfileScreen() {
 
             <TouchableOpacity
               style={styles.stat}
-              onPress={() => navigateTo("/profile/following")}
+              onPress={() => router.push("/profile/following")}
               activeOpacity={0.7}
             >
               <Text style={styles.statNumber}>
@@ -323,6 +337,17 @@ export default function ProfileScreen() {
               <Text style={styles.statLabel}>Following</Text>
             </TouchableOpacity>
           </View>
+        </View>
+
+        {/* Selected Posts */}
+        <View style={styles.postSection}>
+          <Text style={styles.sectionTitle}>Pinned Post</Text>
+          <PinnedPostItem
+            post={profileData?.pinnedPost}
+            onSelectPost={() => {
+              router.push("/post/my_posts");
+            }}
+          />
         </View>
 
         {/* Bio Section */}
@@ -402,7 +427,7 @@ export default function ProfileScreen() {
         <View style={styles.settingsSection}>
           <TouchableOpacity
             style={styles.settingItem}
-            onPress={() => navigateTo("/(tabs)/setting")}
+            onPress={() => router.push("/(tabs)/setting")}
             activeOpacity={0.7}
           >
             <Ionicons
@@ -420,7 +445,7 @@ export default function ProfileScreen() {
 
           <TouchableOpacity
             style={[styles.settingItem, { borderBottomWidth: 0 }]}
-            onPress={() => navigateTo("/post/saved")}
+            onPress={() => router.push("/post/saved")}
             activeOpacity={0.7}
           >
             <Ionicons
@@ -440,212 +465,3 @@ export default function ProfileScreen() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  // 样式保持不变
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-  },
-  scrollContainer: {
-    paddingBottom: 20,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: COLORS.background,
-  },
-  loadingText: {
-    marginTop: 10,
-    fontSize: 16,
-    color: COLORS.textSecondary,
-  },
-  cacheInfoContainer: {
-    backgroundColor: "rgba(0,0,0,0.05)",
-    padding: 6,
-    alignItems: "center",
-    marginTop: 4,
-  },
-  cacheInfoText: {
-    fontSize: 12,
-    color: COLORS.textLight,
-    fontStyle: "italic",
-  },
-  profileCard: {
-    backgroundColor: COLORS.cardBackground,
-    borderRadius: 16,
-    margin: 12,
-    padding: 16,
-    paddingTop: 80,
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 3,
-      },
-      android: {
-        elevation: 2,
-      },
-    }),
-  },
-  avatarSection: {
-    alignItems: "center",
-    position: "relative",
-    marginTop: -70,
-  },
-  avatarGradientBorder: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    padding: 3,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  avatar: {
-    width: 94,
-    height: 94,
-    borderRadius: 47,
-    borderWidth: 2,
-    borderColor: COLORS.cardBackground,
-  },
-  userInfo: {
-    alignItems: "center",
-    marginTop: 8,
-    backgroundColor: "transparent",
-  },
-  nameContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "transparent",
-  },
-  name: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: COLORS.text,
-  },
-  verifiedIcon: {
-    marginLeft: 4,
-  },
-  username: {
-    fontSize: 14,
-    color: COLORS.textSecondary,
-    marginTop: 2,
-  },
-  email: {
-    fontSize: 12,
-    color: COLORS.textLight,
-    marginTop: 2,
-  },
-  actionButtons: {
-    marginTop: 16,
-    alignItems: "center",
-  },
-  mainButton: {
-    width: "80%",
-    marginVertical: 6,
-  },
-  statsContainer: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    marginTop: 20,
-    paddingHorizontal: 10,
-    backgroundColor: "transparent",
-  },
-  stat: {
-    alignItems: "center",
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-  },
-  statNumber: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: COLORS.text,
-  },
-  statLabel: {
-    fontSize: 12,
-    color: COLORS.textLight,
-    marginTop: 2,
-  },
-  bioSection: {
-    backgroundColor: COLORS.cardBackground,
-    borderRadius: 16,
-    margin: 12,
-    marginTop: 6,
-    padding: 16,
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.1,
-        shadowRadius: 2,
-      },
-      android: {
-        elevation: 1,
-      },
-    }),
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: COLORS.text,
-    marginBottom: 12,
-  },
-  bioItem: {
-    flexDirection: "row",
-    marginBottom: 12,
-    backgroundColor: "transparent",
-  },
-  bioIcon: {
-    marginRight: 12,
-    marginTop: 2,
-  },
-  bioTextContainer: {
-    flex: 1,
-    backgroundColor: "transparent",
-  },
-  bioLabel: {
-    fontSize: 13,
-    fontWeight: "500",
-    color: COLORS.textSecondary,
-  },
-  bioValue: {
-    fontSize: 14,
-    color: COLORS.text,
-    marginTop: 2,
-  },
-  settingsSection: {
-    backgroundColor: COLORS.cardBackground,
-    borderRadius: 16,
-    margin: 12,
-    marginTop: 6,
-    padding: 8,
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.1,
-        shadowRadius: 2,
-      },
-      android: {
-        elevation: 1,
-      },
-    }),
-  },
-  settingItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 12,
-    paddingHorizontal: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.divider,
-  },
-  settingText: {
-    fontSize: 15,
-    color: COLORS.text,
-    marginLeft: 12,
-    flex: 1,
-  },
-});
