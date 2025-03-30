@@ -11,6 +11,7 @@ import {
   RefreshControl,
   Dimensions,
   ActivityIndicator,
+  Alert,
 } from "react-native";
 import { router } from "expo-router";
 import { useSession } from "@/components/SessionProvider";
@@ -18,6 +19,7 @@ import { Text, View } from "@/components/Themed";
 import { Ionicons } from "@expo/vector-icons";
 import { useStorageState } from "@/hooks/useStorageState";
 import { BlurView } from "expo-blur";
+import axiosInstance from "@/utils/axiosInstance";
 
 // Define the Post_Feed type for TypeScript
 type Post_Feed = {
@@ -33,12 +35,21 @@ type Post_Feed = {
   comments: number;
   timestamp: string;
   isLiked?: boolean;
+  disclaimer?: string;
+  deepfakeRequested?: boolean;
+  deepfakeResult?: {
+    confidence: number; // 0-1 confidence in the result
+    status: 'pending' | 'completed' | 'failed';
+  };
 };
 
 // Cache control for images
 const getCacheKey = (uri: any) => {
   return `${uri}?timestamp=${Date.now()}`;
 };
+
+// Flag to control whether to use real backend or simulation
+const USE_BACKEND = false; // Set to true when your backend is ready
 
 export default function HomeScreen() {
   const { user } = useSession();
@@ -87,6 +98,7 @@ export default function HomeScreen() {
           comments: 5,
           timestamp: "10 minutes ago",
           isLiked: false,
+          disclaimer: "AI generated contents",
         },
         {
           id: 2,
@@ -180,6 +192,46 @@ export default function HomeScreen() {
     );
   }, []);
 
+  const handleDeepfakeDetection = useCallback((postId: number) => {
+    // Immediately set the post to pending state
+    setPosts((prevPosts) =>
+      prevPosts.map((post) => {
+        if (post.id === postId) {
+          return {
+            ...post,
+            deepfakeRequested: true,
+            deepfakeResult: {
+              confidence: 0,
+              status: 'pending'
+            }
+          };
+        }
+        return post;
+      })
+    );
+    
+    // Use a simple timeout to simulate processing
+    setTimeout(() => {
+      // Use a fixed confidence value for testing
+      const confidence = 0.5;
+      
+      setPosts((prevPosts) =>
+        prevPosts.map((post) => {
+          if (post.id === postId) {
+            return {
+              ...post,
+              deepfakeResult: {
+                confidence: confidence,
+                status: 'completed'
+              }
+            };
+          }
+          return post;
+        })
+      );
+    }, 1000);
+  }, []);
+
   const filteredPosts = useMemo(() => {
     if (!searchQuery.trim()) return posts;
     return posts.filter(
@@ -198,6 +250,83 @@ export default function HomeScreen() {
   const handleScroll = useCallback((event: any) => {
     setScrollPosition(event.nativeEvent.contentOffset.y);
   }, []);
+
+  const renderDeepfakeSection = useCallback((post: Post_Feed) => {
+    if (!post.image) return null;
+    
+    // For debugging, add a console log
+    console.log('Deepfake status:', post.deepfakeResult?.status);
+    
+    if (post.deepfakeResult?.status === 'pending') {
+      return (
+        <View style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          padding: 10,
+          backgroundColor: '#f0f0f0',
+          borderRadius: 8,
+          margin: 5
+        }}>
+          <ActivityIndicator size="small" color="#8c52ff" />
+          <Text style={{marginLeft: 10, color: '#333'}}>
+            Analyzing media...
+          </Text>
+        </View>
+      );
+    }
+    
+    if (post.deepfakeResult?.status === 'completed') {
+      const isHighProbability = post.deepfakeResult.confidence > 0.8;
+      const isMediumProbability = (post.deepfakeResult.confidence > 0.2 && post.deepfakeResult.confidence <= 0.8);
+      const isLowProbability = post.deepfakeResult.confidence <= 0.2;
+      
+      return (
+        <View style={{
+          padding: 10,
+          backgroundColor: isHighProbability ? '#ffebee' :
+                          isMediumProbability? '#fff8e1' :
+                             '#e8f5e9',
+          borderRadius: 8,
+          margin: 5
+        }}>
+          <Text style={{
+            fontWeight: 'bold',
+            color: isHighProbability ? '#c62828' : 
+                  isMediumProbability? '#ff8f00' :
+                    '#2e7d32'
+          }}>
+            {isHighProbability ? 'High probability of manipulation' :
+             isMediumProbability?  'Medium probability of manipulation: unable to determine' :
+                'Low probability of manipulation'}
+          </Text>
+          <Text style={{marginTop: 5, color: '#666'}}>
+            Confidence: {Math.round(post.deepfakeResult.confidence * 100)}%
+          </Text>
+        </View>
+      );
+    }
+    
+    // Default button state
+    return (
+      <TouchableOpacity
+        style={{
+          backgroundColor: '#00c5e3',
+          borderRadius: 8,
+          padding: 10,
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'center',
+          margin: 5
+        }}
+        onPress={() => handleDeepfakeDetection(post.id)}
+      >
+        <Ionicons name="shield-checkmark-outline" size={16} color="#FFFFFF" />
+        <Text style={{color: '#FFFFFF', marginLeft: 5, fontWeight: '500'}}>
+          Request Deepfake Detection
+        </Text>
+      </TouchableOpacity>
+    );
+  }, [handleDeepfakeDetection]);
 
   const renderPostItem = useCallback(
     ({ item }: { item: Post_Feed }) => (
@@ -228,6 +357,18 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
 
+        {/* Content Disclaimer - only show if post has a disclaimer */}
+        {item.disclaimer && (
+          <View style={styles.disclaimerContainer}>
+            <View style={styles.disclaimerContent}>
+              <View style={styles.disclaimerIconContainer}>
+                <Ionicons name="warning-outline" size={18} color="#ffffff" />
+              </View>
+              <Text style={styles.disclaimerText}>{item.disclaimer}</Text>
+            </View>
+          </View>
+        )}
+
         <Text style={styles.postContent}>{item.content}</Text>
 
         {item.image && (
@@ -238,6 +379,10 @@ export default function HomeScreen() {
               resizeMode="cover"
               progressiveRenderingEnabled={true}
             />
+
+            <View style={styles.imageActionOverlay}>
+                {renderDeepfakeSection(item)}
+            </View>
           </View>
         )}
 
@@ -266,7 +411,7 @@ export default function HomeScreen() {
         </View>
       </View>
     ),
-    [handleLike]
+    [handleLike, renderDeepfakeSection]
   );
 
   const ListEmptyComponent = useCallback(
@@ -616,5 +761,156 @@ const styles = StyleSheet.create({
   },
   likedText: {
     color: "#FF3B30",
+  },
+
+  // Added new styles for the disclaimer
+  disclaimerContainer: {
+    marginBottom: 12,
+    borderRadius: 8,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "#00c5e3",
+    backgroundColor: "#fffbeb",
+  },
+  disclaimerContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 12,
+  },
+  disclaimerIconContainer: {
+    backgroundColor: "#00c5e3",
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 10,
+  },
+  disclaimerText: {
+    flex: 1,
+    fontSize: 14,
+    lineHeight: 20,
+    color: "#555555",
+  },
+  // Deepfake detection button styles
+  imageActionOverlay: {
+    width: "100%",
+    padding: 12,
+    position: "relative",
+    bottom: 0,
+    backgroundColor: "rgba(255,255,255,0.95)",
+    borderBottomLeftRadius: 12,
+    borderBottomRightRadius: 12,
+    alignItems: "center",
+  },
+  deepfakeButton: {
+    backgroundColor: "#00c5e3",
+    borderRadius: 16,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 1.5,
+    elevation: 2,
+  },
+  deepfakeButtonText: {
+    color: "#FFFFFF",
+    fontSize: 13,
+    fontWeight: "600",
+    marginLeft: 6,
+  },
+  deepfakePendingContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 8,
+  },
+  deepfakePendingText: {
+    color: "#8c52ff",
+    marginLeft: 8,
+    fontSize: 14,
+    fontWeight: "500",
+  },
+  deepfakeResultContainer: {
+    width: "100%",
+    padding: 10,
+  },
+  deepfakeResultTitle: {
+    fontSize: 14,
+    fontWeight: "bold",
+    marginBottom: 6,
+    color: "#333",
+    textAlign: "center",
+  },
+  resultIndicator: {
+    padding: 10,
+    borderRadius: 8,
+    marginTop: 4,
+  },
+  resultRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  highProbability: {
+    backgroundColor: "#ffebee",
+    borderWidth: 1,
+    borderColor: "#ffcdd2",
+  },
+  mediumProbability: {
+    backgroundColor: "#fff8e1",
+    borderWidth: 1,
+    borderColor: "#ffecb3",
+  },
+  lowProbability: {
+    backgroundColor: "#e8f5e9",
+    borderWidth: 1,
+    borderColor: "#c8e6c9",
+  },
+  resultText: {
+    fontSize: 14,
+    fontWeight: "500",
+    marginLeft: 6,
+  },
+  highProbabilityText: {
+    color: "#C62828",
+  },
+  mediumProbabilityText: {
+    color: "#F57F17",
+  },
+  lowProbabilityText: {
+    color: "#2E7D32",
+  },
+  confidenceText: {
+    fontSize: 12,
+    marginTop: 4,
+    color: "#666666",
+    textAlign: "right",
+  },
+  deepfakeErrorContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 8,
+  },
+  deepfakeErrorText: {
+    color: "#F44336",
+    marginLeft: 8,
+    fontSize: 14,
+    fontWeight: "500",
+  },
+  retryButton: {
+    marginLeft: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    backgroundColor: "#F5F5F5",
+    borderRadius: 12,
+  },
+  retryText: {
+    color: "#666",
+    fontSize: 12,
+    fontWeight: "500",
   },
 });

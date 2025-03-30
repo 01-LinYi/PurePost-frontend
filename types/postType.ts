@@ -38,6 +38,7 @@ export interface Post {
   updatedAt?: string;   
   isEdited?: boolean;       
   savedFolderId?: string | null; 
+  disclaimer?: string;
 }
 
 
@@ -79,6 +80,7 @@ export interface PostRequest {
   visibility: "public" | "private";
   media?: File;  
   media_id?: string;
+  disclaimer?: string;
 }
 
 
