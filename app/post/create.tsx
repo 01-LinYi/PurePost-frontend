@@ -10,6 +10,7 @@ import {
   KeyboardAvoidingView,
   TouchableOpacity,
   Text as Text,
+  Switch,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { Ionicons } from "@expo/vector-icons";
@@ -40,6 +41,8 @@ const CreatePost = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [visibility, setVisibility] = useState<"public" | "private">("public");
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState<boolean>(false);
+  const [hasDisclaimer, setHasDisclaimer] = useState<boolean>(false);
+  const [disclaimerText, setDisclaimerText] = useState<string>("");
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
 
@@ -70,6 +73,15 @@ const CreatePost = () => {
 
     return unsubscribe;
   }, [navigation, postText, media]);
+
+  // Toggle disclaimer
+  const toggleDisclaimer = useCallback(() => {
+    setHasDisclaimer(!hasDisclaimer);
+    if (!hasDisclaimer === false) {
+      setDisclaimerText("");
+    }
+  }, [hasDisclaimer]);
+
 
   const pickMedia = useCallback(async () => {
     try {
@@ -193,6 +205,8 @@ const CreatePost = () => {
       setPostText("");
       setMedia(null);
       setHasUnsavedChanges(false);
+      setHasDisclaimer(false);
+      setDisclaimerText("");
     } catch (error) {
       const errorMessage =
         (error as any)?.response?.data?.detail ||
@@ -245,6 +259,41 @@ const CreatePost = () => {
         <Text style={styles.charCount}>{postText.length}/2000</Text>
 
         <MediaPreview media={media} onRemove={removeMedia} />
+
+        {/* Disclaimer Toggle */}
+        <View style={styles.disclaimerToggleContainer}>
+          <View style={styles.disclaimerToggleRow}>
+            <View style={styles.disclaimerLabelContainer}>
+              <Ionicons name="warning-outline" size={20} color="#00c5e3" />
+              <Text style={styles.disclaimerLabel}>Add Content Disclaimer</Text>
+            </View>
+            <Switch
+              value={hasDisclaimer}
+              onValueChange={toggleDisclaimer}
+              trackColor={{ false: '#e0e0e0', true: '#00c5e3' }}
+              thumbColor={hasDisclaimer ? '#00c5e3' : '#f4f3f4'}
+              ios_backgroundColor="#f9f9f9"
+            />
+          </View>
+        </View>
+
+        {/* Disclaimer Input Field - only shown when disclaimer is enabled */}
+        {hasDisclaimer && (
+          <View style={styles.disclaimerInputContainer}>
+            <TextInput
+              style={styles.disclaimerInput}
+              placeholder="Enter content disclaimer message..."
+              placeholderTextColor="#9E9E9E"
+              multiline
+              value={disclaimerText}
+              onChangeText={setDisclaimerText}
+              maxLength={200}
+              returnKeyType="default"
+              textAlignVertical="top"
+            />
+            <Text style={styles.disclaimerCharCount}>{disclaimerText.length}/200</Text>
+          </View>
+        )}
 
         <View style={styles.visibilityContainer}>
           <TouchableOpacity
@@ -357,6 +406,53 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#9E9E9E",
     marginBottom: 16,
+  },
+  disclaimerToggleContainer: {
+    marginBottom: 12,
+    backgroundColor: "#f9f9f9",
+    borderRadius: 8,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: "#00c5e3",
+  },
+  disclaimerToggleRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: "#f9f9f9",
+  },
+  disclaimerLabelContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#f9f9f9",
+  },
+  disclaimerLabel: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#00c5e3",
+    backgroundColor: "#f9f9f9",
+    marginLeft: 8,
+  },
+  disclaimerInputContainer: {
+    marginBottom: 16,
+  },
+  disclaimerInput: {
+    width: "100%",
+    minHeight: 80,
+    borderWidth: 1,
+    borderColor: "#00c5e3",
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 14,
+    backgroundColor: "#f9f9f9",
+    textAlignVertical: "top",
+    marginBottom: 4,
+    color: "#555555",
+  },
+  disclaimerCharCount: {
+    alignSelf: "flex-end",
+    fontSize: 12,
+    color: "#9E9E9E",
   },
   visibilityContainer: {
     marginTop: 8,

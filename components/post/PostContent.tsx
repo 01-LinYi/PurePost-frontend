@@ -6,6 +6,7 @@ import AuthorInfo from './AuthorInfo';
 import PostActions from './PostActions';
 import CommentsList from './CommentList';
 import MediaPreview from '@/components/MediaPreview';
+import { Ionicons } from '@expo/vector-icons';
 
 interface PostContentProps {
   post: Post;
@@ -42,6 +43,9 @@ const PostContent: React.FC<PostContentProps> = ({
   // 使用可选链运算符，避免 undefined 错误
   const canEdit = post.isAuthor || author?.id === 'currentuser';
 
+  // Determine if post has content disclaimer
+  const hasDisclaimer = post.disclaimer ? true : false;
+
   return (
     <ScrollView
       style={styles.scrollContainer}
@@ -60,6 +64,21 @@ const PostContent: React.FC<PostContentProps> = ({
         onEdit={onEdit}
         showEditButton={canEdit}
       />
+
+
+      {/* Content Disclaimer - only show if post has a disclaimer */}
+      {hasDisclaimer && (
+        <View style={styles.disclaimerContainer}>
+          <View style={styles.disclaimerContent}>
+            <View style={styles.disclaimerIconContainer}>
+              <Ionicons name="warning-outline" size={18} color="#ffffff" />
+            </View>
+            <Text style={styles.disclaimerText}>
+              {post.disclaimer || "This post may contain sensitive content."}
+            </Text>
+          </View>
+        </View>
+      )}
 
       {/* Post content */}
       <Text style={styles.postText}>{post.text}</Text>
@@ -131,6 +150,36 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#333333',
     marginBottom: 16,
+  },
+
+  // Added new styles for the disclaimer
+  disclaimerContainer: {
+    marginBottom: 12,
+    borderRadius: 8,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "#00c5e3",
+    backgroundColor: "#fffbeb",
+  },
+  disclaimerContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 12,
+  },
+  disclaimerIconContainer: {
+    backgroundColor: "#00c5e3",
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 10,
+  },
+  disclaimerText: {
+    flex: 1,
+    fontSize: 14,
+    lineHeight: 20,
+    color: "#555555",
   },
 });
 
