@@ -5,6 +5,7 @@ export const getApi = async (url: string) => {
     const response = await axiosInstance.get(url);
     return response;
   } catch (error: any) {
+    console.error("Error fetching data:", error);
     return error.response;
   }
 };
@@ -71,3 +72,56 @@ export const unfollowUser = async (user_id: number) => {
   //TODO: Implement this function
   return {};
 };
+
+export const fetchSinglePosts = async (user_id: string) => {
+  return getApi(`/content/posts/${user_id}/`);
+};
+
+export const fetchPostComments = async (post_id: number) => {
+  //TODO: Implement this function
+  return getApi(`/content/posts/${post_id}/comments/`);
+};
+
+export const likePost = async (post_id: number) => {
+  try {
+    const response = await axiosInstance.post(
+      `/content/posts/${post_id}/like/`
+    );
+    return response;
+  } catch (error: any) {
+    console.error("Error liking post:", error);
+    return error.response;
+  }
+};
+
+export const unlikePost = async (post_id: number) => {
+  try {
+    const response = await axiosInstance.post(
+      `/content/posts/${post_id}/unlike/`
+    );
+    return response;
+  } catch (error: any) {
+    console.error("Error unliking post:", error);
+    return error.response;
+  }
+};
+
+export const toggleSavePost = async (
+  postId: string,
+  folderId?: string
+): Promise<void> => {
+  try {
+    await axiosInstance.post(`/content/saved-posts/toggle/`, {
+      post_id: postId,
+      folder_id: folderId,
+    });
+  } catch (error) {
+    console.error("Error toggling save status:", error);
+    throw error;
+  }
+};
+
+export function addComment(id: string, text: string): Promise<unknown> {
+  // TODO: Implement this function
+  throw new Error("Function not implemented.");
+}
