@@ -22,14 +22,14 @@ const CommentsList: React.FC<CommentsListProps> = ({ comments }) => {
         <View key={comment.id} style={styles.commentItem}>
           <View style={styles.commentAuthorAvatar}>
             <Text style={styles.commentAuthorAvatarText}>
-              {comment.author.name.charAt(0).toUpperCase()}
+              {comment.user.username.charAt(0).toUpperCase()}
             </Text>
           </View>
           <View style={styles.commentContent}>
-            <Text style={styles.commentAuthor}>{comment.author.name}</Text>
-            <Text style={styles.commentText}>{comment.text}</Text>
+            <Text style={styles.commentAuthor}>{comment.user.username}</Text>
+            <Text style={styles.commentText}>{comment.content}</Text>
             <Text style={styles.commentDate}>
-              {new Date(comment.createdAt).toLocaleDateString()}
+              {new Date(comment.created_at).toLocaleDateString()}
             </Text>
           </View>
         </View>

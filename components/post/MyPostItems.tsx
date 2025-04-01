@@ -1,0 +1,307 @@
+// components/post/MyPostItem.tsx - Individual post item for the My Posts screen
+
+import React from "react";
+import { StyleSheet, TouchableOpacity, Image, Platform } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { Text, View } from "@/components/Themed";
+import { router } from "expo-router";
+import { Post, PostVisibility } from "@/types/postType";
+import AuthorInfo from "@/components/post/AuthorInfo";
+
+interface MyPostItemProps {
+  post: Post;
+  onDelete: (postId: string) => void;
+  onNavigate: (postId: string) => void;
+}
+
+/**
+ * Renders a single post item in the My Posts list
+ */
+const MyPostItem: React.FC<MyPostItemProps> = ({
+  post,
+  onDelete,
+  onNavigate,
+}) => {
+  // Extract the first line as title
+  const lines = post.content.split("\n");
+  const title = lines[0] || "Untitled Post";
+
+  // Create a preview of the remaining content
+  const contentPreview =
+    lines.length > 1
+      ? lines.slice(1).join(" ").substring(0, 100) +
+        (lines.slice(1).join(" ").length > 100 ? "..." : "")
+      : "No additional content";
+
+  // Get visibility icon and color
+  const getVisibilityProps = (visibility: PostVisibility) => {
+    switch (visibility) {
+      case "public":
+        return { icon: "globe-outline", color: "#00c5e3", text: "Public" };
+      case "private":
+        return {
+          icon: "lock-closed-outline",
+          color: "#FF9800",
+          text: "Private",
+        };
+      case "friends":
+        return {
+          icon: "people-outline",
+          color: "#34C759",
+          text: "Friends Only",
+        };
+      default:
+        return { icon: "globe-outline", color: "#00c5e3", text: "Public" };
+    }
+  };
+
+  const visibilityProps = getVisibilityProps(post.visibility);
+
+  return (
+    <TouchableOpacity
+      style={styles.postItem}
+      onPress={() => onNavigate(post.id)}
+      activeOpacity={0.7}
+    >
+      <View style={styles.postContent}>
+        {/* Use our updated AuthorInfo component */}
+        <View style={styles.authorInfoContainer}>
+          <AuthorInfo
+            user={post.user}
+            created_at={post.created_at}
+            updated_at={post.updated_at}
+            isEdited={post.isEdited}
+            isPrivateAccount={post.user.is_private}
+          />
+        </View>
+
+        {/* 标题和可见性标签并排 */}
+        <View style={styles.titleRow}>
+          <Text style={styles.postTitle} numberOfLines={1}>
+            {title}
+          </Text>
+
+          <View style={styles.visibilityTag}>
+            <Ionicons
+              name={visibilityProps.icon as any}
+              size={12}
+              color={visibilityProps.color}
+            />
+            <Text
+              style={[styles.visibilityText, { color: visibilityProps.color }]}
+            >
+              {visibilityProps.text}
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.postDetailsRow}>
+          {/* Display image if available */}
+          {post.image && (
+            <Image
+              source={{ uri: post.image }}
+              style={styles.mediaThumbnail}
+              resizeMode="cover"
+            />
+          )}
+
+          {/* Display video thumbnail if available */}
+          {!post.image && post.video && (
+            <View style={styles.mediaThumbnail}>
+              <Ionicons
+                name="videocam"
+                size={30}
+                color="#888"
+                style={{ alignSelf: "center", marginTop: 25 }}
+              />
+            </View>
+          )}
+
+          <View
+            style={[
+              styles.postTextContent,
+              !post.image && !post.video && { flex: 1 },
+            ]}
+          >
+            <Text style={styles.postExcerpt} numberOfLines={2}>
+              {contentPreview}
+            </Text>
+          </View>
+        </View>
+
+        {/* Display disclaimer if available */}
+        {post.disclaimer && (
+          <View style={styles.disclaimerContainer}>
+            <Ionicons name="alert-circle-outline" size={14} color="#FF9800" />
+            <Text style={styles.disclaimerText}>{post.disclaimer}</Text>
+          </View>
+        )}
+
+        {/* Post stats */}
+        <View style={styles.statsContainer}>
+          <View style={styles.statItem}>
+            <Ionicons
+              name={post.is_liked ? "heart" : "heart-outline"}
+              size={14}
+              color={post.is_liked ? "#FF6B6B" : "#888"}
+            />
+            <Text style={styles.statText}>{post.like_count}</Text>
+          </View>
+
+          <View style={styles.statItem}>
+            <Ionicons name="chatbubble-outline" size={14} color="#888" />
+            <Text style={styles.statText}>{post.comment_count}</Text>
+          </View>
+
+          <View style={styles.statItem}>
+            <Ionicons name="share-outline" size={14} color="#888" />
+            <Text style={styles.statText}>{post.share_count}</Text>
+          </View>
+        </View>
+
+        {/* Action buttons */}
+        <View style={styles.actionButtons}>
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => router.push(`/post/edit/${post.id}`)}
+          >
+            <Ionicons name="pencil-outline" size={16} color="#00c5e3" />
+            <Text style={styles.actionButtonText}>Edit</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => onDelete(post.id)}
+          >
+            <Ionicons name="trash-outline" size={16} color="#FF6B6B" />
+            <Text style={[styles.actionButtonText, { color: "#FF6B6B" }]}>
+              Delete
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+};
+
+const styles = StyleSheet.create({
+  postItem: {
+    backgroundColor: "#f9f9f9",
+    borderRadius: 12,
+    marginBottom: 16,
+    overflow: "hidden",
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.1,
+        shadowRadius: 2,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
+  },
+  postContent: {
+    padding: 16,
+  },
+  authorInfoContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  postTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#333",
+    flex: 1,
+    marginBottom: 8,
+  },
+  visibilityTag: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#f0f0f0",
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 12,
+  },
+  visibilityText: {
+    fontSize: 10,
+    marginLeft: 4,
+    fontWeight: "500",
+  },
+  postDetailsRow: {
+    flexDirection: "row",
+    marginBottom: 12,
+  },
+  mediaThumbnail: {
+    width: 80,
+    height: 80,
+    borderRadius: 8,
+    marginRight: 12,
+  },
+  postTextContent: {
+    flex: 1,
+  },
+  postExcerpt: {
+    fontSize: 14,
+    color: "#666",
+  },
+  disclaimerContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFF8E1",
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 6,
+    marginBottom: 12,
+  },
+  disclaimerText: {
+    fontSize: 12,
+    color: "#FF9800",
+    marginLeft: 6,
+    flex: 1,
+  },
+  statsContainer: {
+    flexDirection: "row",
+    marginBottom: 12,
+  },
+  statItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginRight: 16,
+  },
+  statText: {
+    fontSize: 12,
+    color: "#888",
+    marginLeft: 4,
+  },
+  actionButtons: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    borderTopWidth: 1,
+    borderTopColor: "#eee",
+    paddingTop: 12,
+  },
+  actionButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    marginLeft: 12,
+  },
+  actionButtonText: {
+    fontSize: 12,
+    color: "#00c5e3",
+    marginLeft: 4,
+    fontWeight: "500",
+  },
+  titleRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+});
+
+export default MyPostItem;

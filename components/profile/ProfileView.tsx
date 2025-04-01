@@ -129,12 +129,6 @@ export default function ProfileView({
         scrollEventThrottle={scrollEventThrottle}
         onScroll={onScroll}
       >
-        {/* Cache Info - Useful for debugging, can be removed in production */}
-        {cacheInfo && (
-          <View style={styles.cacheInfoContainer}>
-            <Text style={styles.cacheInfoText}>{cacheInfo}</Text>
-          </View>
-        )}
 
         {/* Profile Card */}
         <View style={styles.profileCard}>
@@ -266,7 +260,7 @@ export default function ProfileView({
               activeOpacity={0.7}
             >
               <Text style={styles.statNumber}>
-                {profileData?.stats?.posts || "0"}
+                {profileData.stats.posts_count || "0"}
               </Text>
               <Text style={styles.statLabel}>Posts</Text>
             </TouchableOpacity>
@@ -283,7 +277,7 @@ export default function ProfileView({
               activeOpacity={0.7}
             >
               <Text style={styles.statNumber}>
-                {profileData?.stats?.followers || "0"}
+                {profileData.stats.followers_count || "0"}
               </Text>
               <Text style={styles.statLabel}>Followers</Text>
             </TouchableOpacity>
@@ -300,7 +294,7 @@ export default function ProfileView({
               activeOpacity={0.7}
             >
               <Text style={styles.statNumber}>
-                {profileData?.stats?.following || "0"}
+                {profileData?.stats?.following_count || "0"}
               </Text>
               <Text style={styles.statLabel}>Following</Text>
             </TouchableOpacity>

@@ -6,6 +6,7 @@ import ProfileView from "@/components/profile/ProfileView";
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import { View } from "@/components/Themed";
 import { DefaultProfile, MOCK_STATS } from "@/constants/DefaultProfile";
+import { useMyPosts } from "@/hooks/useMyPosts";
 import useProfileCache from "@/hooks/useProfileCache";
 import * as api from "@/utils/api";
 
@@ -21,6 +22,9 @@ export default function ProfileScreen() {
     loadProfileFromCache,
     isCacheExpired,
   } = useProfileCache();
+  const { posts, totalPosts, getPostsCount } = useMyPosts({
+    userId: profileData?.user_id,
+  });
 
   /**
    * Fetch user profile data from API
@@ -47,11 +51,17 @@ export default function ProfileScreen() {
 
       // Fetch user profile data from API
       const response = await api.fetchMyProfile();
+      console.log("Profile response:", response.data);
       if (response.data) {
         // Combine API response with mock stats if needed
+        const stats = {
+          posts_count: MOCK_STATS.posts_count,
+          followers_count: MOCK_STATS.followers_count,
+          following_count: MOCK_STATS.following_count,
+        };
         const userData = {
           ...response.data,
-          stats: response.data.stats || MOCK_STATS,
+          stats: stats,
         };
 
         // Save to cache

@@ -19,7 +19,7 @@ import ActionButton from "@/components/ActionButton";
 import axiosInstance from "@/utils/axiosInstance";
 
 // Import existing types from postType.ts
-import { Author, Post } from "@/types/postType";
+import { User, Post } from "@/types/postType";
 
 // Define additional types for saved folders
 export interface SavedFolder {
@@ -42,18 +42,18 @@ const SavedPostItem = ({
   onPress: () => void;
 }) => {
   // Derive title from the first line of post content
-  const title = post.text?.split("\n")[0] || "Post";
+  const title = post.content?.split("\n")[0] || "Post";
   
   // Create excerpt from post content
-  const excerpt = post.text && post.text.length > title.length 
-    ? post.text.substring(title.length, title.length + 100) 
+  const excerpt = post.content && post.content.length > title.length 
+    ? post.content.substring(title.length, title.length + 100) 
     : "No description";
 
   // Get thumbnail from media if available
-  const thumbnail = post.media?.uri || "https://picsum.photos/100";
+  const thumbnail = post?.image || "https://picsum.photos/100";
 
   // Format author's first letter for avatar if no image available
-  const authorInitial = post.author.name.charAt(0).toUpperCase();
+  const authorInitial = post.user.username.charAt(0).toUpperCase();
 
   return (
     <TouchableOpacity
@@ -70,9 +70,9 @@ const SavedPostItem = ({
           {excerpt}
         </Text>
         <View style={[styles.postMeta, { backgroundColor: "transparent" }]}>
-          {post.author.avatar ? (
+          {post.user.profile_picture ? (
             <Image
-              source={{ uri: post.author.avatar }}
+              source={{ uri: post.user.profile_picture }}
               style={styles.authorAvatar}
             />
           ) : (
@@ -80,7 +80,7 @@ const SavedPostItem = ({
               <Text style={styles.authorAvatarText}>{authorInitial}</Text>
             </View>
           )}
-          <Text style={styles.authorName}>{post.author.name}</Text>
+          <Text style={styles.authorName}>{post.user.username}</Text>
           <Text style={styles.postDate}>
             {new Date(post.saved_at).toLocaleDateString()}
           </Text>
