@@ -28,7 +28,7 @@ type SavedFolder = {
 const fetchSavedFolders = async (): Promise<SavedFolder[]> => {
   try {
     const response = await axiosInstance.get("/content/folders/");
-    return response.data;
+    return response.data.results;
   } catch (error) {
     console.error("Error fetching folders:", error);
     throw error;
