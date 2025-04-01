@@ -417,7 +417,7 @@ export default function ConversationListScreen() {
           renderItem={renderItem}
           contentContainerStyle={[
             styles.listContent,
-            filteredConversations.length === 0 && styles.emptyListContent,
+            filteredConversations && filteredConversations.length === 0 && styles.emptyListContent,
           ]}
           ListEmptyComponent={() => (
             <View style={styles.emptyContainer}>
