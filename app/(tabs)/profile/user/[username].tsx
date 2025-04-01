@@ -48,7 +48,7 @@ export default function UserProfileScreen() {
   // Load profile data on component mount or ID change
   useEffect(() => {
     fetchUserData();
-  }, [name]);
+  }, [username]);
 
   // Handle refresh
   const handleRefresh = async () => {

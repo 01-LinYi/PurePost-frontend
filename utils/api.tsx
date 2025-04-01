@@ -44,7 +44,7 @@ export const fetchMyProfile = async () => {
 
 export const fetchUserProfile = async (username: string) => {
   return getApi(`/users/profiles/${username}/`);
-}
+};
 
 /**
  * Get the post counts of given user id
@@ -68,13 +68,23 @@ export const fetchPinnedPosts = async () => {
 };
 
 export const followUser = async (user_id: number) => {
-  //TODO: Implement this function
-  return {};
+  try {
+    const response = await axiosInstance.post(`/auth/follow/${user_id}/`);
+    return response;
+  } catch (error: any) {
+    console.error("Error following user:", error);
+    return error.response;
+  }
 };
 
 export const unfollowUser = async (user_id: number) => {
-  //TODO: Implement this function
-  return {};
+  try {
+    const response = await axiosInstance.post(`/auth/unfollow/${user_id}/`);
+    return response;
+  } catch (error: any) {
+    console.error("Error following user:", error);
+    return error.response;
+  }
 };
 
 export const fetchSinglePosts = async (user_id: string) => {

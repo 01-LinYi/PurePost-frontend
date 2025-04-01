@@ -204,7 +204,7 @@ export default function ProfileView({
             )}
 
             {/* Don't show follow button on own profile */}
-            {!isOwnProfile && (
+            { !isOwnProfile ? (
               <FollowButton
                 userId={profileData.id}
                 initialFollowStatus={profileData.isFollowing}
@@ -216,6 +216,26 @@ export default function ProfileView({
                     ? "This is a private account. Send a follow request to follow this user."
                     : ""
                 }
+                style={styles.actionButton}
+                gradientProps={{
+                  gradientColors: ["#00c5e3", "#0072ff"],
+                }}
+                // API Calls
+                followUser={api.followUser}
+                unfollowUser={api.unfollowUser}
+                // State Update
+                onFollowStatusChange={(newStatus, userId) => {
+                  if (onFollowStatusChange) {
+                    onFollowStatusChange(newStatus, userId.toString());
+                  }
+                }}
+              />
+            ): (
+              <FollowButton
+                userId={profileData.id}
+                initialFollowStatus={profileData.isFollowing}
+                isLocked={true}
+                lockReason={"You cannot follow yourself."}
                 style={styles.actionButton}
                 gradientProps={{
                   gradientColors: ["#00c5e3", "#0072ff"],
