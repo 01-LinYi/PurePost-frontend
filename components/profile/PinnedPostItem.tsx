@@ -1,21 +1,22 @@
 import { View, Text, Image, TouchableOpacity, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { styles as profileStyles } from "@/components/profile/profileStyle";
+import { styles as profileStyles } from "@/components/profile/ProfileStyle";
 import { formatDate } from "@/utils/dateUtils";
 
 
 type PinnedPostItemProps = {
     post: any;
     onSelectPost: () => any;
+    isOwnProfile?: boolean;
 };
 
 // PinnedPostItem 
-const PinnedPostItem = ({ post, onSelectPost }: PinnedPostItemProps) => {
+const PinnedPostItem = ({ post, onSelectPost, isOwnProfile=true }: PinnedPostItemProps) => {
   const router = useRouter();
   
 
-  if (!post) {
+  if (!post && isOwnProfile) {
     return (
       <View style={profileStyles.postContainer}>
         <Ionicons name="pin-outline" size={24} color="#00c5e3" />

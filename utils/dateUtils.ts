@@ -24,7 +24,8 @@ export function formatDate(dateString: string | undefined | null): string {
         month: 'long', 
         day: 'numeric' 
       });
-    } catch (e) {
+    } catch (error) {
+      console.error('Error parsing date:', error);
       return dateString;
     }
   }

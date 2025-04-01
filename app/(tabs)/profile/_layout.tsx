@@ -7,7 +7,7 @@ export default function ProfileLayout() {
       <Stack.Screen
         name="index" // profile/index.tsx
         options={{
-          headerTitle: "Profile", // only for the main page
+          headerShown: false,
         }}
       />
 

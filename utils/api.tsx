@@ -42,6 +42,10 @@ export const fetchMyProfile = async () => {
   return getApi(`/users/my-profile/`);
 };
 
+export const fetchUserProfile = async (username: string) => {
+  return getApi(`/users/profiles/${username}/`);
+}
+
 /**
  * Get the post counts of given user id
  * If user is current user, will return the post counts of all posts

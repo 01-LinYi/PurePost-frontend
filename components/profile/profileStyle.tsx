@@ -1,6 +1,6 @@
 import { StyleSheet, Platform } from "react-native";
 
-// 增强的颜色系统，基于主题色 #00c5e3
+// #00c5e3
 const COLORS = {
   primary: "#00c5e3",
   primaryLight: "#33d1ea",
@@ -13,7 +13,6 @@ const COLORS = {
   textSecondary: "#4B5563",
   textLight: "#6B7280",
   divider: "#F3F4F6",
-  // 新增颜色
   primaryTransparent: "rgba(0, 197, 227, 0.1)",
   primaryUltraLight: "rgba(0, 197, 227, 0.05)",
 };

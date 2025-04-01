@@ -18,4 +18,6 @@ export interface UserProfile {
     is_active?: boolean;
     verified?: boolean;
     stats?: UserStats;
+    isFollowing?: boolean;
+    isMe?: boolean;
   }
