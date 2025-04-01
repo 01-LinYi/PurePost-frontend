@@ -8,12 +8,17 @@ import {
 } from "react-native";
 import { View, Text } from "./Themed";
 import { LinearGradient } from "expo-linear-gradient";
+import { Ionicons } from "@expo/vector-icons";
 
 export interface GradientButtonProps {
   onPress: () => void;
-  text: string;
+  text?: string;
   icon?: React.ReactNode;
-  gradientColors?: string[];
+  iconName?: string;
+  iconSize?: number;
+  iconColor?: string;
+  iconPosition?: "left" | "right";
+  gradientColors?: [string, string, ...string[]];
   gradientStart?: { x: number; y: number };
   gradientEnd?: { x: number; y: number };
   disabled?: boolean;
@@ -22,6 +27,8 @@ export interface GradientButtonProps {
   textStyle?: TextStyle;
   uppercase?: boolean;
   borderRadius?: number; // Configure the border radius
+  outline?: boolean;
+  outlineColor?: string;
 }
 
 const GradientButton = memo(
@@ -29,6 +36,10 @@ const GradientButton = memo(
     onPress,
     text,
     icon,
+    iconName,
+    iconSize = 16,
+    iconColor = "#FFF",
+    iconPosition = "left",
     gradientColors = ["#00c5e3", "#0072ff"],
     gradientStart = { x: 0, y: 0 },
     gradientEnd = { x: 1, y: 0 },
@@ -37,12 +48,17 @@ const GradientButton = memo(
     style,
     textStyle,
     uppercase = true,
-    borderRadius = 20, // 默认值为 20
+    borderRadius = 20,
+    outline = false,
+    outlineColor,
   }: GradientButtonProps) => {
-    // 创建动态样式
     const buttonContainerStyle = {
       ...styles.buttonContainer,
       borderRadius,
+      ...(outline && {
+        borderWidth: 1,
+        borderColor: outlineColor || gradientColors[0],
+      }),
     };
 
     const gradientStyle = {
@@ -50,8 +66,14 @@ const GradientButton = memo(
       borderRadius,
     };
 
+    const buttonIcon =
+      icon ||
+      (iconName && (
+        <Ionicons name={iconName as any} size={iconSize} color={iconColor} />
+      ));
+
     return (
-      <View>
+      <View style={styles.container}>
         <TouchableOpacity
           style={[
             buttonContainerStyle,
@@ -63,7 +85,11 @@ const GradientButton = memo(
           disabled={disabled || loading}
         >
           <LinearGradient
-            colors={disabled ? ["#b0b0b0", "#8a8a8a"] : gradientColors}
+            colors={
+              disabled
+                ? ["#b0b0b0", "#8a8a8a"]
+                : (gradientColors as [string, string, ...string[]])
+            }
             start={gradientStart}
             end={gradientEnd}
             style={gradientStyle}
@@ -72,7 +98,10 @@ const GradientButton = memo(
               <ActivityIndicator color="#FFF" size="small" />
             ) : (
               <>
-                {icon && <View style={styles.iconContainer}>{icon}</View>}
+                {buttonIcon && iconPosition === "left" && (
+                  <View style={styles.iconContainer}>{buttonIcon}</View>
+                )}
+
                 <Text
                   style={[
                     styles.text,
@@ -82,6 +111,10 @@ const GradientButton = memo(
                 >
                   {text}
                 </Text>
+
+                {buttonIcon && iconPosition === "right" && (
+                  <View style={styles.iconContainerRight}>{buttonIcon}</View>
+                )}
               </>
             )}
           </LinearGradient>
@@ -96,6 +129,9 @@ GradientButton.displayName = "GradientButton";
 export default GradientButton;
 
 const styles = StyleSheet.create({
+  container: {
+    backgroundColor: "transparent",
+  },
   buttonContainer: {
     overflow: "hidden",
   },
@@ -104,7 +140,7 @@ const styles = StyleSheet.create({
   },
   gradient: {
     paddingVertical: 12,
-    paddingHorizontal: 25,
+    paddingHorizontal: 20, // 略微缩小以适应两个按钮并排
     alignItems: "center",
     justifyContent: "center",
     flexDirection: "row",
@@ -113,11 +149,17 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600",
     color: "#fff",
+    backgroundColor: "transparent",
   },
   uppercase: {
     textTransform: "uppercase",
   },
   iconContainer: {
     marginRight: 8,
+    backgroundColor: "transparent",
+  },
+  iconContainerRight: {
+    marginLeft: 8,
+    backgroundColor: "transparent",
   },
 });

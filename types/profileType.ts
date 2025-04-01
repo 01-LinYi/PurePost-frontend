@@ -1,7 +1,8 @@
 export interface UserStats {
-  posts: string | number;
-  followers: string | number;
-  following: string | number;
+  posts_count: number;
+  public_posts_count?: number;
+  followers_count: number;
+  following_count: number;
 }
 
 export interface UserProfile {
@@ -17,4 +18,6 @@ export interface UserProfile {
     is_active?: boolean;
     verified?: boolean;
     stats?: UserStats;
+    isFollowing?: boolean;
+    isMe?: boolean;
   }

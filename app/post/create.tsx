@@ -10,20 +10,26 @@ import {
   KeyboardAvoidingView,
   TouchableOpacity,
   Text as Text,
+  Switch,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router, useNavigation } from "expo-router";
 import axiosInstance from "@/utils/axiosInstance";
+import { formatUploadFileName } from "@/utils/formatUploadFileName";
 import MediaPreview from "@/components/MediaPreview";
 import ActionButton from "@/components/ActionButton";
 import { Media } from "@/types/postType";
 
 const getMediaType = (uri: string): string => {
   const uriLower = uri.toLowerCase();
-  if (uriLower.endsWith(".mp4") || uriLower.endsWith(".mov") || 
-      uriLower.endsWith(".avi") || uriLower.endsWith(".wmv")) {
+  if (
+    uriLower.endsWith(".mp4") ||
+    uriLower.endsWith(".mov") ||
+    uriLower.endsWith(".avi") ||
+    uriLower.endsWith(".wmv")
+  ) {
     return "video";
   }
   return "image";
@@ -35,6 +41,8 @@ const CreatePost = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [visibility, setVisibility] = useState<"public" | "private">("public");
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState<boolean>(false);
+  const [hasDisclaimer, setHasDisclaimer] = useState<boolean>(false);
+  const [disclaimerText, setDisclaimerText] = useState<string>("");
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
 
@@ -66,6 +74,15 @@ const CreatePost = () => {
     return unsubscribe;
   }, [navigation, postText, media]);
 
+  // Toggle disclaimer
+  const toggleDisclaimer = useCallback(() => {
+    setHasDisclaimer(!hasDisclaimer);
+    if (!hasDisclaimer === false) {
+      setDisclaimerText("");
+    }
+  }, [hasDisclaimer]);
+
+
   const pickMedia = useCallback(async () => {
     try {
       const { status } =
@@ -91,23 +108,26 @@ const CreatePost = () => {
         // Check file size limits
         const fileSize = asset.fileSize || 0;
         const mediaType = getMediaType(asset.uri);
-        
+
         if (mediaType === "image" && fileSize > 5 * 1024 * 1024) {
           Alert.alert("Error", "Image size cannot exceed 5MB");
           setIsLoading(false);
           return;
         }
-        
+
         if (mediaType === "video" && fileSize > 50 * 1024 * 1024) {
           Alert.alert("Error", "Video size cannot exceed 50MB");
           setIsLoading(false);
           return;
         }
-        
-        setMedia({ 
-          uri: asset.uri, 
+
+        setMedia({
+          uri: asset.uri,
           type: mediaType,
-          name: asset.fileName || `${Date.now()}.${asset.uri.split('.').pop()}` 
+          name: formatUploadFileName(
+            mediaType as "image" | "video",
+            asset.fileName || "media"
+          ),
         });
       }
     } catch (error) {
@@ -151,10 +171,13 @@ const CreatePost = () => {
         const uriParts = media.uri.split("/");
         const fileName = uriParts[uriParts.length - 1];
         const fileType = media.type === "video" ? "video" : "image";
-        
+
         // @ts-ignore - RN FormData type issue
         formData.append(fileType, {
-          uri: Platform.OS === "android" ? media.uri : media.uri.replace("file://", ""),
+          uri:
+            Platform.OS === "android"
+              ? media.uri
+              : media.uri.replace("file://", ""),
           name: media.name || fileName,
           type: media.type === "video" ? "video/mp4" : "image/jpeg", // Simplified for example
         });
@@ -182,6 +205,8 @@ const CreatePost = () => {
       setPostText("");
       setMedia(null);
       setHasUnsavedChanges(false);
+      setHasDisclaimer(false);
+      setDisclaimerText("");
     } catch (error) {
       const errorMessage =
         (error as any)?.response?.data?.detail ||
@@ -234,6 +259,41 @@ const CreatePost = () => {
         <Text style={styles.charCount}>{postText.length}/2000</Text>
 
         <MediaPreview media={media} onRemove={removeMedia} />
+
+        {/* Disclaimer Toggle */}
+        <View style={styles.disclaimerToggleContainer}>
+          <View style={styles.disclaimerToggleRow}>
+            <View style={styles.disclaimerLabelContainer}>
+              <Ionicons name="warning-outline" size={20} color="#00c5e3" />
+              <Text style={styles.disclaimerLabel}>Add Content Disclaimer</Text>
+            </View>
+            <Switch
+              value={hasDisclaimer}
+              onValueChange={toggleDisclaimer}
+              trackColor={{ false: '#e0e0e0', true: '#00c5e3' }}
+              thumbColor={hasDisclaimer ? '#00c5e3' : '#f4f3f4'}
+              ios_backgroundColor="#f9f9f9"
+            />
+          </View>
+        </View>
+
+        {/* Disclaimer Input Field - only shown when disclaimer is enabled */}
+        {hasDisclaimer && (
+          <View style={styles.disclaimerInputContainer}>
+            <TextInput
+              style={styles.disclaimerInput}
+              placeholder="Enter content disclaimer message..."
+              placeholderTextColor="#9E9E9E"
+              multiline
+              value={disclaimerText}
+              onChangeText={setDisclaimerText}
+              maxLength={200}
+              returnKeyType="default"
+              textAlignVertical="top"
+            />
+            <Text style={styles.disclaimerCharCount}>{disclaimerText.length}/200</Text>
+          </View>
+        )}
 
         <View style={styles.visibilityContainer}>
           <TouchableOpacity
@@ -346,6 +406,53 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#9E9E9E",
     marginBottom: 16,
+  },
+  disclaimerToggleContainer: {
+    marginBottom: 12,
+    backgroundColor: "#f9f9f9",
+    borderRadius: 8,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: "#00c5e3",
+  },
+  disclaimerToggleRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: "#f9f9f9",
+  },
+  disclaimerLabelContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#f9f9f9",
+  },
+  disclaimerLabel: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#00c5e3",
+    backgroundColor: "#f9f9f9",
+    marginLeft: 8,
+  },
+  disclaimerInputContainer: {
+    marginBottom: 16,
+  },
+  disclaimerInput: {
+    width: "100%",
+    minHeight: 80,
+    borderWidth: 1,
+    borderColor: "#00c5e3",
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 14,
+    backgroundColor: "#f9f9f9",
+    textAlignVertical: "top",
+    marginBottom: 4,
+    color: "#555555",
+  },
+  disclaimerCharCount: {
+    alignSelf: "flex-end",
+    fontSize: 12,
+    color: "#9E9E9E",
   },
   visibilityContainer: {
     marginTop: 8,

@@ -7,7 +7,7 @@ export default function ProfileLayout() {
       <Stack.Screen
         name="index" // profile/index.tsx
         options={{
-          headerTitle: "Profile", // only for the main page
+          headerShown: false,
         }}
       />
 
@@ -30,7 +30,7 @@ export default function ProfileLayout() {
       <Stack.Screen
         name="edit"
         options={{
-          headerTitle: "Edit Profile",
+          headerShown: false,
         }}
       />
     </Stack>

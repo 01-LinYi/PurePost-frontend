@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   StyleSheet,
   Alert,
@@ -13,215 +13,184 @@ import { Text, View } from "@/components/Themed";
 import ActionButton from "@/components/ActionButton";
 import PostContent from "@/components/post/PostContent";
 import CommentInput from "@/components/post/CommentInput";
-import axiosInstance from "@/utils/axiosInstance";
-// Import types from the separate file
+import * as api from "@/utils/api";
 import { Post, Comment } from "@/types/postType";
 import { transformApiPostToPost } from "../my_posts";
-
-// API functions for interacting with posts
-const fetchPost = async (id: string): Promise<Post & { comments: Comment[] }> => {
-  try {
-    const response = await axiosInstance.get(`/content/posts/${id}/`);
-    console.log(response.data);
-    return response.data;
-  } catch (error) {
-    console.error("Error fetching post:", error);
-    throw error;
-  }
-};
-
-const likePost = async (id: string): Promise<void> => {
-  try {
-    await axiosInstance.post(`/content/posts/${id}/like/`);
-  } catch (error) {
-    console.error("Error liking post:", error);
-    throw error;
-  }
-};
-
-const unlikePost = async (id: string): Promise<void> => {
-  try {
-    await axiosInstance.post(`/content/posts/${id}/unlike/`);
-  } catch (error) {
-    console.error("Error unliking post:", error);
-    throw error;
-  }
-};
-
-const toggleSavePost = async (postId: string, folderId?: string): Promise<void> => {
-  try {
-    await axiosInstance.post(`/content/saved-posts/toggle/`, {
-      post_id: postId,
-      folder_id: folderId
-    });
-  } catch (error) {
-    console.error("Error toggling save status:", error);
-    throw error;
-  }
-};
-
-// Note: No API endpoint for comments seems to be specified in the documentation
-// We'll simulate this functionality entirely in the frontend
-const simulateAddComment = (text: string): Comment => {
-  return {
-    id: `local-${Date.now()}`,
-    text,
-    author: { id: "currentuser", name: "You", avatar: "" },
-    createdAt: new Date().toISOString(),
-  };
-};
+import { performOptimisticUpdate } from "@/utils/optimiticeUP";
 
 const PostDetail = () => {
   const { id } = useLocalSearchParams();
-  const [post, setPost] = useState<Post | null>(null);
-  const [comments, setComments] = useState<Comment[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isLiked, setIsLiked] = useState(false);
-  const [isSaved, setIsSaved] = useState(false);
-  const [likesCount, setLikesCount] = useState(0);
-  const [shareCount, setShareCount] = useState(0); // Initialize share count to 0
-  const [isSubmittingAction, setIsSubmittingAction] = useState(false);
   const insets = useSafeAreaInsets();
 
-  useEffect(() => {
-    const loadPostData = async () => {
-      try {
-        setIsLoading(true);
-        console.log(`Fetching post with ID: ${String(id)}`);
-        const data = await fetchPost(String(id));
-        setComments(data?.comments || []);
-        let postData = transformApiPostToPost(data as any);
-        setPost(postData);
-        setIsLiked(data.isLiked);
-        setIsSaved(data.isSaved || false);
-        setLikesCount(data?.likesCount || 0);
-        // Set initial share count from API data if available
-        setShareCount(data?.shareCount || 0);
-        
-      } catch (error) {
-        Alert.alert(
-          "Error",
-          "Failed to load post: " +
-            ((error as Error).message || "Unknown error")
-        );
-        console.error("Post loading error:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  const [postData, setPostData] = useState<{
+    post: Post | null;
+    comments: Comment[];
+    isLiked: boolean;
+    isSaved: boolean;
+    likesCount: number;
+    shareCount: number;
+  }>({
+    post: null,
+    comments: [],
+    isLiked: false,
+    isSaved: false,
+    likesCount: 0,
+    shareCount: 0,
+  });
+  const [uiState, setUiState] = useState({
+    isLoading: true,
+    isSubmittingAction: false,
+  });
 
-    loadPostData();
+  const { post, comments, isLiked, isSaved, likesCount, shareCount } = postData;
+  const { isLoading, isSubmittingAction } = uiState;
+
+  const loadPostData = useCallback(async () => {
+    if (typeof id !== "string") {
+      Alert.alert("Error", "Invalid post ID");
+      return;
+    }
+
+    try {
+      setUiState((prev) => ({ ...prev, isLoading: true }));
+      console.log(`Fetching post with ID: ${id}`);
+
+      const res = await api.fetchSinglePosts(id);
+      const data = res.data;
+      console.log("Post data:", data);
+      const transformedPost = transformApiPostToPost(data);
+
+      setPostData({
+        post: transformedPost,
+        comments: data?.comments || [],
+        isLiked: data.isLiked || false,
+        isSaved: data.isSaved || false,
+        likesCount: data?.likesCount || 0,
+        shareCount: data?.shareCount || 0,
+      });
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
+      Alert.alert("Error", "Failed to load post: " + errorMessage);
+    } finally {
+      setUiState((prev) => ({ ...prev, isLoading: false }));
+    }
   }, [id]);
 
+  useEffect(() => {
+    loadPostData();
+  }, [loadPostData]);
+
+  // 事件处理函数
   const handleLike = async () => {
     if (!post || isSubmittingAction) return;
-    
-    try {
-      setIsSubmittingAction(true);
-      const newIsLiked = !isLiked;
-      
-      // Update UI immediately for better UX
-      setIsLiked(newIsLiked);
-      setLikesCount((prev) => prev + (newIsLiked ? 1 : -1));
-      
-      // Call API
-      if (newIsLiked) {
-        await likePost(post.id);
-      } else {
-        await unlikePost(post.id);
-      }
-      
+
+    setUiState((prev) => ({ ...prev, isSubmittingAction: true }));
+
+    const newIsLiked = !isLiked;
+
+    const result = await performOptimisticUpdate({
+      updateUI: () => {
+        setPostData((prev) => ({
+          ...prev,
+          isLiked: newIsLiked,
+          likesCount: prev.likesCount + (newIsLiked ? 1 : -1),
+        }));
+      },
+      apiCall: async () =>
+        newIsLiked
+          ? api.likePost(Number(post.id))
+          : api.unlikePost(Number(post.id)),
+      rollbackUI: () => {
+        setPostData((prev) => ({
+          ...prev,
+          isLiked: !newIsLiked,
+          likesCount: prev.likesCount + (newIsLiked ? -1 : 1),
+        }));
+      },
+      errorMessagePrefix: `Failed to ${newIsLiked ? "like" : "unlike"} post: `,
+    });
+
+    if (result) {
       console.log(`Post ${post.id} ${newIsLiked ? "liked" : "unliked"}`);
-    } catch (error) {
-      // Revert UI changes if API call fails
-      setIsLiked(!isLiked);
-      setLikesCount((prev) => prev + (isLiked ? 1 : -1));
-      
-      Alert.alert(
-        "Error",
-        `Failed to ${isLiked ? "unlike" : "like"} post: ` +
-          ((error as Error).message || "Unknown error")
-      );
-    } finally {
-      setIsSubmittingAction(false);
     }
+
+    if (result) {
+      console.log(`Post ${post.id} ${newIsLiked ? "liked" : "unliked"}`);
+    }
+
+    setUiState((prev) => ({ ...prev, isSubmittingAction: false }));
   };
 
-  const handleEdit = () => post && router.push(`/post/${post.id}/edit`);
-  
-  // Simulate share functionality without API call
-  const handleShare = () => {
-    // Toggle share count between 0 and 1 for simulation purposes
-    setShareCount(prevCount => prevCount === 0 ? 1 : 0);
-    
-    // Log the simulated share operation
-    console.log(`Simulated share operation, current share count: ${shareCount === 0 ? 1 : 0}`);
-    
-    // Show success message
+  const handleEdit = useCallback(() => {
+    if (post) router.push(`/post/${post.id}/edit`);
+  }, [post]);
+
+  const handleShare = useCallback(() => {
+    // 模拟分享功能
+    const newShareCount = shareCount === 0 ? 1 : 0;
+
+    setPostData((prev) => ({
+      ...prev,
+      shareCount: newShareCount,
+    }));
+
+    console.log(`Simulated share operation, new share count: ${newShareCount}`);
     Alert.alert(
-      "Share Success", 
-      `Content has been shared. Current share count: ${shareCount === 0 ? 1 : 0}`
+      "Share Success",
+      `Content has been shared. Current share count: ${newShareCount}`
     );
-  };
-  
+  }, [shareCount]);
+
   const handleSave = async () => {
     if (!post || isSubmittingAction) return;
-    
-    try {
-      setIsSubmittingAction(true);
-      
-      // Update UI immediately for better UX
-      setIsSaved(!isSaved);
-      
-      // Call API to toggle save status
-      await toggleSavePost(post.id);
-      
-      Alert.alert(
-        "Success", 
-        isSaved ? "Post removed from saved items" : "Post saved successfully!"
-      );
-    } catch (error) {
-      // Revert UI changes if API call fails
-      setIsSaved(!isSaved);
-      
-      Alert.alert(
-        "Error",
-        `Failed to ${isSaved ? "unsave" : "save"} post: ` +
-          ((error as Error).message || "Unknown error")
-      );
-    } finally {
-      setIsSubmittingAction(false);
-    }
+
+    setUiState((prev) => ({ ...prev, isSubmittingAction: true }));
+
+    const newIsSaved = !isSaved;
+
+    const result = await performOptimisticUpdate({
+      updateUI: () => {
+        setPostData((prev) => ({
+          ...prev,
+          isSaved: newIsSaved,
+        }));
+      },
+      apiCall: async () => api.toggleSavePost(post.id),
+      rollbackUI: () => {
+        setPostData((prev) => ({
+          ...prev,
+          isSaved: !newIsSaved,
+        }));
+      },
+      successMessage: newIsSaved
+        ? "Post saved successfully!"
+        : "Post removed from saved items",
+      errorMessagePrefix: `Failed to ${newIsSaved ? "save" : "unsave"} post: `,
+    });
+
+    setUiState((prev) => ({ ...prev, isSubmittingAction: false }));
   };
 
-  // Simulate adding a comment without API call
-  const handleAddComment = (text: string) => {
+  const handleAddComment = async (text: string) => {
     if (!text.trim() || !post || isSubmittingAction) return;
 
-    try {
-      setIsSubmittingAction(true);
-      
-      // Create a new comment object
-      const newComment = simulateAddComment(text);
-      
-      // Add to state directly without API call
-      setComments(prev => [newComment, ...prev]);
-      
-      console.log(`Simulated comment added: ${text}`);
-      
-    } catch (error) {
-      Alert.alert(
-        "Error",
-        "Failed to add comment: " + 
-          ((error as Error).message || "Unknown error")
-      );
-    } finally {
-      setIsSubmittingAction(false);
+    setUiState((prev) => ({ ...prev, isSubmittingAction: true }));
+
+    const result = await performOptimisticUpdate({
+      updateUI: () => {},
+      apiCall: () => api.addComment(post.id, text),
+      rollbackUI: () => {},
+      errorMessagePrefix: "Failed to add comment: ",
+    });
+
+    if (result) {
+      console.log(`Comment added successfully: ${text}`);
+
+      await loadPostData();
     }
-  };
-  
-  const handleGoBack = () => {
-    router.back();
+
+    setUiState((prev) => ({ ...prev, isSubmittingAction: false }));
   };
 
   if (isLoading) {
@@ -250,7 +219,6 @@ const PostDetail = () => {
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
-      {/* Fixed Edit Button - Only show if current user is the author */}
       {post.isAuthor && (
         <TouchableOpacity
           style={[styles.editButton, { top: insets.top + 10 }]}
@@ -268,7 +236,7 @@ const PostDetail = () => {
         isSaved={isSaved}
         likesCount={likesCount}
         commentsCount={comments.length}
-        shareCount={shareCount} // Pass share count to PostContent component
+        shareCount={shareCount}
         comments={comments}
         onLike={handleLike}
         onEdit={post.isAuthor ? handleEdit : undefined}

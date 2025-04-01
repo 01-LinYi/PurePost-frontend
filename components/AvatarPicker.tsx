@@ -1,19 +1,18 @@
 // components/AvatarPicker.tsx
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   StyleSheet,
-  View,
   Image,
   TouchableOpacity,
   Alert,
   ActivityIndicator,
   Platform,
-} from 'react-native';
-import { Text } from './Themed';
-import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
-import * as ImagePicker from 'expo-image-picker';
-import * as ImageManipulator from 'expo-image-manipulator';
+} from "react-native";
+import { Text, View } from "./Themed";
+import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
+import * as ImagePicker from "expo-image-picker";
+import * as ImageManipulator from "expo-image-manipulator";
 
 // Color palette based on #00c5e3
 const COLORS = {
@@ -26,7 +25,7 @@ const COLORS = {
 
 interface AvatarPickerProps {
   currentAvatar?: string;
-  onAvatarChange: (uri: string) => void;
+  onAvatarChange: (uri: string, file?: any) => void;
   size?: number;
   onError?: () => void;
 }
@@ -35,7 +34,7 @@ const AvatarPicker: React.FC<AvatarPickerProps> = ({
   currentAvatar,
   onAvatarChange,
   size = 100,
-  onError
+  onError,
 }) => {
   const [avatar, setAvatar] = useState<string | null>(currentAvatar || null);
   const [isLoading, setIsLoading] = useState(false);
@@ -44,15 +43,16 @@ const AvatarPicker: React.FC<AvatarPickerProps> = ({
   // Calculate dimensions based on the given size
   const gradientSize = size;
   const innerSize = size - 6; // 3px padding on each side
-  
+
   // Request permissions for camera and media library
   const requestPermissions = async () => {
     // Request camera permissions
     const cameraPermission = await ImagePicker.requestCameraPermissionsAsync();
-    
+
     // Request media library permissions
-    const mediaLibraryPermission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    
+    const mediaLibraryPermission =
+      await ImagePicker.requestMediaLibraryPermissionsAsync();
+
     if (!cameraPermission.granted && !mediaLibraryPermission.granted) {
       Alert.alert(
         "Permissions Required",
@@ -61,7 +61,7 @@ const AvatarPicker: React.FC<AvatarPickerProps> = ({
       );
       return false;
     }
-    
+
     // If at least one is granted, we can proceed
     return cameraPermission.granted || mediaLibraryPermission.granted;
   };
@@ -71,23 +71,21 @@ const AvatarPicker: React.FC<AvatarPickerProps> = ({
     try {
       // Define the target size for the avatar (we want a square)
       const targetSize = 500; // A reasonable size that balances quality and file size
-      
+
       // Process the image using the ImageManipulator.manipulate() method
       const manipulatorResult = await ImageManipulator.manipulateAsync(
         uri,
-        [
-          { resize: { width: targetSize, height: targetSize } }
-        ],
-        { 
-          compress: 0.8, 
-          format: ImageManipulator.SaveFormat.JPEG
+        [{ resize: { width: targetSize, height: targetSize } }],
+        {
+          compress: 0.8,
+          format: ImageManipulator.SaveFormat.JPEG,
         }
       );
-      
+
       return manipulatorResult.uri;
     } catch (error) {
-      console.error('Error processing image:', error);
-      Alert.alert('Error', 'Failed to process the image. Please try again.');
+      console.error("Error processing image:", error);
+      Alert.alert("Error", "Failed to process the image. Please try again.");
       return uri; // Return original if processing fails
     }
   };
@@ -97,32 +95,28 @@ const AvatarPicker: React.FC<AvatarPickerProps> = ({
     // Check permissions first
     const hasPermissions = await requestPermissions();
     if (!hasPermissions) return;
-    
-    Alert.alert(
-      "Change Profile Photo",
-      "Choose an option",
-      [
-        {
-          text: "Take Photo",
-          onPress: () => pickImage(true),
-        },
-        {
-          text: "Choose from Gallery",
-          onPress: () => pickImage(false),
-        },
-        {
-          text: "Cancel",
-          style: "cancel",
-        },
-      ]
-    );
+
+    Alert.alert("Change Profile Photo", "Choose an option", [
+      {
+        text: "Take Photo",
+        onPress: () => pickImage(true),
+      },
+      {
+        text: "Choose from Gallery",
+        onPress: () => pickImage(false),
+      },
+      {
+        text: "Cancel",
+        style: "cancel",
+      },
+    ]);
   };
 
   // Pick an image from camera or gallery
   const pickImage = async (useCamera: boolean) => {
     try {
       setIsLoading(true);
-      
+
       // Define options for the image picker
       const options: ImagePicker.ImagePickerOptions = {
         mediaTypes: ["images"],
@@ -130,27 +124,39 @@ const AvatarPicker: React.FC<AvatarPickerProps> = ({
         aspect: [1, 1], // Square aspect ratio
         quality: 1,
       };
-      
+
       // Launch camera or image library
-      const result = useCamera 
+      const result = useCamera
         ? await ImagePicker.launchCameraAsync(options)
         : await ImagePicker.launchImageLibraryAsync(options);
-      
+
       // If the user didn't cancel
       if (!result.canceled && result.assets && result.assets.length > 0) {
         // Process the image
-        const processedUri = await processImage(result.assets[0].uri);
-        
+        const originalUri = result.assets[0].uri;
+        const processedUri = await processImage(originalUri);
+
+        // get the file name
+        const uriParts = originalUri.split("/");
+        const fileName = uriParts[uriParts.length - 1];
+
+        // create a file object
+        const file = {
+          uri: processedUri,
+          name: fileName || "profile-picture.png",
+          type: "image/png",
+        };
+
         // Update local state
         setAvatar(processedUri);
         setImageError(false);
-        
-        // Notify parent component
-        onAvatarChange(processedUri);
+
+        // Notify parent component with both uri and file object
+        onAvatarChange(processedUri, file);
       }
     } catch (error) {
-      console.error('Error picking image:', error);
-      Alert.alert('Error', 'Failed to select image. Please try again.');
+      console.error("Error picking image:", error);
+      Alert.alert("Error", "Failed to select image. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -165,20 +171,28 @@ const AvatarPicker: React.FC<AvatarPickerProps> = ({
   };
 
   // Determine the image source
-  const imageSource = imageError || !avatar
-    ? { uri: "https://picsum.photos/200" }
-    : { uri: avatar };
+  const imageSource =
+    imageError || !avatar
+      ? { uri: "https://picsum.photos/200" }
+      : { uri: avatar };
 
   return (
     <View style={styles.container}>
-      <TouchableOpacity 
-        style={[styles.avatarContainer, { height: size, width: size }]} 
+      <TouchableOpacity
+        style={[styles.avatarContainer, { height: size, width: size }]}
         onPress={showImagePickerOptions}
         disabled={isLoading}
       >
         <LinearGradient
           colors={[COLORS.primary, COLORS.accent]}
-          style={[styles.avatarGradientBorder, { height: gradientSize, width: gradientSize, borderRadius: gradientSize / 2 }]}
+          style={[
+            styles.avatarGradientBorder,
+            {
+              height: gradientSize,
+              width: gradientSize,
+              borderRadius: gradientSize / 2,
+            },
+          ]}
         >
           {isLoading ? (
             <ActivityIndicator size="large" color={COLORS.primary} />
@@ -186,19 +200,19 @@ const AvatarPicker: React.FC<AvatarPickerProps> = ({
             <Image
               source={imageSource}
               style={[
-                styles.avatar, 
-                { 
-                  height: innerSize, 
-                  width: innerSize, 
-                  borderRadius: innerSize / 2 
-                }
+                styles.avatar,
+                {
+                  height: innerSize,
+                  width: innerSize,
+                  borderRadius: innerSize / 2,
+                },
               ]}
               onError={handleImageError}
             />
           )}
         </LinearGradient>
-        
-        <TouchableOpacity 
+
+        <TouchableOpacity
           style={styles.changeAvatarButton}
           onPress={showImagePickerOptions}
           disabled={isLoading}
@@ -206,7 +220,7 @@ const AvatarPicker: React.FC<AvatarPickerProps> = ({
           <Ionicons name="camera" size={18} color={COLORS.cardBackground} />
         </TouchableOpacity>
       </TouchableOpacity>
-      
+
       <Text style={styles.changePhotoText}>Change Profile Photo</Text>
     </View>
   );
@@ -214,15 +228,15 @@ const AvatarPicker: React.FC<AvatarPickerProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    alignItems: 'center',
+    alignItems: "center",
   },
   avatarContainer: {
-    position: 'relative',
+    position: "relative",
   },
   avatarGradientBorder: {
     padding: 3,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     ...Platform.select({
       ios: {
         shadowColor: COLORS.text,
@@ -240,15 +254,15 @@ const styles = StyleSheet.create({
     borderColor: COLORS.cardBackground,
   },
   changeAvatarButton: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 0,
     right: 0,
     backgroundColor: COLORS.primary,
     width: 30,
     height: 30,
     borderRadius: 15,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     borderWidth: 2,
     borderColor: COLORS.cardBackground,
     ...Platform.select({
@@ -266,7 +280,7 @@ const styles = StyleSheet.create({
   changePhotoText: {
     marginTop: 12,
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: "500",
     color: COLORS.primary,
   },
 });
