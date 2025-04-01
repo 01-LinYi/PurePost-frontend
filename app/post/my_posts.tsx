@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   RefreshControl,
   ActivityIndicator,
-  View as RNView,
 } from "react-native";
 import { router } from "expo-router";
 import { Text, View } from "@/components/Themed";
@@ -104,9 +103,9 @@ export default function MyPosts() {
 
       {/* Loading overlay */}
       {isLoading && !isRefreshing && (
-        <RNView style={styles.loadingOverlay}>
+        <View style={styles.loadingOverlay}>
           <ActivityIndicator size="large" color="#00c5e3" />
-        </RNView>
+        </View>
       )}
     </View>
   );

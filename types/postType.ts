@@ -23,7 +23,9 @@ export interface User {
 export interface Media {
   image?: string;
   video?: string;
-  type?: string;
+  type: string;
+  name?: string;
+  uri?: string;
 }
 
 export interface Comment {

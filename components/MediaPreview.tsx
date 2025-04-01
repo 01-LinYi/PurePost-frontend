@@ -3,11 +3,8 @@ import { View } from "./Themed";
 import { Image, TouchableOpacity, StyleSheet, Platform } from "react-native";
 import Video from "react-native-video";
 import { Ionicons } from "@expo/vector-icons";
+import {Media} from "@/types/postType";
 
-interface Media {
-  uri: string;
-  type: string;
-}
 
 interface MediaPreviewProps {
   media: Media | null;
