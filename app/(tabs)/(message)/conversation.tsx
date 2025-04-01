@@ -122,7 +122,7 @@ export default function ConversationListScreen() {
     setIsRetrying(false);
     try {
       const data = await getAllConversation();
-      setConversations(data);
+      setConversations(data.results);
       setError(null);
     } catch (error) {
       console.error("Error fetching conversations:", error);
@@ -208,7 +208,7 @@ export default function ConversationListScreen() {
         params: { username: searchUsername },
       });
       if (response.status === 200) {
-        setSearchResults(response.data);
+        setSearchResults(response.data.results);
         setError(null);
       } else {
         throw new Error(`User search failed: ${response.statusText}`);
