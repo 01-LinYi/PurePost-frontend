@@ -1,104 +1,169 @@
-// app/profile/user/[id].tsx
-import { useState, useEffect, useRef } from "react";
-import { Alert, StyleSheet, View, Animated } from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
+// app/profile/user/[username].tsx
+import { useState, useEffect } from "react";
+import { Alert, StyleSheet, Animated } from "react-native";
+import { useLocalSearchParams } from "expo-router";
 
-import AnimatedProfileHeader from "@/components/profile/ProfileHeader";
 import ProfileView from "@/components/profile/ProfileView";
+import AnimatedProfileHeader from "@/components/profile/ProfileHeader";
+import { View } from "@/components/Themed";
+import { DefaultProfile, MOCK_STATS } from "@/constants/DefaultProfile";
+import { useMyPosts } from "@/hooks/useMyPosts";
+import { useSocialStats } from "@/hooks/useSocialStat";
+import useProfileCache from "@/hooks/useProfileCache";
 import * as api from "@/utils/api";
-import { DefaultProfile } from "@/constants/DefaultProfile";
-import { UserProfile } from "@/types/profileType";
 
 export default function UserProfileScreen() {
   const { username } = useLocalSearchParams();
-  const router = useRouter();
-  const [profileData, setProfileData] = useState<UserProfile | null>(null);
+  const profileUsername = typeof username === 'string' ? username : '';
+  
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [dataLoading, setDataLoading] = useState(true);
+  const [isFollowing, setIsFollowing] = useState(false);
+  
+  const {
+    profileData,
+    cacheStatus,
+    cacheInfo,
+    saveProfileToCache,
+    loadProfileFromCache,
+    isCacheExpired,
+  } = useProfileCache();
+  
+  const { totalPosts } = useMyPosts({ userId: profileUsername });
+  
+  const { socialStats, refreshSocialStats } = useSocialStats({ 
+    userId: profileUsername
+  });
 
-  // Create an animated scroll value
-  const scrollY = useRef(new Animated.Value(0)).current;
-
-  // Fetch user profile data
+  /**
+   * Fetch user profile data from API
+   */
   const fetchUserData = async (forceRefresh = false) => {
-    if (!username) return;
-
     try {
       setDataLoading(true);
 
-      // Call API to get user profile by ID
-      const response = await api.fetchUserProfile(username as string);
-
-      if (response.data) {
-        setProfileData(response.data);
-      } else {
-        // Handle no data returned
-        Alert.alert("Error", "Failed to load user profile.");
-        setProfileData(DefaultProfile); // Use default as fallback
+      if (!forceRefresh) {
+        const isExpired = await isCacheExpired();
+        if (!isExpired) {
+          const cachedData = await loadProfileFromCache();
+          if (cachedData) {
+            setDataLoading(false);
+            return;
+          }
+        }
       }
+
+      const response = await api.fetchUserProfile(profileUsername);
+      console.log("User Profile response:", response.data);
+      if (response.data) {
+        const userData = {
+          ...response.data,
+          isOwnProfile: false,
+          stats: MOCK_STATS,
+        };
+
+        await saveProfileToCache(userData);
+      } else {
+        // Save default profile if API returns nothing
+        const defaultUserProfile = {
+          ...DefaultProfile,
+          username: profileUsername,
+          isOwnProfile: false
+        };
+        await saveProfileToCache(defaultUserProfile);
+      }
+
+      setDataLoading(false);
     } catch (error) {
       console.error("Error fetching user data:", error);
-      Alert.alert("Error", "Failed to load user profile.");
-      setProfileData(DefaultProfile); // Use default as fallback
-    } finally {
+      
+      const cachedData = await loadProfileFromCache();
+      if (!cachedData) {
+        const defaultUserProfile = {
+          ...DefaultProfile,
+          username: profileUsername,
+          isOwnProfile: false
+        };
+        await saveProfileToCache(defaultUserProfile);
+      }
+
+      Alert.alert(
+        "Error",
+        "Failed to load profile data. Using cached data instead."
+      );
       setDataLoading(false);
     }
   };
 
-  // Load profile data on component mount or ID change
   useEffect(() => {
-    fetchUserData();
-  }, [username]);
+    if (profileUsername) {
+      fetchUserData();
+    }
+  }, [profileUsername]);
 
-  // Handle refresh
+  /**
+   * Handle refresh action
+   */
   const handleRefresh = async () => {
     setIsRefreshing(true);
-    await fetchUserData(true);
+
+    await Promise.all([
+      fetchUserData(true),
+      refreshSocialStats()
+    ]);
     setIsRefreshing(false);
   };
 
-  // Handle follow status change
-  const handleFollowStatusChange = (
-    newStatus: boolean,
-    userId: string
-  ): void => {
-    // Update follow status in profile data
+  const handleFollowStatusChange = (status: boolean, userId: string) => {
+    setIsFollowing(status);
     if (profileData) {
-      setProfileData({
-        ...profileData,
-        isFollowing: newStatus,
-      });
+      profileData.isFollowing = status;
     }
   };
 
-  // Handle share profile
-  const handleShareProfile = async () => {
-    try {
-      const name = profileData?.username || "this user";
-      Alert.alert(
-        "Share Profile",
-        `Share ${name}'s profile?`);
-    } catch (error) {
-      Alert.alert("Error", "Failed to share profile");
-    }
-  };
-
-  // Create a modified ProfileView that tracks scroll
-  const ScrollAnimatedProfileView = () => {
-    // Customize the scroll event to track position
+  const ScrollAnimatedProfileView = ({
+    scrollY,
+  }: {
+    scrollY: Animated.Value;
+  }) => {
     const handleScroll = Animated.event(
       [{ nativeEvent: { contentOffset: { y: scrollY } } }],
       { useNativeDriver: false }
     );
+    
+    let viewProfileData = profileData;
+    if (profileData) {
+      const updatedStats = { ...profileData.stats };
+      
+      if (totalPosts !== undefined) {
+        updatedStats.posts_count = totalPosts;
+      }
+      
+      if (socialStats) {
+        updatedStats.followers_count = socialStats.follower_count;
+        updatedStats.following_count = socialStats.following_count;
+        
+        viewProfileData = {
+          ...profileData,
+          isFollowing: socialStats.is_following
+        };
+      }
+      
+      viewProfileData = {
+        ...viewProfileData,
+        stats: updatedStats
+      };
+    }
 
     return (
       <ProfileView
-        profileData={profileData}
+        profileData={viewProfileData}
         isOwnProfile={false}
         isRefreshing={isRefreshing}
         onRefresh={handleRefresh}
         onFollowStatusChange={handleFollowStatusChange}
         dataLoading={dataLoading}
+        cacheInfo={cacheInfo}
         scrollEventThrottle={16}
         onScroll={handleScroll}
         contentContainerStyle={styles.scrollContainer}
@@ -108,15 +173,19 @@ export default function UserProfileScreen() {
 
   return (
     <View style={styles.container}>
-      <AnimatedProfileHeader
-        title={profileData?.username || "User Profile"}
-        isOwnProfile={false}
-        userId={username as string}
-        showBackButton={true}
-        onSharePress={handleShareProfile}
-        scrollY={scrollY} // Pass scroll position for parallax effect
-      />
-      <ScrollAnimatedProfileView />
+      {(() => {
+        const scrollY = new Animated.Value(0);
+        return (
+          <>
+            <AnimatedProfileHeader
+              title={profileUsername || "Profile"}
+              isOwnProfile={false}
+              scrollY={scrollY}
+            />
+            <ScrollAnimatedProfileView scrollY={scrollY} />
+          </>
+        );
+      })()}
     </View>
   );
 }
