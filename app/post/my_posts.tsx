@@ -7,7 +7,7 @@ import {
   RefreshControl,
   ActivityIndicator,
 } from "react-native";
-import { router } from "expo-router";
+import { useRouter } from "expo-router";
 import { Text, View } from "@/components/Themed";
 import { useSession } from "@/components/SessionProvider";
 import { useMyPosts } from "@/hooks/useMyPosts";
@@ -21,7 +21,7 @@ import EmptyState from "@/components/post/EmptyState";
  */
 export default function MyPosts() {
   const { user } = useSession();
-
+  const router = useRouter();
   // Use custom hook to handle posts data and operations
   const {
     posts,

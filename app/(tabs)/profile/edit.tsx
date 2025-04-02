@@ -196,7 +196,7 @@ export default function EditProfileScreen() {
         // Get original file name or create a default file name
         const originalFileName =
           avatarFile.name ||
-          `avatar.${avatarFile.uri.split(".").pop() || "png"}`;
+          `avatar.${avatarFile.image?.split(".").pop() ?? "png"}`;
 
         // Generate unique file name
         const uniqueFileName = formatUploadFileName("avatar", originalFileName);

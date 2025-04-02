@@ -13,7 +13,7 @@ import {
   Alert,
 } from "react-native";
 import { useState, useCallback, useMemo } from "react";
-import { router } from "expo-router";
+import { useRouter } from "expo-router";
 import { Text, View } from "@/components/Themed";
 import { Ionicons } from "@expo/vector-icons";
 import { useSession } from "@/components/SessionProvider";
@@ -35,6 +35,7 @@ export default function HomeScreen() {
   const [searchQuery, setSearchQuery] = useState("");
   const [scrollPosition, setScrollPosition] = useState(0);
   const windowWidth = Dimensions.get("window").width;
+  const router = useRouter();
 
   // Use custom hook to handle posts data and operations, similar to useMyPosts hook
   const {

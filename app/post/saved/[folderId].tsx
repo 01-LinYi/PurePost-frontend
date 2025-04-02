@@ -11,7 +11,7 @@ import {
   TextInput,
   RefreshControl,
 } from "react-native";
-import { useLocalSearchParams, router } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { Text, View } from "@/components/Themed";
@@ -101,6 +101,7 @@ const SavedFolderDetail = () => {
   const [error, setError] = useState<string | null>(null);
 
   const insets = useSafeAreaInsets();
+  const router = useRouter();
 
   // Fetch folder details from API
   const fetchFolderDetails = useCallback(async () => {

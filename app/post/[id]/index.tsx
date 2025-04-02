@@ -6,9 +6,8 @@ import {
   Alert,
   StatusBar,
   ActivityIndicator,
-  TouchableOpacity,
 } from "react-native";
-import { useLocalSearchParams, router } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { Text, View } from "@/components/Themed";
@@ -26,6 +25,7 @@ import { performOptimisticUpdate } from "@/utils/optimiticeUP";
 const PostDetail = () => {
   const { id } = useLocalSearchParams();
   const insets = useSafeAreaInsets();
+  const router = useRouter();
 
   // State to hold the post data and related information
   const [postData, setPostData] = useState<{
@@ -136,7 +136,7 @@ const PostDetail = () => {
    * Navigate to edit post screen
    */
   const handleEdit = useCallback(() => {
-    if (post) router.push(`/post/edit/${post.id}`);
+    if (post) router.push(`/post/${post.id}/edit`);
   }, [post]);
 
   /**

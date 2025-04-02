@@ -136,7 +136,25 @@ export const toggleSavePost = async (
   }
 };
 
-export function addComment(id: string, text: string): Promise<unknown> {
+export function addComment(id: string, text: string): Promise<any> {
   // TODO: Implement this function
   throw new Error("Function not implemented.");
+}
+
+export function updatePost(id: string, data: any): Promise<any> {
+  try {
+    return axiosInstance.patch(`/content/posts/${id}/`, data);
+  } catch (error) {
+    console.error("Error editing post:", error);
+    throw error;
+  }
+}
+
+export function deletePost(id: string): Promise<any> {
+  try {
+    return axiosInstance.delete(`/content/posts/${id}/`);
+  } catch (error) {
+    console.error("Error deleting post:", error);
+    throw error;
+  }
 }

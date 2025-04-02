@@ -75,7 +75,6 @@ const MyPostItem: React.FC<MyPostItemProps> = ({
           />
         </View>
 
-        {/* 标题和可见性标签并排 */}
         <View style={styles.titleRow}>
           <Text style={styles.postTitle} numberOfLines={1}>
             {title}
@@ -163,7 +162,7 @@ const MyPostItem: React.FC<MyPostItemProps> = ({
         <View style={styles.actionButtons}>
           <TouchableOpacity
             style={styles.actionButton}
-            onPress={() => router.push(`/post/edit/${post.id}`)}
+            onPress={() => router.push(`/post/${post.id}/edit`)}
           >
             <Ionicons name="pencil-outline" size={16} color="#00c5e3" />
             <Text style={styles.actionButtonText}>Edit</Text>
