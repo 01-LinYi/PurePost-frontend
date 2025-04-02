@@ -1,44 +1,26 @@
 // components/post/FeedPostItem.tsx
 
-import React from 'react';
+import React from "react";
 import {
   StyleSheet,
   TouchableOpacity,
   Image,
   ActivityIndicator,
-} from 'react-native';
-import { Text, View } from '@/components/Themed';
-import { Ionicons } from '@expo/vector-icons';
-
-// Type for Post in feed
-// This is a mockup type definition for the post object.
-// TODO: Change this to types/postType.ts
-type Post = {
-  id: number;
-  user: {
-    id: number;
-    username: string;
-    avatar: string;
-  };
-  content: string;
-  image?: string;
-  likes: number;
-  comments: number;
-  timestamp: string;
-  isLiked?: boolean;
-  disclaimer?: string;
-  deepfakeRequested?: boolean;
-  deepfakeResult?: {
-    confidence: number;
-    status: 'pending' | 'completed' | 'failed';
-  };
-};
+  Share,
+  Alert,
+} from "react-native";
+import { Text, View } from "@/components/Themed";
+import { Ionicons } from "@expo/vector-icons";
+import { Post, DeepfakeStatus } from "@/types/postType";
 
 type FeedPostItemProps = {
   post: Post;
-  onLike: (postId: number) => void;
-  onDeepfakeDetection: (postId: number) => void;
+  onLike: (postId: string) => Promise<any>;
+  onDeepfakeDetection: (postId: string) => Promise<boolean>;
   onNavigate: (postId: string) => void;
+  onSave: (postId: string, folderId?: string) => Promise<any>;
+  onShare: (postId: string) => Promise<any>;
+  onReport: (postId: string, reason: string) => void;
 };
 
 // Cache control for images
@@ -49,111 +31,218 @@ const getCacheKey = (uri: string) => {
 /**
  * Component for rendering individual post items in the feed
  */
-export default function FeedPostItem({ post, onLike, onDeepfakeDetection, onNavigate }: FeedPostItemProps) {
-  
+export default function FeedPostItem({
+  post,
+  onLike,
+  onDeepfakeDetection,
+  onNavigate,
+  onSave,
+  onShare,
+  onReport,
+}: FeedPostItemProps) {
+  // Handle share action
+  const handleShare = async () => {
+    try {
+      await Share.share({
+        message: `Check out this post: ${post.content}`,
+        // Add a URL if your app has deep linking
+        // url: `yourapp://post/${post.id}`
+      });
+
+      // Record share in backend
+      await onShare(post.id);
+    } catch (error) {
+      console.error("Error sharing post:", error);
+    }
+  };
+
+  // Show options menu
+  const showOptions = () => {
+    Alert.alert("Post Options", "Choose an action", [
+      {
+        text: post.is_saved ? "Unsave Post" : "Save Post",
+        onPress: () => onSave(post.id),
+      },
+      {
+        text: "Report Post",
+        onPress: () => promptReportReason(),
+      },
+      {
+        text: "Cancel",
+        style: "cancel",
+      },
+    ]);
+  };
+
+  // Prompt user for report reason
+  const promptReportReason = () => {
+    Alert.alert("Report Post", "Why are you reporting this post?", [
+      {
+        text: "Inappropriate Content",
+        onPress: () => onReport(post.id, "inappropriate_content"),
+      },
+      {
+        text: "Misinformation",
+        onPress: () => onReport(post.id, "misinformation"),
+      },
+      {
+        text: "Spam",
+        onPress: () => onReport(post.id, "spam"),
+      },
+      {
+        text: "Cancel",
+        style: "cancel",
+      },
+    ]);
+  };
+
   // Render deepfake detection section
   const renderDeepfakeSection = () => {
-    if (!post.image) return null;
-    
-    if (post.deepfakeResult?.status === 'pending') {
+    if (!post.image && !post.video) return null;
+
+    // Handle different deepfake detection states
+    switch (post.deepfake_status) {
+      case "analyzing":
+        return (
+          <View style={styles.deepfakeAnalyzing}>
+            <ActivityIndicator size="small" color="#8c52ff" />
+            <Text style={styles.deepfakeAnalyzingText}>Analyzing media...</Text>
+          </View>
+        );
+
+      case "flagged":
+        return (
+          <View style={styles.deepfakeFlagged}>
+            <Text style={styles.deepfakeHighProbabilityText}>
+              High probability of manipulation
+            </Text>
+            <Text style={styles.deepfakeConfidenceText}>
+              This content has been flagged as potentially manipulated
+            </Text>
+          </View>
+        );
+
+      case "not_flagged":
+        return (
+          <View style={styles.deepfakeSafe}>
+            <Text style={styles.deepfakeLowProbabilityText}>
+              Low probability of manipulation
+            </Text>
+            <Text style={styles.deepfakeConfidenceText}>
+              No manipulation detected in this content
+            </Text>
+          </View>
+        );
+
+      case "analysis_failed":
+        return (
+          <View style={styles.deepfakeFailed}>
+            <Text style={styles.deepfakeFailedText}>Analysis failed</Text>
+            <Text style={styles.deepfakeConfidenceText}>
+              Unable to complete the analysis due to technical issues
+            </Text>
+          </View>
+        );
+
+      default:
+        // Default button state when no analysis has been requested
+        return (
+          <TouchableOpacity
+            style={styles.deepfakeButton}
+            onPress={() => onDeepfakeDetection(post.id)}
+          >
+            <Ionicons
+              name="shield-checkmark-outline"
+              size={16}
+              color="#FFFFFF"
+            />
+            <Text style={styles.deepfakeButtonText}>
+              Request Deepfake Detection
+            </Text>
+          </TouchableOpacity>
+        );
+    }
+  };
+
+  // Render media content (image or video)
+  const renderMedia = () => {
+    if (post.image) {
       return (
-        <View style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          padding: 10,
-          backgroundColor: '#f0f0f0',
-          borderRadius: 8,
-          margin: 5
-        }}>
-          <ActivityIndicator size="small" color="#8c52ff" />
-          <Text style={{marginLeft: 10, color: '#333'}}>
-            Analyzing media...
+        <View style={styles.postImageContainer}>
+          <Image
+            source={{ uri: getCacheKey(post.image) }}
+            style={styles.postImage}
+            resizeMode="cover"
+            progressiveRenderingEnabled={true}
+          />
+          <View style={styles.imageActionOverlay}>
+            {renderDeepfakeSection()}
+          </View>
+        </View>
+      );
+    } else if (post.video) {
+      // Video rendering would go here
+      // This is a placeholder for actual video component implementation
+      return (
+        <View style={styles.postVideoContainer}>
+          <View style={styles.videoPlaceholder}>
+            <Ionicons name="play-circle-outline" size={48} color="#FFFFFF" />
+          </View>
+          <View style={styles.imageActionOverlay}>
+            {renderDeepfakeSection()}
+          </View>
+        </View>
+      );
+    }
+
+    return null;
+  };
+
+  // Get avatar display
+  const renderAvatar = () => {
+    const avatarUrl = post.user?.profile_picture || "";
+    const username = post.user?.username || "User";
+
+    if (avatarUrl) {
+      return (
+        <Image
+          source={{ uri: getCacheKey(avatarUrl) }}
+          style={styles.userAvatar}
+        />
+      );
+    } else {
+      return (
+        <View style={styles.userAvatarPlaceholder}>
+          <Text style={styles.avatarText}>
+            {username.charAt(0).toUpperCase()}
           </Text>
         </View>
       );
     }
-    
-    if (post.deepfakeResult?.status === 'completed') {
-      const isHighProbability = post.deepfakeResult.confidence > 0.8;
-      const isMediumProbability = (post.deepfakeResult.confidence > 0.2 && post.deepfakeResult.confidence <= 0.8);
-      const isLowProbability = post.deepfakeResult.confidence <= 0.2;
-      
-      return (
-        <View style={{
-          padding: 10,
-          backgroundColor: isHighProbability ? '#ffebee' :
-                          isMediumProbability? '#fff8e1' :
-                             '#e8f5e9',
-          borderRadius: 8,
-          margin: 5
-        }}>
-          <Text style={{
-            fontWeight: 'bold',
-            color: isHighProbability ? '#c62828' : 
-                  isMediumProbability? '#ff8f00' :
-                    '#2e7d32'
-          }}>
-            {isHighProbability ? 'High probability of manipulation' :
-             isMediumProbability?  'Medium probability of manipulation: unable to determine' :
-                'Low probability of manipulation'}
-          </Text>
-          <Text style={{marginTop: 5, color: '#666'}}>
-            Confidence: {Math.round(post.deepfakeResult.confidence * 100)}%
-          </Text>
-        </View>
-      );
-    }
-    
-    // Default button state
-    return (
-      <TouchableOpacity
-        style={{
-          backgroundColor: '#00c5e3',
-          borderRadius: 8,
-          padding: 10,
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'center',
-          margin: 5
-        }}
-        onPress={() => onDeepfakeDetection(post.id)}
-      >
-        <Ionicons name="shield-checkmark-outline" size={16} color="#FFFFFF" />
-        <Text style={{color: '#FFFFFF', marginLeft: 5, fontWeight: '500'}}>
-          Request Deepfake Detection
-        </Text>
-      </TouchableOpacity>
-    );
+  };
+
+  // Get username display
+  const getUsername = () => {
+    return post.user?.username|| "User";
   };
 
   return (
-    <TouchableOpacity 
+    <TouchableOpacity
       style={styles.postCard}
       activeOpacity={0.9}
-      onPress={() => onNavigate(post.id.toString())}
+      onPress={() => onNavigate(post.id)}
     >
       <View style={styles.postHeader}>
         <View style={styles.userInfo}>
           <TouchableOpacity style={styles.userAvatarContainer}>
-            {post.user.avatar ? (
-              <Image
-                source={{ uri: getCacheKey(post.user.avatar) }}
-                style={styles.userAvatar}
-              />
-            ) : (
-              <View style={styles.userAvatarPlaceholder}>
-                <Text style={styles.avatarText}>
-                  {post.user.username.charAt(0).toUpperCase()}
-                </Text>
-              </View>
-            )}
+            {renderAvatar()}
           </TouchableOpacity>
           <View>
-            <Text style={styles.username}>{post.user.username}</Text>
-            <Text style={styles.timestamp}>{post.timestamp}</Text>
+            <Text style={styles.username}>{getUsername()}</Text>
+            <Text style={styles.timestamp}>{post.created_at}</Text>
           </View>
         </View>
-        <TouchableOpacity style={styles.moreButton}>
+        <TouchableOpacity style={styles.moreButton} onPress={showOptions}>
           <Ionicons name="ellipsis-horizontal" size={20} color="#8e8e93" />
         </TouchableOpacity>
       </View>
@@ -172,20 +261,7 @@ export default function FeedPostItem({ post, onLike, onDeepfakeDetection, onNavi
 
       <Text style={styles.postContent}>{post.content}</Text>
 
-      {post.image && (
-        <View style={styles.postImageContainer}>
-          <Image
-            source={{ uri: getCacheKey(post.image) }}
-            style={styles.postImage}
-            resizeMode="cover"
-            progressiveRenderingEnabled={true}
-          />
-
-          <View style={styles.imageActionOverlay}>
-            {renderDeepfakeSection()}
-          </View>
-        </View>
-      )}
+      {renderMedia()}
 
       <View style={styles.postActions}>
         <TouchableOpacity
@@ -194,20 +270,40 @@ export default function FeedPostItem({ post, onLike, onDeepfakeDetection, onNavi
           activeOpacity={0.7}
         >
           <Ionicons
-            name={post.isLiked ? "heart" : "heart-outline"}
+            name={post.is_liked ? "heart" : "heart-outline"}
             size={22}
-            color={post.isLiked ? "#FF3B30" : "#555"}
+            color={post.is_liked ? "#FF3B30" : "#555"}
           />
-          <Text style={[styles.actionText, post.isLiked && styles.likedText]}>
-            {post.likes}
+          <Text style={[styles.actionText, post.is_liked && styles.likedText]}>
+            {post.like_count}
           </Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.actionButton} activeOpacity={0.7}>
+        <TouchableOpacity
+          style={styles.actionButton}
+          activeOpacity={0.7}
+          onPress={() => onNavigate(post.id)}
+        >
           <Ionicons name="chatbubble-outline" size={22} color="#555" />
-          <Text style={styles.actionText}>{post.comments}</Text>
+          <Text style={styles.actionText}>{post.comment_count}</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.actionButton} activeOpacity={0.7}>
+        <TouchableOpacity
+          style={styles.actionButton}
+          activeOpacity={0.7}
+          onPress={handleShare}
+        >
           <Ionicons name="share-social-outline" size={22} color="#555" />
+          <Text style={styles.actionText}>{post.share_count || 0}</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.actionButton}
+          activeOpacity={0.7}
+          onPress={() => onSave(post.id)}
+        >
+          <Ionicons
+            name={post.is_saved ? "bookmark" : "bookmark-outline"}
+            size={22}
+            color={post.is_saved ? "#00c5e3" : "#555"}
+          />
         </TouchableOpacity>
       </View>
     </TouchableOpacity>
@@ -292,6 +388,19 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     marginBottom: 12,
   },
+  postVideoContainer: {
+    borderRadius: 12,
+    overflow: "hidden",
+    marginBottom: 12,
+    height: 240,
+  },
+  videoPlaceholder: {
+    backgroundColor: "#000",
+    width: "100%",
+    height: 240,
+    justifyContent: "center",
+    alignItems: "center",
+  },
   postImage: {
     width: "100%",
     height: 240,
@@ -355,5 +464,66 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 12,
     borderBottomRightRadius: 12,
     alignItems: "center",
+  },
+  // Deepfake detection styles
+  deepfakeButton: {
+    backgroundColor: "#00c5e3",
+    borderRadius: 8,
+    padding: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    margin: 5,
+  },
+  deepfakeButtonText: {
+    color: "#FFFFFF",
+    marginLeft: 5,
+    fontWeight: "500",
+  },
+  deepfakeAnalyzing: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 10,
+    backgroundColor: "#f0f0f0",
+    borderRadius: 8,
+    margin: 5,
+  },
+  deepfakeAnalyzingText: {
+    marginLeft: 10,
+    color: "#333",
+  },
+  deepfakeFlagged: {
+    padding: 10,
+    backgroundColor: "#ffebee",
+    borderRadius: 8,
+    margin: 5,
+  },
+  deepfakeSafe: {
+    padding: 10,
+    backgroundColor: "#e8f5e9",
+    borderRadius: 8,
+    margin: 5,
+  },
+  deepfakeFailed: {
+    padding: 10,
+    backgroundColor: "#f5f5f5",
+    borderRadius: 8,
+    margin: 5,
+  },
+  deepfakeHighProbabilityText: {
+    fontWeight: "bold",
+    color: "#c62828",
+  },
+  deepfakeLowProbabilityText: {
+    fontWeight: "bold",
+    color: "#2e7d32",
+  },
+  deepfakeFailedText: {
+    fontWeight: "bold",
+    color: "#757575",
+  },
+  deepfakeConfidenceText: {
+    marginTop: 5,
+    color: "#666",
   },
 });

@@ -1,271 +1,544 @@
-// hooks/useFeedPosts.ts
+// hooks/useFeedPosts.ts - Custom hook for handling feed posts data and operations
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
+import { Alert } from "react-native";
+import axiosInstance from "@/utils/axiosInstance";
+import { Post, ApiPost, DeepfakeStatus } from "@/types/postType";
+import {
+  getApiOrdering,
+  transformApiPostToPost,
+} from "@/utils/postsTransformers";
+import { performOptimisticUpdate } from "@/utils/optimiticeUP";
 
-// Types
-type PostUser = {
-  id: number;
-  username: string;
-  avatar: string;
-};
-
-type DeepfakeResult = {
-  confidence: number; // 0-1 confidence in the result
-  status: "pending" | "completed" | "failed";
-};
-
-type Post = {
-  id: number;
-  user: PostUser;
-  content: string;
-  image?: string;
-  likes: number;
-  comments: number;
-  timestamp: string;
-  isLiked?: boolean;
-  disclaimer?: string;
-  deepfakeRequested?: boolean;
-  deepfakeResult?: DeepfakeResult;
-};
-
+interface UseFeedPostsProps {
+  limit?: number;
+  initialPage?: number;
+}
 
 /**
- * Custom hook for managing feed posts data and operations
+ * Custom hook to handle fetching, sorting, and managing feed posts
  */
-export function useFeedPosts() {
+export const useFeedPosts = ({
+  limit = 10,
+  initialPage = 1,
+}: UseFeedPostsProps = {}) => {
   const [posts, setPosts] = useState<Post[]>([]);
+  const [totalPosts, setTotalPosts] = useState<number>(0);
+  const [page, setPage] = useState<number>(initialPage);
+  const [hasMore, setHasMore] = useState<boolean>(true);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [ordering, setOrdering] = useState<string>("latest");
+  const [ordering, setOrdering] = useState<string>("-createdAt");
+  const [filters, setFilters] = useState<Record<string, any>>({});
 
-  // Nature-themed images for enhanced visual appeal
-  const natureImages = [
-    "https://images.unsplash.com/photo-1518531933037-91b2f5f229cc?q=80&w=500", // Succulents
-    "https://images.unsplash.com/photo-1666427613566-43e67abd1a41?q=80&w=500", // Mountain view
-    "https://images.unsplash.com/photo-1547036967-23d11aacaee0?q=80&w=500", // Additional nature
-    "https://images.unsplash.com/photo-1510784722466-f2aa9c52fff6?q=80&w=500", // Additional nature
-  ];
+  /**
+   * Fetch feed posts from the API
+   */
+  const fetchPosts = useCallback(
+    async (pageNum: number = 1, replace: boolean = true) => {
+      try {
+        setError(null);
+        console.log(`Fetching feed posts, page ${pageNum}, limit ${limit}`);
 
-  // Fetch posts with error handling
-  const loadData = useCallback(async () => {
+        const endpoint = "/content/posts/";
+        const params = {
+          page: pageNum,
+          limit,
+          ordering: getApiOrdering(ordering),
+          ...filters,
+        };
+
+        console.log("Making request to:", endpoint, "with params:", params);
+        const response = await axiosInstance.get(endpoint, { params });
+
+        let apiPosts: ApiPost[] = [];
+        let count = 0;
+
+        if (Array.isArray(response.data)) {
+          apiPosts = response.data;
+          count = response.data.length;
+          setHasMore(false); // If API returns an array, assume no pagination
+        } else {
+          apiPosts = response.data.results || [];
+          count = response.data.count || 0;
+          setHasMore(apiPosts.length === limit && count > pageNum * limit);
+        }
+
+        console.log(
+          `Found ${apiPosts.length} feed posts out of ${count} total`
+        );
+
+        const newPosts = apiPosts.map(transformApiPostToPost);
+
+        if (replace) {
+          setPosts(newPosts);
+        } else {
+          setPosts((prevPosts) => [...prevPosts, ...newPosts]);
+        }
+
+        setTotalPosts(count);
+        setPage(pageNum);
+
+        return newPosts;
+      } catch (error) {
+        console.error("Error fetching feed posts:", error);
+        const errorMessage =
+          (error as any)?.response?.data?.detail || "Failed to load feed posts";
+        setError(errorMessage);
+        throw new Error(errorMessage);
+      }
+    },
+    [ordering, limit, filters]
+  );
+
+  /**
+   * Get post count by category
+   */
+  const getPostsCountByType = useCallback(
+    (type?: string): number => {
+      if (!type) {
+        return totalPosts;
+      }
+
+      return posts.filter((post) => {
+        switch (type) {
+          case "trending":
+            return post.like_count > 10 || post.comment_count > 5;
+          case "new":
+            // Assuming posts created within the last 24 hours are "new"
+            const oneDayAgo = new Date();
+            oneDayAgo.setDate(oneDayAgo.getDate() - 1);
+            return new Date(post.created_at) > oneDayAgo;
+          case "with_media":
+            return !!post.image || !!post.video;
+          case "with_disclaimer":
+            return !!post.disclaimer;
+          default:
+            return true;
+        }
+      }).length;
+    },
+    [posts, totalPosts]
+  );
+
+  /**
+   * Load initial data with optional loading indicator
+   */
+  const loadData = useCallback(
+    async (showFullLoading = true) => {
+      try {
+        if (showFullLoading) {
+          setIsLoading(true);
+        }
+        await fetchPosts(1, true);
+      } catch (error) {
+        console.error("Load data error:", error);
+        setError((error as Error).message || "Failed to load data");
+      } finally {
+        setIsLoading(false);
+        setIsRefreshing(false);
+      }
+    },
+    [fetchPosts]
+  );
+
+  /**
+   * Load more posts (pagination)
+   */
+  const loadMorePosts = useCallback(async () => {
+    if (isLoadingMore || !hasMore) return;
+
     try {
-      setError(null);
-      setIsLoading(true);
-
-      // Simulate API call with timeout
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      const dummyPosts: Post[] = [
-        {
-          id: 1,
-          user: {
-            id: 1,
-            username: "alex_walker",
-            avatar: "https://randomuser.me/api/portraits/men/32.jpg",
-          },
-          content:
-            "Just found these amazing succulents on my hike! Nature's patterns are truly incredible. 🌱",
-          image: natureImages[0],
-          likes: 24,
-          comments: 5,
-          timestamp: "10 minutes ago",
-          isLiked: false,
-          disclaimer: "AI generated contents",
-        },
-        {
-          id: 2,
-          user: {
-            id: 2,
-            username: "taylor_smith",
-            avatar: "https://randomuser.me/api/portraits/women/44.jpg",
-          },
-          content:
-            "Standing at the edge of this cliff was both terrifying and exhilarating. The fog below made it feel like I was floating above the clouds.",
-          image: natureImages[1],
-          likes: 42,
-          comments: 7,
-          timestamp: "30 minutes ago",
-          isLiked: false,
-        },
-        {
-          id: 3,
-          user: {
-            id: 3,
-            username: "jordan_jones",
-            avatar: "https://randomuser.me/api/portraits/men/22.jpg",
-          },
-          content:
-            "Does anyone have recommendations for growing succulents? I'm starting a small garden on my balcony.",
-          likes: 13,
-          comments: 11,
-          timestamp: "1 hour ago",
-          isLiked: false,
-        },
-        {
-          id: 4,
-          user: {
-            id: 4,
-            username: "sam_wilson",
-            avatar: "https://randomuser.me/api/portraits/women/29.jpg",
-          },
-          content:
-            "Just launched my new nature photography website! Would love your feedback on the mountain and succulent collections.",
-          image: natureImages[2],
-          likes: 31,
-          comments: 9,
-          timestamp: "2 hours ago",
-          isLiked: false,
-        },
-        {
-          id: 5,
-          user: {
-            id: 5,
-            username: "robin_chen",
-            avatar: "https://randomuser.me/api/portraits/women/68.jpg",
-          },
-          content:
-            "Morning hike through the fog - there's something magical about being above the clouds.",
-          image: natureImages[3],
-          likes: 56,
-          comments: 13,
-          timestamp: "3 hours ago",
-          isLiked: false,
-        },
-      ];
-
-      // Sort posts according to current ordering
-      const sortedPosts = sortPosts(dummyPosts, ordering);
-      setPosts(sortedPosts);
-    } catch (e) {
-      setError("Failed to load posts. Please try again later.");
-      console.error("Error loading posts:", e);
+      setIsLoadingMore(true);
+      const nextPage = page + 1;
+      await fetchPosts(nextPage, false);
+    } catch (error) {
+      console.error("Load more error:", error);
+      // Don't set the main error state to avoid disrupting the UI
+      Alert.alert("Error", "Failed to load more posts");
     } finally {
-      setIsLoading(false);
-      setIsRefreshing(false);
+      setIsLoadingMore(false);
     }
-  }, [ordering]);
+  }, [fetchPosts, page, isLoadingMore, hasMore]);
 
-  // Load initial data
+  /**
+   * Initialize data when component mounts
+   */
   useEffect(() => {
     loadData();
   }, [loadData]);
 
-  // Handle refresh action
+  /**
+   * Handle refresh triggered by pull-to-refresh
+   */
   const handleRefresh = useCallback(() => {
     setIsRefreshing(true);
+    loadData(false);
+  }, [loadData]);
+
+  /**
+   * Change the sort order of feed posts
+   */
+  const handleSortChange = useCallback(
+    (newOrdering: string) => {
+      if (ordering !== newOrdering) {
+        setOrdering(newOrdering);
+        loadData();
+      }
+    },
+    [ordering, loadData]
+  );
+
+  /**
+   * Apply filters to the feed
+   */
+  const applyFilters = useCallback(
+    (newFilters: Record<string, any>) => {
+      setFilters(newFilters);
+      loadData();
+    },
+    [loadData]
+  );
+
+  /**
+   * Reset all filters
+   */
+  const resetFilters = useCallback(() => {
+    setFilters({});
     loadData();
   }, [loadData]);
 
-  // Handle like action
-  const handleLike = useCallback((postId: number) => {
-    setPosts((prevPosts) =>
-      prevPosts.map((post) => {
-        if (post.id === postId) {
-          const isCurrentlyLiked = post.isLiked || false;
-          return {
-            ...post,
-            likes: isCurrentlyLiked ? post.likes - 1 : post.likes + 1,
-            isLiked: !isCurrentlyLiked,
-          };
-        }
-        return post;
-      })
-    );
-  }, []);
+  /**
+   * Handle saving/unsaving a post
+   */
+  const handleSave = useCallback(
+    async (postId: string, folderId?: string) => {
+      const postIndex = posts.findIndex((p) => p.id === postId);
+      if (postIndex === -1) return;
 
-  // Handle deepfake detection request
-  const handleDeepfakeDetection = useCallback((postId: number) => {
-    // Immediately set the post to pending state
-    setPosts((prevPosts) =>
-      prevPosts.map((post) => {
-        if (post.id === postId) {
-          return {
-            ...post,
-            deepfakeRequested: true,
-            deepfakeResult: {
-              confidence: 0,
-              status: "pending",
-            },
-          };
-        }
-        return post;
-      })
-    );
+      const post = posts[postIndex];
+      const newIsSaved = !post.is_saved;
 
-    // Use a timeout to simulate processing
-    setTimeout(() => {
-      // Use a random confidence value for more realistic simulation
-      const confidence = Math.random();
+      const result = await performOptimisticUpdate({
+        updateUI: () => {
+          setPosts((currentPosts) =>
+            currentPosts.map((p) =>
+              p.id === postId
+                ? {
+                    ...p,
+                    is_saved: newIsSaved,
+                    savedFolderId: newIsSaved ? folderId || null : null,
+                  }
+                : p
+            )
+          );
+        },
+        apiCall: async () =>
+          newIsSaved
+            ? axiosInstance.post(`/content/posts/${postId}/save/`, {
+                folder_id: folderId,
+              })
+            : axiosInstance.delete(`/content/posts/${postId}/save/`),
+        rollbackUI: () => {
+          setPosts((currentPosts) =>
+            currentPosts.map((p) =>
+              p.id === postId
+                ? {
+                    ...p,
+                    is_saved: !newIsSaved,
+                    savedFolderId: !newIsSaved
+                      ? post.savedFolderId || null
+                      : null,
+                  }
+                : p
+            )
+          );
+        },
+        errorMessagePrefix: `Failed to ${
+          newIsSaved ? "save" : "unsave"
+        } post: `,
+      });
 
-      setPosts((prevPosts) =>
-        prevPosts.map((post) => {
-          if (post.id === postId) {
-            return {
-              ...post,
-              deepfakeResult: {
-                confidence: confidence,
-                status: "completed",
-              },
-            };
+      return result;
+    },
+    [posts]
+  );
+
+  /**
+   * Report a post
+   */
+  const reportPost = useCallback((postId: string, reason: string) => {
+    Alert.alert("Report Post", "Are you sure you want to report this post?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Report",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            setIsLoading(true);
+            // await axiosInstance.post(`/content/posts/${postId}/report/`, {
+            //   reason,
+            // });
+            Alert.alert("Success", "Post reported successfully");
+          } catch (error) {
+            console.error("Error reporting post:", error);
+            Alert.alert(
+              "Error",
+              (error as any)?.response?.data?.detail || "Failed to report post"
+            );
+          } finally {
+            setIsLoading(false);
           }
-          return post;
-        })
-      );
-    }, 1500);
+        },
+      },
+    ]);
   }, []);
 
-  // Handle sort change
-  const handleSortChange = useCallback((newOrdering: string) => {
-    setOrdering(newOrdering);
-    setPosts((prevPosts) => sortPosts([...prevPosts], newOrdering));
+  /**
+   * Hide a post from feed
+   */
+  const hidePost = useCallback((postId: string) => {
+    setPosts((currentPosts) =>
+      currentPosts.filter((post) => post.id !== postId)
+    );
+    setTotalPosts((prevTotal) => Math.max(0, prevTotal - 1));
+
+    // Optional: Inform the backend about this hidden post
+    //axiosInstance.post(`/content/posts/${postId}/hide/`).catch((error) => {
+    //  console.error("Failed to record hidden post:", error);
+    //});
   }, []);
 
-  // Helper function to sort posts
-  const sortPosts = (postsToSort: Post[], order: string): Post[] => {
-    const sortedPosts = [...postsToSort];
+  /**
+   * Handle like/unlike action for a post
+   */
+  const handleLike = useCallback(
+    async (postId: string) => {
+      // Find the post in our current state
+      const postIndex = posts.findIndex((p) => p.id === postId);
+      if (postIndex === -1) return;
 
-    switch (order) {
-      case "latest":
-        // Simple simulation using the timestamp strings (in a real app, use actual dates)
-        return sortedPosts.sort((a, b) =>
-          a.timestamp.includes("minute")
-            ? -1
-            : b.timestamp.includes("minute")
-            ? 1
-            : a.timestamp.includes("hour") && !b.timestamp.includes("hour")
-            ? 1
-            : -1
+      const post = posts[postIndex];
+      const newIsLiked = !post.is_liked;
+
+      const result = await performOptimisticUpdate({
+        updateUI: () => {
+          setPosts((currentPosts) =>
+            currentPosts.map((p) =>
+              p.id === postId
+                ? {
+                    ...p,
+                    is_liked: newIsLiked,
+                    like_count: p.like_count + (newIsLiked ? 1 : -1),
+                  }
+                : p
+            )
+          );
+        },
+        apiCall: async () =>
+          newIsLiked
+            ? axiosInstance.post(`/content/posts/${postId}/like/`)
+            : axiosInstance.post(`/content/posts/${postId}/unlike/`),
+        rollbackUI: () => {
+          setPosts((currentPosts) =>
+            currentPosts.map((p) =>
+              p.id === postId
+                ? {
+                    ...p,
+                    is_liked: !newIsLiked,
+                    like_count: p.like_count + (newIsLiked ? -1 : 1),
+                  }
+                : p
+            )
+          );
+        },
+        errorMessagePrefix: `Failed to ${
+          newIsLiked ? "like" : "unlike"
+        } post: `,
+      });
+
+      return result;
+    },
+    [posts]
+  );
+
+  /**
+   * Handle deepfake detection request for a post
+   */
+  const handleDeepfakeDetection = useCallback(
+    async (postId: string) => {
+      try {
+        const postIndex = posts.findIndex((p) => p.id === postId);
+        if (postIndex === -1) return false;
+
+        // Check if analysis is already in progress
+        const post = posts[postIndex];
+        if (post.deepfake_status === "analyzing") {
+          Alert.alert(
+            "Analysis in Progress",
+            "This content is already being analyzed. Please wait for the results."
+          );
+          return false;
+        }
+
+        // Update UI to show detection in progress
+        setPosts((currentPosts) =>
+          currentPosts.map((p) =>
+            p.id === postId
+              ? {
+                  ...p,
+                  deepfake_status: "analyzing",
+                }
+              : p
+          )
         );
-      case "oldest":
-        // Reverse of latest
-        return sortedPosts.sort((a, b) =>
-          a.timestamp.includes("minute")
-            ? 1
-            : b.timestamp.includes("minute")
-            ? -1
-            : a.timestamp.includes("hour") && !b.timestamp.includes("hour")
-            ? -1
-            : 1
+
+        console.log(`Requesting deepfake detection for post ${postId}`);
+
+        // Call the API to initiate or get image analysis
+        try {
+          // First check if analysis already exists
+          const existingAnalysis = await axiosInstance.get(
+            `/deepfake/posts/${postId}/analysis/`
+          );
+
+          // If we get here, analysis already exists
+          updatePostWithAnalysisResult(postId, existingAnalysis.data.status);
+          return existingAnalysis.data.status !== "analysis_failed";
+        } catch (error) {
+          // Analysis doesn't exist yet or couldn't be retrieved
+          if ((error as any)?.response?.status === 404) {
+            console.log(
+              "No existing analysis found, creating new analysis request"
+            );
+
+            // Create new analysis request
+            const response = await axiosInstance.post(
+              `/deepfake/posts/${postId}/analysis/`
+            );
+
+            // Update post with the analysis status
+            updatePostWithAnalysisResult(postId, response.data.status);
+            return response.data.status !== "analysis_failed";
+          } else {
+            // Some other error occurred during GET request
+            throw error;
+          }
+        }
+      } catch (error) {
+        console.error("Deepfake detection error:", error);
+
+        // Reset the status on error
+        setPosts((currentPosts) =>
+          currentPosts.map((p) =>
+            p.id === postId ? { ...p, deepfake_status: "analysis_failed" } : p
+          )
         );
-      case "popular":
-        // Sort by likes count
-        return sortedPosts.sort((a, b) => b.likes - a.likes);
+
+        Alert.alert(
+          "Detection Failed",
+          "Unable to complete deepfake detection. Please try again later."
+        );
+        return false;
+      }
+    },
+    [posts]
+  );
+
+  /**
+   * Update post with analysis result and show appropriate alert
+   */
+  const updatePostWithAnalysisResult = (
+    postId: string,
+    status: DeepfakeStatus
+  ) => {
+    // Update the post status
+    setPosts((currentPosts) =>
+      currentPosts.map((p) =>
+        p.id === postId ? { ...p, deepfake_status: status } : p
+      )
+    );
+
+    // Show appropriate alert based on status
+    switch (status) {
+      case "flagged":
+        Alert.alert(
+          "Content Flagged",
+          "This content has been flagged as potentially manipulated."
+        );
+        break;
+      case "not_flagged":
+        Alert.alert(
+          "Authentic Content",
+          "No manipulation detected in this content."
+        );
+        break;
+      case "analysis_failed":
+        Alert.alert(
+          "Analysis Failed",
+          "Unable to complete the analysis due to technical issues."
+        );
+        break;
+      case "analyzing":
+        // For "analyzing" status, less intrusive notification or none at all
+        console.log("Analysis in progress, results will be available soon");
+        break;
       default:
-        return sortedPosts;
+        console.log(`Analysis status: ${status}`);
     }
   };
+
+  // Share post functionality
+  const handleShare = useCallback(
+    async (postId: string) => {
+      try {
+        const postIndex = posts.findIndex((p) => p.id === postId);
+        if (postIndex === -1) return false;
+
+        // Call the API to record the share
+        await axiosInstance.post(`/content/posts/${postId}/share/`);
+
+        // Update the share count
+        setPosts((currentPosts) =>
+          currentPosts.map((p) =>
+            p.id === postId ? { ...p, share_count: p.share_count + 1 } : p
+          )
+        );
+
+        return true;
+      } catch (error) {
+        console.error("Share post error:", error);
+        return false;
+      }
+    },
+    [posts]
+  );
 
   return {
     posts,
     isLoading,
     isRefreshing,
+    isLoadingMore,
     error,
     ordering,
+    totalPosts,
+    page,
+    hasMore,
+    filters,
+    getPostsCountByType,
     handleRefresh,
-    handleLike,
-    handleDeepfakeDetection,
     handleSortChange,
+    loadMorePosts,
+    applyFilters,
+    resetFilters,
+    reportPost,
+    hidePost,
     loadData,
+    handleLike,
+    handleSave,
+    handleDeepfakeDetection,
+    handleShare,
   };
-}
+};

@@ -6,6 +6,7 @@ import {
   Alert,
   StatusBar,
   ActivityIndicator,
+  TouchableOpacity,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -14,6 +15,7 @@ import { Text, View } from "@/components/Themed";
 import ActionButton from "@/components/ActionButton";
 import PostContent from "@/components/post/PostContent";
 import CommentInput from "@/components/post/CommentInput";
+import CompactHeader from "@/components/CompactHeader";
 import * as api from "@/utils/api";
 import { Post, Comment } from "@/types/postType";
 import { transformApiPostToPost } from "@/utils/postsTransformers";
@@ -261,7 +263,17 @@ const PostDetail = () => {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-
+      <CompactHeader
+        title={"Post Detail"}
+        onBack={() => router.back()}
+        rightIcon={{
+          name: "ellipsis-horizontal",
+          label: "More",
+          onPress: () => {
+            // Handle more options here
+          },
+        }}
+      />
       {/* Post content component */}
       <PostContent
         post={post}
@@ -314,6 +326,26 @@ const styles = StyleSheet.create({
     left: 16,
     padding: 4,
     zIndex: 10,
+  },
+  header: {
+    height: 56,
+    backgroundColor: '#fff',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 1,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
   },
 });
 

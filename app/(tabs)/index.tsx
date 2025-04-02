@@ -121,7 +121,7 @@ export default function HomeScreen() {
             <Ionicons name="leaf-outline" size={60} color="#00c5e3" />
             <Text style={styles.emptyText}>No posts yet</Text>
             <Text style={styles.emptySubText}>
-              Posts related to nature and exploration will appear here
+              Posts from all users will appear here
             </Text>
             <TouchableOpacity
               style={styles.createPostButton}
@@ -177,6 +177,21 @@ export default function HomeScreen() {
             <FeedPostItem
               post={item}
               onLike={handleLike}
+              onSave={(postId: string, folderId?: string) => {
+                return new Promise<boolean>((resolve) => {
+                  // Add your save logic here
+                  console.log(`Saving post ${postId} to folder ${folderId}`);
+                  resolve(true); // Resolve with true to indicate success
+                });
+              }}
+              onShare={(item) => {
+                return new Promise<void>((resolve) => {
+                  // Add your share logic here
+                  console.log(`Sharing post`);
+                  resolve(); // Resolve when done
+                });
+              }}
+              onReport={(x,y) => {}}
               onDeepfakeDetection={handleDeepfakeDetection}
               onNavigate={navigateToPost}
             />
