@@ -316,7 +316,7 @@ export default function ProfileView({
         <View style={styles.postSection}>
           <Text style={styles.sectionTitle}>Pinned Post</Text>
           <PinnedPostItem
-            post={null} // TODO: Placeholder. Need more discussion
+            post={[]} // TODO: Placeholder. Need more discussion
             onSelectPost={() => {
               router.push("/post/my_posts");
             }}

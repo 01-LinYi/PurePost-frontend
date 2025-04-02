@@ -1,6 +1,13 @@
+import { Follow } from "@/types/followType";
 import { Post } from "@/types/postType";
 import { UserProfile } from "@/types/profileType";
 import axiosInstance from "@/utils/axiosInstance";
+
+export interface PaginationResponse<T> {
+  prev: string | null;
+  next: string | null;
+  results: T[];
+}
 
 /**
  * Perform a GET request to the specified URL using axiosInstance.
@@ -94,6 +101,27 @@ export const followUser = async (user_id: number) => {
     return error.response;
   }
 };
+
+export const fetchFollowers = async (user_id: number, cursor: string | null): Promise<PaginationResponse<Follow>> => {
+  let res = null;
+  if (cursor) {
+    res = await getApi(`/social/followers/${user_id}/?cursor=${cursor}`);
+  } else {
+    res = await getApi(`/social/followers/${user_id}/`);
+  }
+  return res.data;
+}
+
+export const fetchFollowings = async (user_id: number, cursor: string | null): Promise<PaginationResponse<Follow>> => {
+  let res = null;
+  if (cursor) {
+    res = await getApi(`/social/following/${user_id}/?cursor=${cursor}`);
+  } else {
+    res = await getApi(`/social/following/${user_id}/`);
+  }
+  return res.data;
+}
+
 
 export const unfollowUser = async (user_id: number) => {
   try {
