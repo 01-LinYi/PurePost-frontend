@@ -22,8 +22,15 @@ export default function PostLayout() {
         name="create"
         options={{
           title: "Create Post",
-          headerShown: true,
+          headerShown: false,
           headerBackTitle: "Cancel",
+        }}
+      />
+      <Stack.Screen
+        name="preview"
+        options={{
+          title: "Post Preview",
+          headerShown: false,
         }}
       />
       <Stack.Screen
