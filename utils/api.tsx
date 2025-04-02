@@ -1,5 +1,19 @@
+import { Post } from "@/types/postType";
+import { UserProfile } from "@/types/profileType";
 import axiosInstance from "@/utils/axiosInstance";
 
+/**
+ * Perform a GET request to the specified URL using axiosInstance.
+ * @param url 
+ * @returns JSON data = {
+ *              'config': {},
+ *              'data': {},
+ *              'headers': {},
+ *              'status': number,
+ *              'request': {},
+ *              'statusText': string
+ * }
+ */
 export const getApi = async (url: string) => {
   try {
     const response = await axiosInstance.get(url);
@@ -58,14 +72,18 @@ export const fetchPostCounts = async (user_id: number) => {
   return 0;
 };
 
+export const fetchPosts = async (userId: number) => {
+  return getApi(`/content/posts/?user_id=${userId}`);
+}
+
 /**
  * Get the list of posts pinned by the current user
  * @returns a list of Post
  */
-export const fetchPinnedPosts = async () => {
-  //TODO: Implement this function
-  return {};
-};
+export const fetchPinnedPosts = async (userId: number, isPinned: boolean = false): Promise<Post[]> => {
+  const res = await getApi(`/content/posts/?user_id=${userId}&is_pinned=${isPinned}`);
+  return res.data.results;
+}
 
 export const followUser = async (user_id: number) => {
   try {
@@ -138,4 +156,9 @@ export const toggleSavePost = async (
 export function addComment(id: string, text: string): Promise<unknown> {
   // TODO: Implement this function
   throw new Error("Function not implemented.");
+}
+
+export const searchProfiles = async (username: string): Promise<UserProfile[]> => {
+  const res = await getApi(`/users/search/?username=${username}`);
+  return res.data.results;
 }

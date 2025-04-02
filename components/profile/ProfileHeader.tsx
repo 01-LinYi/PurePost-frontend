@@ -252,6 +252,18 @@ export default function AnimatedProfileHeader({
                 },
               ]}
             >
+              <TouchableOpacity
+                style={styles.actionButton}
+                onPress={() => router.push("/profile/search")}
+                hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+                activeOpacity={0.7}
+              >
+                <Ionicons
+                  name="search"
+                  size={22}
+                  color={COLORS.primary}
+                />
+              </TouchableOpacity>
               {isOwnProfile ? (
                 <TouchableOpacity
                   style={styles.actionButton}
@@ -283,7 +295,7 @@ export default function AnimatedProfileHeader({
           </Animated.View>
 
           {/* Animated wave effect with improved animation */}
-          <WaveEffect waveAnim={waveTransform} />
+          {/* <WaveEffect waveAnim={waveTransform} />  */}
         </LinearGradient>
       </Animated.View>
     </View>

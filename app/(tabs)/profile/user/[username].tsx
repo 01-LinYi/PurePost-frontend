@@ -1,7 +1,8 @@
 // app/profile/user/[id].tsx
 import { useState, useEffect, useRef } from "react";
 import { Alert, StyleSheet, View, Animated } from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
+import { useNavigation } from "expo-router"; // Add this import
 
 import AnimatedProfileHeader from "@/components/profile/ProfileHeader";
 import ProfileView from "@/components/profile/ProfileView";
@@ -11,7 +12,12 @@ import { UserProfile } from "@/types/profileType";
 
 export default function UserProfileScreen() {
   const { username } = useLocalSearchParams();
-  const router = useRouter();
+  const navigation = useNavigation(); // Access navigation object
+
+  useEffect(() => {
+    navigation.setOptions({ headerShown: false }); // Hide the header
+  }, [navigation]);
+
   const [profileData, setProfileData] = useState<UserProfile | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [dataLoading, setDataLoading] = useState(true);
