@@ -3,7 +3,12 @@
 import { useState, useCallback, useEffect } from "react";
 import { Alert } from "react-native";
 import axiosInstance from "@/utils/axiosInstance";
-import { Post, ApiPost, DeepfakeStatus } from "@/types/postType";
+import {
+  Post,
+  ApiPost,
+  DeepfakeStatus,
+  AnalysisStatus,
+} from "@/types/postType";
 import {
   getApiOrdering,
   transformApiPostToPost,
@@ -403,9 +408,21 @@ export const useFeedPosts = ({
           const existingAnalysis = await axiosInstance.get(
             `/deepfake/posts/${postId}/analysis/`
           );
+          console.log("Existing analysis found");
+          // Update post with the analysis result
+          // {'status': 'completed',
+          // 'is_deepfake': True,
+          // 'deepfake_score': 0.8481758236885071,
+          // 'processing_time': 0.22883200645446777,
+          // 'model_processing_time': 0.06609988212585449}
 
           // If we get here, analysis already exists
-          updatePostWithAnalysisResult(postId, existingAnalysis.data.status);
+          updatePostWithAnalysisResult(
+            postId,
+            existingAnalysis.data.status,
+            existingAnalysis.data.is_deepfake ? "flagged" : "not_flagged",
+            existingAnalysis.data.deepfake_score
+          );
           return existingAnalysis.data.status !== "analysis_failed";
         } catch (error) {
           // Analysis doesn't exist yet or couldn't be retrieved
@@ -419,8 +436,14 @@ export const useFeedPosts = ({
               `/deepfake/posts/${postId}/analysis/`
             );
 
+
             // Update post with the analysis status
-            updatePostWithAnalysisResult(postId, response.data.status);
+            updatePostWithAnalysisResult(
+              postId,
+              response.data.status,
+              response.data.is_deepfake ? "flagged" : "not_flagged",
+              response.data.deepfake_score
+            );
             return response.data.status !== "analysis_failed";
           } else {
             // Some other error occurred during GET request
@@ -452,42 +475,47 @@ export const useFeedPosts = ({
    */
   const updatePostWithAnalysisResult = (
     postId: string,
-    status: DeepfakeStatus
+    proc_status: AnalysisStatus,
+    status: DeepfakeStatus,
+    score: number
   ) => {
-    // Update the post status
+    // Update the post with the analysis result
     setPosts((currentPosts) =>
       currentPosts.map((p) =>
-        p.id === postId ? { ...p, deepfake_status: status } : p
+        p.id === postId
+          ? {
+              ...p,
+              deepfake_status: status,
+            }
+          : p
       )
     );
-
-    // Show appropriate alert based on status
-    switch (status) {
-      case "flagged":
+    switch (proc_status) {
+      case "pending":
+        Alert.alert("Analysis Pending", "Your content is being analyzed.");
+        break;
+      case "processing":
+        Alert.alert("Analysis in Progress", "Your content is being analyzed.");
+        break;
+      case "completed":
         Alert.alert(
-          "Content Flagged",
-          "This content has been flagged as potentially manipulated."
+          "Analysis Completed",
+          `Your content has been analyzed. Result: ${
+            status === "flagged" ? "Potentially manipulated" : "Authentic"
+          }`
         );
         break;
-      case "not_flagged":
-        Alert.alert(
-          "Authentic Content",
-          "No manipulation detected in this content."
-        );
-        break;
-      case "analysis_failed":
+      case "failed":
         Alert.alert(
           "Analysis Failed",
-          "Unable to complete the analysis due to technical issues."
+          "Unable to complete analysis. Please try again later."
         );
         break;
-      case "analyzing":
-        // For "analyzing" status, less intrusive notification or none at all
-        console.log("Analysis in progress, results will be available soon");
-        break;
       default:
-        console.log(`Analysis status: ${status}`);
+        Alert.alert("Unknown Status", "Unable to determine analysis status.");
+        break;
     }
+    // Optionally, you can also update the score in the post
   };
 
   // Share post functionality

@@ -11,6 +11,12 @@ export type DeepfakeStatus =
   | "not_flagged" // Confirmed as authentic
   | "analysis_failed"; // Unable to complete analysis
 
+export type AnalysisStatus =
+  | "pending" // Analysis is pending
+  | "processing" // Analysis is in progress
+  | "completed" // Analysis has been completed
+  | "failed"; // Analysis has failed
+
 export interface User {
   id: string;
   username: string;
@@ -63,6 +69,7 @@ export interface Post {
   isAuthor?: boolean;
   isEdited?: boolean;
   savedFolderId?: string | null;
+  deepfake_score?: number | null; // Score from deepfake analysis
 }
 
 // Raw post data structure from the API
