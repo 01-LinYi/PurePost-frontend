@@ -14,7 +14,7 @@ import { Ionicons } from "@expo/vector-icons";
 
 import { Text, View } from "@/components/Themed";
 import GradientButton from "@/components/GradientButton";
-import { styles } from "@/components/profile/profileStyle";
+import { styles } from "@/components/profile/ProfileStyle";
 import PinnedPostItem from "@/components/profile/PinnedPostItem";
 import FollowButton from "@/components/FollowButton";
 

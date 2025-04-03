@@ -54,25 +54,32 @@ export default function Following() {
 
   return (
     <View style={styles.container}>
-      <FlatList
-        data={following}
-        keyExtractor={(item) => item.id.toString()}
-        renderItem={({ item }) => (
-          <View style={styles.item}>
-            <Text style={styles.name}>{item.following_details.username}</Text>
-            <Text style={styles.email}>{item.following_details.email}</Text>
-          </View>
-        )}
-        onEndReached={fetchMoreFollowing} // Triggered when the user scrolls to the end
-        onEndReachedThreshold={0.5} // Trigger when 50% of the list is scrolled
-        ListFooterComponent={
-          loadingMore ? (
-            <ActivityIndicator size="small" color="#007bff" />
-          ) : null
-        }
-        refreshing={refreshing} // Pull-to-refresh state
-        onRefresh={refreshFollowing} // Triggered when the user performs a pull-to-refresh
-      />
+      {following.length > 0 ? (
+        <FlatList
+          data={following}
+          keyExtractor={(item) => item.id.toString()}
+          renderItem={({ item }) => (
+            <View style={styles.item}>
+              <Text style={styles.name}>{item.following_details.username}</Text>
+              <Text style={styles.email}>{item.following_details.email}</Text>
+            </View>
+          )}
+          onEndReached={fetchMoreFollowing} // Triggered when the user scrolls to the end
+          onEndReachedThreshold={0.5} // Trigger when 50% of the list is scrolled
+          ListFooterComponent={
+            loadingMore ? (
+              <ActivityIndicator size="small" color="#007bff" />
+            ) : null
+          }
+          refreshing={refreshing} // Pull-to-refresh state
+          onRefresh={refreshFollowing} // Triggered when the user performs a pull-to-refresh
+        />
+      ) : (
+        <Text style={{ textAlign: "center", marginTop: 20 }}>
+          You are not following anyone yet.
+        </Text>
+        // Display a message when there are no followings
+      )}
     </View>
   );
 }

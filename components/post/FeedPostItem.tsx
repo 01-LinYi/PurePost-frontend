@@ -239,12 +239,12 @@ export default function FeedPostItem({
         <View style={styles.userInfo}>
           <TouchableOpacity
             style={styles.userAvatarContainer}
-            onPress={() => router.push(`/profile/user/${post.user.username}`)}
+            onPress={() => router.push(`/user/${post.user.username}`)}
           >
             {renderAvatar()}
           </TouchableOpacity>
           <TouchableOpacity
-            onPress={() => router.push(`/profile/user/${post.user.username}`)}
+            onPress={() => router.push(`/user/${post.user.username}`)}
           >
             <View>
               <Text style={styles.username}>{getUsername()}</Text>

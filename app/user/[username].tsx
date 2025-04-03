@@ -1,26 +1,30 @@
 // app/profile/user/[username].tsx
 import { useState, useEffect } from "react";
 import { Alert, StyleSheet, Animated } from "react-native";
-import { useLocalSearchParams, useNavigation} from "expo-router";
+import { useLocalSearchParams, useRouter} from "expo-router";
 
 import ProfileView from "@/components/profile/ProfileView";
 import AnimatedProfileHeader from "@/components/profile/ProfileHeader";
 import { View } from "@/components/Themed";
 import { DefaultProfile, MOCK_STATS } from "@/constants/DefaultProfile";
-import { useMyPosts } from "@/hooks/useMyPosts";
+import { useSession} from "@/components/SessionProvider";
 import { useUserPublicPosts } from "@/hooks/useUserPublicPosts";
 import { useSocialStats } from "@/hooks/useSocialStat";
 import useProfileCache from "@/hooks/useProfileCache";
-import { UserProfile } from "@/types/profileType";
 import * as api from "@/utils/api";
 
 export default function UserProfileScreen() {
   const { username } = useLocalSearchParams();
-  const navigation = useNavigation(); // Access navigation object
+  const { user } = useSession();
+  const router = useRouter(); 
 
   useEffect(() => {
-    navigation.setOptions({ headerShown: false }); // Hide the header
-  }, [navigation]);
+    if (username && user) {
+      if (user.username === username) {
+        router.replace("/(tabs)/profile");
+      }
+    }
+  }, [user,username]);
 
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [dataLoading, setDataLoading] = useState(true);
@@ -189,6 +193,7 @@ export default function UserProfileScreen() {
               title={username as string || "Profile"}
               isOwnProfile={false}
               scrollY={scrollY}
+              showBackButton={true}
             />
             <ScrollAnimatedProfileView scrollY={scrollY} />
           </>
