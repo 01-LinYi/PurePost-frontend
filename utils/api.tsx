@@ -139,3 +139,34 @@ export function addComment(id: string, text: string): Promise<unknown> {
   // TODO: Implement this function
   throw new Error("Function not implemented.");
 }
+
+export const forgetPassword = async (email: string): Promise<boolean> => {
+  try {
+    await axiosInstance.post(`/auth/forget/?email=${email}`);
+  } catch (error: any) {
+    if (error.response && error.response.status === 404) {
+      return false;
+    } else {
+      console.error("Error sending resetting password email: ", error);
+      throw error;
+    }
+  }
+  return true;
+}
+
+export const resetPassword = async (email: string, password: string, code: string): Promise<string | undefined> => {
+  try {
+    const res = await axiosInstance.put(`/auth/forget/`, {
+      "email": email,
+      "new_password": password,
+      "code": code,
+    });
+    return undefined;
+  } catch (error: any) {
+    if (!error.response && error.response.status !== 400) {
+      console.error("Error reseting password: ", error);
+      throw error;
+    }
+    return error.response.data.error;
+  }
+}
