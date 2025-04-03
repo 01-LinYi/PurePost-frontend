@@ -12,6 +12,8 @@ import {
 import { Text, View } from "@/components/Themed";
 import { Ionicons } from "@expo/vector-icons";
 import { Post, DeepfakeStatus } from "@/types/postType";
+import { useRouter } from "expo-router";
+import { formatDate } from "@/utils/dateUtils";
 
 type FeedPostItemProps = {
   post: Post;
@@ -40,6 +42,7 @@ export default function FeedPostItem({
   onShare,
   onReport,
 }: FeedPostItemProps) {
+  const router = useRouter();
   // Handle share action
   const handleShare = async () => {
     try {
@@ -223,7 +226,7 @@ export default function FeedPostItem({
 
   // Get username display
   const getUsername = () => {
-    return post.user?.username|| "User";
+    return post.user?.username || "User";
   };
 
   return (
@@ -234,13 +237,20 @@ export default function FeedPostItem({
     >
       <View style={styles.postHeader}>
         <View style={styles.userInfo}>
-          <TouchableOpacity style={styles.userAvatarContainer}>
+          <TouchableOpacity
+            style={styles.userAvatarContainer}
+            onPress={() => router.push(`/profile/user/${post.user.username}`)}
+          >
             {renderAvatar()}
           </TouchableOpacity>
-          <View>
-            <Text style={styles.username}>{getUsername()}</Text>
-            <Text style={styles.timestamp}>{post.created_at}</Text>
-          </View>
+          <TouchableOpacity
+            onPress={() => router.push(`/profile/user/${post.user.username}`)}
+          >
+            <View>
+              <Text style={styles.username}>{getUsername()}</Text>
+              <Text style={styles.timestamp}>{formatDate(post.created_at)}</Text>
+            </View>
+          </TouchableOpacity>
         </View>
         <TouchableOpacity style={styles.moreButton} onPress={showOptions}>
           <Ionicons name="ellipsis-horizontal" size={20} color="#8e8e93" />

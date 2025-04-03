@@ -126,7 +126,7 @@ export const fetchFollowings = async (
 
 export const unfollowUser = async (user_id: number) => {
   try {
-    const response = await axiosInstance.post(`/social/unfollow/${user_id}/`);
+    const response = await axiosInstance.delete(`/social/unfollow/${user_id}/`);
     return response;
   } catch (error: any) {
     console.error("Error following user:", error);

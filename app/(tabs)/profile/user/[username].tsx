@@ -8,6 +8,7 @@ import AnimatedProfileHeader from "@/components/profile/ProfileHeader";
 import { View } from "@/components/Themed";
 import { DefaultProfile, MOCK_STATS } from "@/constants/DefaultProfile";
 import { useMyPosts } from "@/hooks/useMyPosts";
+import { useUserPublicPosts } from "@/hooks/useUserPublicPosts";
 import { useSocialStats } from "@/hooks/useSocialStat";
 import useProfileCache from "@/hooks/useProfileCache";
 import { UserProfile } from "@/types/profileType";
@@ -34,10 +35,10 @@ export default function UserProfileScreen() {
     isCacheExpired,
   } = useProfileCache();
   
-  const { totalPosts } = useMyPosts({ userId: username as string });
+  const {totalPublicPosts} = useUserPublicPosts({ userId: profileData?.user_id});
   
   const { socialStats, refreshSocialStats } = useSocialStats({ 
-    userId: username as string
+    userId: profileData?.user_id
   });
 
   /**
@@ -142,8 +143,8 @@ export default function UserProfileScreen() {
     if (profileData) {
       const updatedStats = { ...profileData.stats };
       
-      if (totalPosts !== undefined) {
-        updatedStats.posts_count = totalPosts;
+      if (totalPublicPosts !== undefined) {
+        updatedStats.posts_count = totalPublicPosts;
       }
       
       if (socialStats) {

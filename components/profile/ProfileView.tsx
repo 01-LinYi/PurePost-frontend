@@ -190,12 +190,7 @@ export default function ProfileView({
               // Message Button (only shown on other's profile)
               <GradientButton
                 text="Message"
-                onPress={() => {
-                  router.push({
-                    pathname: "/message",
-                    params: { userId: profileData.id },
-                  });
-                }}
+                onPress={() => { router.push("/(tabs)/(message)/conversation") }}
                 gradientColors={[COLORS.primary, COLORS.accent]}
                 style={styles.actionButton}
                 borderRadius={8}
@@ -205,7 +200,7 @@ export default function ProfileView({
             {/* Don't show follow button on own profile */}
             { !isOwnProfile ? (
               <FollowButton
-                userId={profileData.id}
+                userId={profileData.user_id}
                 initialFollowStatus={profileData.isFollowing}
                 isLocked={
                   profileData.isPrivate && !profileData.isFollowRequestSent
@@ -260,7 +255,7 @@ export default function ProfileView({
                 () =>
                   isOwnProfile
                     ? router.push("/post/my_posts")
-                    : router.push(`/(tabs)`) //TODO : 404 Pages
+                    : {} // Do nothing for now 
               }
               activeOpacity={0.7}
             >
@@ -276,7 +271,7 @@ export default function ProfileView({
                 () =>
                   isOwnProfile
                     ? router.push("/profile/followers")
-                    : router.push("/(tabs)") // TODO : 404 Pages
+                    : {} // Do nothing for now
                 // router.push(`/profile/user/${profileData.id}/followers`)
               }
               activeOpacity={0.7}
@@ -293,7 +288,7 @@ export default function ProfileView({
                 () =>
                   isOwnProfile
                     ? router.push("/profile/following")
-                    : router.push("/(tabs)") //TODO : 404 Pages
+                    : {} // Do nothing for now
                 //router.push(`/profile/user/${profileData.id}/following`)
               }
               activeOpacity={0.7}

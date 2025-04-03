@@ -32,6 +32,17 @@ const PinnedPostItem = ({ post, onSelectPost, isOwnProfile=true }: PinnedPostIte
       </View>
     );
   }
+
+  if ((!post && !isOwnProfile) || post.length === 0) {
+    return (
+      <View style={profileStyles.postContainer}>
+        <Ionicons name="pin-outline" size={24} color="#00c5e3" />
+        <Text style={[profileStyles.noPostText, { marginTop: 8 }]}>
+          This user has not pinned any posts yet.
+        </Text>
+      </View>
+    );
+  }
   
 
   const handlePostPress = () => {
@@ -93,7 +104,7 @@ const PinnedPostItem = ({ post, onSelectPost, isOwnProfile=true }: PinnedPostIte
   );
 };
 
-// 仅定义 PinnedPostItem 特有的样式，避免与 profileStyles 重复
+
 const styles = StyleSheet.create({  
   addButton: {
     marginTop: 10,
