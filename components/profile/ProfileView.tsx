@@ -20,6 +20,7 @@ import FollowButton from "@/components/FollowButton";
 
 import { formatDate } from "@/utils/dateUtils";
 import * as api from "@/utils/api";
+import { useSession } from "../SessionProvider";
 
 // Color palette based on #00c5e3
 const COLORS = {
@@ -60,6 +61,7 @@ export default function ProfileView({
   contentContainerStyle,
 }: ProfileViewProps) {
   const router = useRouter();
+  const {user} = useSession();
   const [isLoading, setIsLoading] = useState(false);
   const [imageError, setImageError] = useState(false);
   const [isFollowLoading, setIsFollowLoading] = useState(false);
@@ -156,7 +158,7 @@ export default function ProfileView({
           <View style={styles.userInfo}>
             <View style={styles.nameContainer}>
               <Text style={styles.name}>{profileData?.username || "User"}</Text>
-              {profileData?.verified ? (
+              {user?.is_verified ? (
                 <Ionicons
                   name="checkmark-circle"
                   size={18}
