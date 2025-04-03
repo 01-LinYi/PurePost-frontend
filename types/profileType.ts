@@ -1,3 +1,5 @@
+import { User } from "./userType";
+
 export interface UserStats {
   posts_count: number;
   public_posts_count?: number;
@@ -5,19 +7,12 @@ export interface UserStats {
   following_count: number;
 }
 
-export interface UserProfile {
-    id: number;
-    username: string;
-    email: string;
+export interface UserProfile extends User {
     avatar: string;
     bio?: string;
     location?: string;
     website?: string;
     date_of_birth?: string;
-    created_at?: string;
-    updated_at?: string;
-    is_active?: boolean;
-    verified?: boolean;
     stats?: UserStats;
     isFollowing?: boolean;
     isMe?: boolean;

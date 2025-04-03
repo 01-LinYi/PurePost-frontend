@@ -1,7 +1,7 @@
 import { View, Text, Image, TouchableOpacity, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { styles as profileStyles } from "@/components/profile/ProfileStyle";
+import { styles as profileStyles } from "@/components/profile/profileStyle";
 import { formatDate } from "@/utils/dateUtils";
 
 
