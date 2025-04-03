@@ -14,9 +14,9 @@ type PinnedPostItemProps = {
 // PinnedPostItem 
 const PinnedPostItem = ({ post, onSelectPost, isOwnProfile=true }: PinnedPostItemProps) => {
   const router = useRouter();
-  
 
-  if (!post && isOwnProfile) {
+  // Case 1: Own profile with no pinned post
+  if (isOwnProfile && (!post || post.length === 0)) {
     return (
       <View style={profileStyles.postContainer}>
         <Ionicons name="pin-outline" size={24} color="#00c5e3" />
@@ -33,7 +33,8 @@ const PinnedPostItem = ({ post, onSelectPost, isOwnProfile=true }: PinnedPostIte
     );
   }
 
-  if ((!post && !isOwnProfile) || post.length === 0) {
+  // Case 2: Viewing someone else's profile with no pinned post
+  if (!isOwnProfile && (!post || post.length === 0)) {
     return (
       <View style={profileStyles.postContainer}>
         <Ionicons name="pin-outline" size={24} color="#00c5e3" />

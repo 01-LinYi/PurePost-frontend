@@ -1,5 +1,5 @@
 import { Follow } from "@/types/followType";
-import { Post } from "@/types/postType";
+import { ApiPost, Post } from "@/types/postType";
 import { UserProfile } from "@/types/profileType";
 import axiosInstance from "@/utils/axiosInstance";
 
@@ -70,10 +70,6 @@ export const fetchMySocialStat = async () => {
 export const fetchUserSocialStat = async (user_id: number) => {
   return getApi(`/social/follow/status/${user_id}/`);
 };
-export const fetchPostCounts = async (user_id: number) => {
-  //TODO: Implement this function
-  return 0;
-};
 
 export const fetchPosts = async (userId: number) => {
   return getApi(`/content/posts/?user_id=${userId}`);
@@ -83,7 +79,7 @@ export const fetchPosts = async (userId: number) => {
  * Get the list of posts pinned by the current user
  * @returns a list of Post
  */
-export const fetchPinnedPosts = async (userId: number, isPinned: boolean = false): Promise<Post[]> => {
+export const fetchPinnedPosts = async (userId: number, isPinned: boolean = false): Promise<ApiPost[]> => {
   const res = await getApi(`/content/posts/?user_id=${userId}&is_pinned=${isPinned}`);
   return res.data.results;
 }
@@ -191,6 +187,25 @@ export const toggleSavePost = async (
     throw error;
   }
 };
+
+
+export const pinPost = async (post_id: number): Promise<void> => {
+  try {
+    await axiosInstance.post(`/content/posts/${post_id}/pin/`);
+  } catch (error) {
+    console.error("Error pinning post:", error);
+    throw error;
+  }
+}
+
+export const unpinPost = async (post_id: number): Promise<void> => {
+  try {
+    await axiosInstance.post(`/content/posts/${post_id}/unpin/`);
+  } catch (error) {
+    console.error("Error unpinning post:", error);
+    throw error;
+  }
+}
 
 export function addComment(id: string, text: string): Promise<any> {
   // TODO: Implement this function

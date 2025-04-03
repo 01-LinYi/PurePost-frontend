@@ -21,6 +21,7 @@ import FollowButton from "@/components/FollowButton";
 import { formatDate } from "@/utils/dateUtils";
 import * as api from "@/utils/api";
 import { useSession } from "../SessionProvider";
+import { Post } from "@/types/postType";
 
 // Color palette based on #00c5e3
 const COLORS = {
@@ -61,7 +62,7 @@ export default function ProfileView({
   contentContainerStyle,
 }: ProfileViewProps) {
   const router = useRouter();
-  const {user} = useSession();
+  const { user } = useSession();
   const [isLoading, setIsLoading] = useState(false);
   const [imageError, setImageError] = useState(false);
   const [isFollowLoading, setIsFollowLoading] = useState(false);
@@ -105,10 +106,6 @@ export default function ProfileView({
     return "https://picsum.photos/200";
   };
 
-  const getPinnedPosts = async () => {
-    return await api.fetchPinnedPosts(profileData.id, true);
-  }
-
   // Show loading state while initial data is being fetched
   if (dataLoading && !profileData) {
     return (
@@ -135,7 +132,6 @@ export default function ProfileView({
         scrollEventThrottle={scrollEventThrottle}
         onScroll={onScroll}
       >
-
         {/* Profile Card */}
         <View style={styles.profileCard}>
           {/* Avatar with gradient border */}
@@ -191,7 +187,9 @@ export default function ProfileView({
               // Message Button (only shown on other's profile)
               <GradientButton
                 text="Message"
-                onPress={() => { router.push("/(tabs)/(message)/conversation") }}
+                onPress={() => {
+                  router.push("/(tabs)/(message)/conversation");
+                }}
                 gradientColors={[COLORS.primary, COLORS.accent]}
                 style={styles.actionButton}
                 borderRadius={8}
@@ -199,7 +197,7 @@ export default function ProfileView({
             )}
 
             {/* Don't show follow button on own profile */}
-            { !isOwnProfile ? (
+            {!isOwnProfile ? (
               <FollowButton
                 userId={profileData.user_id}
                 initialFollowStatus={profileData.isFollowing}
@@ -225,7 +223,7 @@ export default function ProfileView({
                   }
                 }}
               />
-            ): (
+            ) : (
               <FollowButton
                 userId={profileData.id}
                 initialFollowStatus={profileData.isFollowing}
@@ -253,10 +251,7 @@ export default function ProfileView({
             <TouchableOpacity
               style={styles.stat}
               onPress={
-                () =>
-                  isOwnProfile
-                    ? router.push("/post/my_posts")
-                    : {} // Do nothing for now 
+                () => (isOwnProfile ? router.push("/post/my_posts") : {}) // Do nothing for now
               }
               activeOpacity={0.7}
             >
@@ -269,10 +264,7 @@ export default function ProfileView({
             <TouchableOpacity
               style={styles.stat}
               onPress={
-                () =>
-                  isOwnProfile
-                    ? router.push("/profile/followers")
-                    : {} // Do nothing for now
+                () => (isOwnProfile ? router.push("/profile/followers") : {}) // Do nothing for now
                 // router.push(`/profile/user/${profileData.id}/followers`)
               }
               activeOpacity={0.7}
@@ -286,10 +278,7 @@ export default function ProfileView({
             <TouchableOpacity
               style={styles.stat}
               onPress={
-                () =>
-                  isOwnProfile
-                    ? router.push("/profile/following")
-                    : {} // Do nothing for now
+                () => (isOwnProfile ? router.push("/profile/following") : {}) // Do nothing for now
                 //router.push(`/profile/user/${profileData.id}/following`)
               }
               activeOpacity={0.7}
@@ -306,7 +295,7 @@ export default function ProfileView({
         <View style={styles.postSection}>
           <Text style={styles.sectionTitle}>Pinned Post</Text>
           <PinnedPostItem
-            post={[]} // TODO: Placeholder. Need more discussion
+            post={profileData.pinned_post ? profileData.pinned_post : []}
             onSelectPost={() => {
               router.push("/post/my_posts");
             }}

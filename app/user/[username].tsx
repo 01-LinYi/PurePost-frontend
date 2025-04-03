@@ -9,6 +9,7 @@ import { View } from "@/components/Themed";
 import { DefaultProfile, MOCK_STATS } from "@/constants/DefaultProfile";
 import { useSession} from "@/components/SessionProvider";
 import { useUserPublicPosts } from "@/hooks/useUserPublicPosts";
+import { usePinnedPost } from "@/hooks/usePinPost";
 import { useSocialStats } from "@/hooks/useSocialStat";
 import useProfileCache from "@/hooks/useProfileCache";
 import * as api from "@/utils/api";
@@ -44,6 +45,8 @@ export default function UserProfileScreen() {
   const { socialStats, refreshSocialStats } = useSocialStats({ 
     userId: profileData?.user_id
   });
+
+  const { pinnedPost, refetch } = usePinnedPost(profileData?.user_id, false);
 
   /**
    * Fetch user profile data from API
@@ -121,7 +124,8 @@ export default function UserProfileScreen() {
 
     await Promise.all([
       fetchUserData(true),
-      refreshSocialStats()
+      refreshSocialStats(),
+      refetch(profileData?.user_id as number),
     ]);
     setIsRefreshing(false);
   };
@@ -158,6 +162,12 @@ export default function UserProfileScreen() {
         viewProfileData = {
           ...profileData,
           isFollowing: socialStats.is_following
+        };
+      }
+      if (pinnedPost) {
+        viewProfileData = {
+          ...viewProfileData,
+          pinned_post: pinnedPost,
         };
       }
       

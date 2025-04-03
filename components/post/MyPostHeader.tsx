@@ -25,7 +25,7 @@ const MyPostsHeader: React.FC<MyPostsHeaderProps> = ({
         accessibilityLabel="Go back"
         accessibilityRole="button"
       >
-        <Ionicons name="arrow-back" size={24} color="#333" />
+        <Ionicons name="arrow-back" size={22} color="#00c5e3" />
       </TouchableOpacity>
 
       <Text style={styles.pageTitle}>My Posts</Text>
@@ -36,7 +36,7 @@ const MyPostsHeader: React.FC<MyPostsHeaderProps> = ({
         accessibilityLabel="Create new post"
         accessibilityRole="button"
       >
-        <Ionicons name="add" size={22} color="#FFFFFF" />
+        <Ionicons name="add" size={20} color="#FFFFFF" />
         <Text style={styles.createPostButtonText}>New Post</Text>
       </TouchableOpacity>
     </View>
@@ -49,31 +49,33 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 8,
     borderBottomWidth: 1,
     borderBottomColor: "#f0f0f0",
   },
   backButton: {
-    padding: 4,
+    padding: 3,
     marginRight: 8,
   },
   pageTitle: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: "bold",
-    color: "#333",
+    color: "#00c5e3",
+    flex: 1, 
   },
   createPostButton: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#00c5e3",
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 20,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 18, 
   },
   createPostButtonText: {
     color: "#FFFFFF",
     fontWeight: "600",
     marginLeft: 4,
+    fontSize: 14,
   },
 });
 

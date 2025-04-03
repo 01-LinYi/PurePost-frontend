@@ -37,7 +37,7 @@ export default function ProfileSearch() {
   };
 
   const handleProfilePress = (username: string) => {
-    router.push(`/profile/user/${username}`);
+    router.push(`/user/${username}`);
   };
 
   return (
