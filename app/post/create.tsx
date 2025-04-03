@@ -82,7 +82,6 @@ const CreatePost = () => {
     }
   }, [hasDisclaimer]);
 
-
   const pickMedia = useCallback(async () => {
     try {
       const { status } =
@@ -121,14 +120,23 @@ const CreatePost = () => {
           return;
         }
 
-        setMedia({
-          uri: asset.uri,
-          type: mediaType,
-          name: formatUploadFileName(
-            mediaType as "image" | "video",
-            asset.fileName || "media"
-          ),
-        });
+        mediaType === "image"
+          ? setMedia({
+              image: asset.uri,
+              type: "image",
+              name: formatUploadFileName(
+                "image",
+                asset.uri.split("/").pop() || "image.jpg"
+              ),
+            })
+          : setMedia({
+              video: asset.uri,
+              type: "video",
+              name: formatUploadFileName(
+                "video",
+                asset.uri.split("/").pop() || "video.mp4"
+              ),
+            });
       }
     } catch (error) {
       Alert.alert(
@@ -168,7 +176,11 @@ const CreatePost = () => {
       formData.append("visibility", visibility);
 
       if (media) {
-        const uriParts = media.uri.split("/");
+        const uriParts =
+          media.type === "video"
+            ? media.video?.split("/") || []
+            : media.image?.split("/") || [];
+
         const fileName = uriParts[uriParts.length - 1];
         const fileType = media.type === "video" ? "video" : "image";
 
@@ -176,8 +188,8 @@ const CreatePost = () => {
         formData.append(fileType, {
           uri:
             Platform.OS === "android"
-              ? media.uri
-              : media.uri.replace("file://", ""),
+              ? media.image
+              : media.image?.replace("file://", "") ?? "",
           name: media.name || fileName,
           type: media.type === "video" ? "video/mp4" : "image/jpeg", // Simplified for example
         });
@@ -270,8 +282,8 @@ const CreatePost = () => {
             <Switch
               value={hasDisclaimer}
               onValueChange={toggleDisclaimer}
-              trackColor={{ false: '#e0e0e0', true: '#00c5e3' }}
-              thumbColor={hasDisclaimer ? '#00c5e3' : '#f4f3f4'}
+              trackColor={{ false: "#e0e0e0", true: "#00c5e3" }}
+              thumbColor={hasDisclaimer ? "#00c5e3" : "#f4f3f4"}
               ios_backgroundColor="#f9f9f9"
             />
           </View>
@@ -291,7 +303,9 @@ const CreatePost = () => {
               returnKeyType="default"
               textAlignVertical="top"
             />
-            <Text style={styles.disclaimerCharCount}>{disclaimerText.length}/200</Text>
+            <Text style={styles.disclaimerCharCount}>
+              {disclaimerText.length}/200
+            </Text>
           </View>
         )}
 

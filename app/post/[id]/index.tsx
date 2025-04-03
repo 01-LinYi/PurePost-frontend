@@ -1,3 +1,5 @@
+// app/post/[id]/index.tsx - Post detail screen displaying full post content
+
 import { useState, useEffect, useCallback } from "react";
 import {
   StyleSheet,
@@ -6,45 +8,48 @@ import {
   ActivityIndicator,
   TouchableOpacity,
 } from "react-native";
-import { useLocalSearchParams, router } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { Text, View } from "@/components/Themed";
 import ActionButton from "@/components/ActionButton";
 import PostContent from "@/components/post/PostContent";
 import CommentInput from "@/components/post/CommentInput";
+import CompactHeader from "@/components/CompactHeader";
 import * as api from "@/utils/api";
 import { Post, Comment } from "@/types/postType";
-import { transformApiPostToPost } from "../my_posts";
+import { transformApiPostToPost } from "@/utils/postsTransformers";
 import { performOptimisticUpdate } from "@/utils/optimiticeUP";
 
+/**
+ * Post detail screen that displays a single post with full content and interactions
+ */
 const PostDetail = () => {
   const { id } = useLocalSearchParams();
   const insets = useSafeAreaInsets();
+  const router = useRouter();
 
+  // State to hold the post data and related information
   const [postData, setPostData] = useState<{
     post: Post | null;
     comments: Comment[];
-    isLiked: boolean;
-    isSaved: boolean;
-    likesCount: number;
-    shareCount: number;
   }>({
     post: null,
     comments: [],
-    isLiked: false,
-    isSaved: false,
-    likesCount: 0,
-    shareCount: 0,
   });
+
+  // UI state for loading and action indicators
   const [uiState, setUiState] = useState({
     isLoading: true,
     isSubmittingAction: false,
   });
 
-  const { post, comments, isLiked, isSaved, likesCount, shareCount } = postData;
+  const { post, comments } = postData;
   const { isLoading, isSubmittingAction } = uiState;
 
+  /**
+   * Load post data from the API
+   */
   const loadPostData = useCallback(async () => {
     if (typeof id !== "string") {
       Alert.alert("Error", "Invalid post ID");
@@ -56,17 +61,15 @@ const PostDetail = () => {
       console.log(`Fetching post with ID: ${id}`);
 
       const res = await api.fetchSinglePosts(id);
-      const data = res.data;
-      console.log("Post data:", data);
-      const transformedPost = transformApiPostToPost(data);
+      const apiPost = res.data;
+      console.log("Post data:", apiPost);
+
+      // Transform API response to our frontend Post model
+      const transformedPost = transformApiPostToPost(apiPost);
 
       setPostData({
         post: transformedPost,
-        comments: data?.comments || [],
-        isLiked: data.isLiked || false,
-        isSaved: data.isSaved || false,
-        likesCount: data?.likesCount || 0,
-        shareCount: data?.shareCount || 0,
+        comments: apiPost?.comments || [],
       });
     } catch (error) {
       const errorMessage =
@@ -77,24 +80,32 @@ const PostDetail = () => {
     }
   }, [id]);
 
+  // Load post when component mounts or ID changes
   useEffect(() => {
     loadPostData();
   }, [loadPostData]);
 
-  // 事件处理函数
+  /**
+   * Handle like/unlike action
+   */
   const handleLike = async () => {
     if (!post || isSubmittingAction) return;
 
     setUiState((prev) => ({ ...prev, isSubmittingAction: true }));
 
-    const newIsLiked = !isLiked;
+    const newIsLiked = !post.is_liked;
 
     const result = await performOptimisticUpdate({
       updateUI: () => {
         setPostData((prev) => ({
           ...prev,
-          isLiked: newIsLiked,
-          likesCount: prev.likesCount + (newIsLiked ? 1 : -1),
+          post: prev.post
+            ? {
+                ...prev.post,
+                is_liked: newIsLiked,
+                like_count: prev.post.like_count + (newIsLiked ? 1 : -1),
+              }
+            : null,
         }));
       },
       apiCall: async () =>
@@ -104,8 +115,13 @@ const PostDetail = () => {
       rollbackUI: () => {
         setPostData((prev) => ({
           ...prev,
-          isLiked: !newIsLiked,
-          likesCount: prev.likesCount + (newIsLiked ? -1 : 1),
+          post: prev.post
+            ? {
+                ...prev.post,
+                is_liked: !newIsLiked,
+                like_count: prev.post.like_count + (newIsLiked ? -1 : 1),
+              }
+            : null,
         }));
       },
       errorMessagePrefix: `Failed to ${newIsLiked ? "like" : "unlike"} post: `,
@@ -115,52 +131,75 @@ const PostDetail = () => {
       console.log(`Post ${post.id} ${newIsLiked ? "liked" : "unliked"}`);
     }
 
-    if (result) {
-      console.log(`Post ${post.id} ${newIsLiked ? "liked" : "unliked"}`);
-    }
-
     setUiState((prev) => ({ ...prev, isSubmittingAction: false }));
   };
 
+  /**
+   * Navigate to edit post screen
+   */
   const handleEdit = useCallback(() => {
     if (post) router.push(`/post/${post.id}/edit`);
   }, [post]);
 
+  /**
+   * Handle share action
+   */
   const handleShare = useCallback(() => {
-    // 模拟分享功能
-    const newShareCount = shareCount === 0 ? 1 : 0;
+    if (!post) return;
+
+    // Update share count optimistically
+    const newShareCount = post.share_count + 1;
 
     setPostData((prev) => ({
       ...prev,
-      shareCount: newShareCount,
+      post: prev.post
+        ? {
+            ...prev.post,
+            share_count: newShareCount,
+          }
+        : null,
     }));
 
-    console.log(`Simulated share operation, new share count: ${newShareCount}`);
+    // In a real app, you would call an API to track the share
+    console.log(`Sharing post ${post.id}, new share count: ${newShareCount}`);
     Alert.alert(
       "Share Success",
       `Content has been shared. Current share count: ${newShareCount}`
     );
-  }, [shareCount]);
+  }, [post]);
 
+  /**
+   * Handle save/unsave action
+   */
   const handleSave = async () => {
     if (!post || isSubmittingAction) return;
 
     setUiState((prev) => ({ ...prev, isSubmittingAction: true }));
 
-    const newIsSaved = !isSaved;
+    const newIsSaved = !post.is_saved;
 
     const result = await performOptimisticUpdate({
       updateUI: () => {
         setPostData((prev) => ({
           ...prev,
-          isSaved: newIsSaved,
+          post: prev.post
+            ? {
+                ...prev.post,
+                is_saved: newIsSaved,
+              }
+            : null,
         }));
       },
       apiCall: async () => api.toggleSavePost(post.id),
       rollbackUI: () => {
         setPostData((prev) => ({
           ...prev,
-          isSaved: !newIsSaved,
+          post: prev.post
+            ? {
+                ...prev.post,
+                is_saved: !newIsSaved,
+              }
+            : null,
         }));
       },
       successMessage: newIsSaved
@@ -172,6 +211,9 @@ const PostDetail = () => {
     setUiState((prev) => ({ ...prev, isSubmittingAction: false }));
   };
 
+  /**
+   * Add a new comment
+   */
   const handleAddComment = async (text: string) => {
     if (!text.trim() || !post || isSubmittingAction) return;
 
@@ -187,12 +229,14 @@ const PostDetail = () => {
     if (result) {
       console.log(`Comment added successfully: ${text}`);
 
+      // Reload post data to get updated comments
       await loadPostData();
     }
 
     setUiState((prev) => ({ ...prev, isSubmittingAction: false }));
   };
 
+  // Render loading state
   if (isLoading) {
     return (
       <View style={[styles.container, styles.centerContent]}>
@@ -201,6 +245,7 @@ const PostDetail = () => {
     );
   }
 
+  // Render error state if post not found
   if (!post) {
     return (
       <View style={[styles.container, styles.centerContent]}>
@@ -218,33 +263,29 @@ const PostDetail = () => {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-
-      {post.isAuthor && (
-        <TouchableOpacity
-          style={[styles.editButton, { top: insets.top + 10 }]}
-          onPress={handleEdit}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="pencil" size={20} color="#FFFFFF" />
-          <Text style={styles.editButtonText}>Edit</Text>
-        </TouchableOpacity>
-      )}
-
+      <CompactHeader
+        title={"Post Detail"}
+        onBack={() => router.back()}
+        rightIcon={{
+          name: "ellipsis-horizontal",
+          label: "More",
+          onPress: () => {
+            // Handle more options here
+          },
+        }}
+      />
+      {/* Post content component */}
       <PostContent
         post={post}
-        isLiked={isLiked}
-        isSaved={isSaved}
-        likesCount={likesCount}
-        commentsCount={comments.length}
-        shareCount={shareCount}
         comments={comments}
         onLike={handleLike}
-        onEdit={post.isAuthor ? handleEdit : undefined}
+        onEdit={handleEdit}
         onShare={handleShare}
         onSave={handleSave}
         bottomPadding={Math.max(20, insets.bottom) + 70}
       />
 
+      {/* Comment input component */}
       <CommentInput
         onSubmit={handleAddComment}
         bottomInset={Math.max(10, insets.bottom)}
@@ -286,26 +327,25 @@ const styles = StyleSheet.create({
     padding: 4,
     zIndex: 10,
   },
-  editButton: {
-    position: "absolute",
-    right: 16,
-    backgroundColor: "#00c5e3",
-    paddingVertical: 8,
+  header: {
+    height: 56,
+    backgroundColor: '#fff',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 16,
-    borderRadius: 20,
-    flexDirection: "row",
-    alignItems: "center",
-    zIndex: 10,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 3,
-    elevation: 5,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 1,
   },
-  editButtonText: {
-    color: "#FFFFFF",
-    fontWeight: "600",
-    marginLeft: 6,
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
   },
 });
 

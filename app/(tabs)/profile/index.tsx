@@ -3,9 +3,11 @@ import { useState, useEffect } from "react";
 import { Alert, StyleSheet, Animated } from "react-native";
 
 import ProfileView from "@/components/profile/ProfileView";
-import ProfileHeader from "@/components/profile/ProfileHeader";
+import AnimatedProfileHeader from "@/components/profile/ProfileHeader";
 import { View } from "@/components/Themed";
 import { DefaultProfile, MOCK_STATS } from "@/constants/DefaultProfile";
+import { useMyPosts } from "@/hooks/useMyPosts";
+import { useSocialStats } from "@/hooks/useSocialStat";
 import useProfileCache from "@/hooks/useProfileCache";
 import * as api from "@/utils/api";
 
@@ -13,6 +15,7 @@ export default function ProfileScreen() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [dataLoading, setDataLoading] = useState(true);
   const [isFollowing, setIsFollowing] = useState(false);
+  
   const {
     profileData,
     cacheStatus,
@@ -21,21 +24,24 @@ export default function ProfileScreen() {
     loadProfileFromCache,
     isCacheExpired,
   } = useProfileCache();
+  
+
+  const { totalPosts } = useMyPosts({ userId: profileData?.user_id });
+  
+
+  const { socialStats, refreshSocialStats } = useSocialStats({ 
+    userId: profileData?.isOwnProfile ? 'me' : profileData?.user_id
+  });
 
   /**
    * Fetch user profile data from API
-   * On success: sets user data with mock stats
-   * On failure: sets fallback data and shows alert
-   * @param forceRefresh Force API request bypassing cache
    */
   const fetchUserData = async (forceRefresh = false) => {
     try {
       setDataLoading(true);
 
-      // If not forcing refresh, try to use cache first
       if (!forceRefresh) {
         const isExpired = await isCacheExpired();
-        // If cache is not expired, load from cache and return
         if (!isExpired) {
           const cachedData = await loadProfileFromCache();
           if (cachedData) {
@@ -45,36 +51,31 @@ export default function ProfileScreen() {
         }
       }
 
-      // Fetch user profile data from API
+
       const response = await api.fetchMyProfile();
+      console.log("Profile response:", response.data);
       if (response.data) {
-        // Combine API response with mock stats if needed
         const userData = {
           ...response.data,
-          stats: response.data.stats || MOCK_STATS,
+          stats: MOCK_STATS,
         };
 
-        // Save to cache
+
         await saveProfileToCache(userData);
       } else {
-        // Fallback if API returns empty data
-        const fallbackData = DefaultProfile;
 
-        await saveProfileToCache(fallbackData);
+        await saveProfileToCache(DefaultProfile);
       }
 
       setDataLoading(false);
     } catch (error) {
       console.error("Error fetching user data:", error);
 
-      // Try to get data from cache even if expired
+      
       const cachedData = await loadProfileFromCache();
-
       if (!cachedData) {
-        // Set hardcoded fallback data if no cache
-        const fallbackData = DefaultProfile;
-
-        await saveProfileToCache(fallbackData);
+      
+        await saveProfileToCache(DefaultProfile);
       }
 
       Alert.alert(
@@ -85,45 +86,76 @@ export default function ProfileScreen() {
     }
   };
 
-  // Load profile data on component mount
+
   useEffect(() => {
     fetchUserData();
   }, []);
 
   /**
-   * Handle pull-to-refresh gesture
-   * Refreshes profile data and shows loading indicator
+   * Handle refresh action
    */
   const handleRefresh = async () => {
     setIsRefreshing(true);
-    await fetchUserData(true); // Force refresh from API
+
+    await Promise.all([
+      fetchUserData(true),
+      refreshSocialStats()
+    ]);
     setIsRefreshing(false);
   };
 
   const handleFollowStatusChange = (status: boolean, userId: string) => {
-    // Update follow status in local state
     setIsFollowing(status);
-    // Update follow status in profile data
     if (profileData) {
       profileData.isFollowing = status;
     }
   };
 
-  // Create a modified ProfileView that tracks scroll
   const ScrollAnimatedProfileView = ({
     scrollY,
   }: {
     scrollY: Animated.Value;
   }) => {
-    // Customize the scroll event to track position
     const handleScroll = Animated.event(
       [{ nativeEvent: { contentOffset: { y: scrollY } } }],
       { useNativeDriver: false }
     );
+    
+
+    let viewProfileData = profileData;
+    if (profileData) {
+
+      const updatedStats = { ...profileData.stats };
+      
+
+      if (totalPosts !== undefined) {
+        updatedStats.posts_count = totalPosts;
+      }
+      
+
+      if (socialStats) {
+        updatedStats.followers_count = socialStats.follower_count;
+        updatedStats.following_count = socialStats.following_count;
+        
+
+        if (!profileData.isOwnProfile) {
+          viewProfileData = {
+            ...profileData,
+            isFollowing: socialStats.is_following
+          };
+        }
+      }
+      
+
+      viewProfileData = {
+        ...viewProfileData,
+        stats: updatedStats
+      };
+    }
 
     return (
       <ProfileView
-        profileData={profileData}
+        profileData={viewProfileData}
         isOwnProfile={true}
         isRefreshing={isRefreshing}
         onRefresh={handleRefresh}
@@ -143,10 +175,10 @@ export default function ProfileScreen() {
         const scrollY = new Animated.Value(0);
         return (
           <>
-            <ProfileHeader
+            <AnimatedProfileHeader
               title="My Profile"
               isOwnProfile={true}
-              scrollY={scrollY} // Pass scroll position for parallax effect
+              scrollY={scrollY}
             />
             <ScrollAnimatedProfileView scrollY={scrollY} />
           </>
@@ -155,7 +187,6 @@ export default function ProfileScreen() {
     </View>
   );
 }
-// Styles for the ProfileScreen component
 
 const styles = StyleSheet.create({
   container: {

@@ -11,18 +11,6 @@ export const getApi = async (url: string) => {
 };
 
 /**
- * Get the social stats of current user
- * @returns  JSON data = {
-            'is_following': boolean,
-            'follower_count': int,
-            'following_count':int
-        }
- */
-export const fetchMySocialStat = async () => {
-  return getApi(`/social/follow/status/`);
-};
-
-/**
  * Get the profile of current user
  * @returns data = {
             'username': string,
@@ -47,15 +35,49 @@ export const fetchUserProfile = async (username: string) => {
 };
 
 /**
- * Get the post counts of given user id
- * If user is current user, will return the post counts of all posts
- * If user is not current user, will return the post counts of public posts
- * @param user_id
- * @returns number of posts
+ * Get the social stats of current user
+ * @returns  JSON data = {
+            'is_following': boolean,
+            'follower_count': int,
+            'following_count':int
+        }
  */
-export const fetchPostCounts = async (user_id: number) => {
-  //TODO: Implement this function
-  return 0;
+export const fetchMySocialStat = async () => {
+  return getApi(`/social/follow/status/`);
+};
+
+export const fetchUserSocialStat = async (user_id: number) => {
+  return getApi(`/social/follow/status/${user_id}/`);
+};
+
+export const followUser = async (user_id: number) => {
+  try {
+    const response = await axiosInstance.post(`/social/follow/${user_id}/`);
+    return response;
+  } catch (error: any) {
+    console.error("Error following user:", error);
+    return error.response;
+  }
+};
+
+export const unfollowUser = async (user_id: number) => {
+  try {
+    const response = await axiosInstance.post(`/social/unfollow/${user_id}/`);
+    return response;
+  } catch (error: any) {
+    console.error("Error following user:", error);
+    return error.response;
+  }
+};
+
+/**
+ * Get the home feed posts
+ * @param page Page number for pagination
+ * @param limit Number of posts per page
+ * @returns List of feed posts
+ */
+export const fetchHomeFeed = async (page: number = 1, limit: number = 10) => {
+  return getApi(`/content/posts/?page=${page}&limit=${limit}`);
 };
 
 /**
@@ -67,33 +89,12 @@ export const fetchPinnedPosts = async () => {
   return {};
 };
 
-export const followUser = async (user_id: number) => {
-  try {
-    const response = await axiosInstance.post(`/auth/follow/${user_id}/`);
-    return response;
-  } catch (error: any) {
-    console.error("Error following user:", error);
-    return error.response;
-  }
-};
-
-export const unfollowUser = async (user_id: number) => {
-  try {
-    const response = await axiosInstance.post(`/auth/unfollow/${user_id}/`);
-    return response;
-  } catch (error: any) {
-    console.error("Error following user:", error);
-    return error.response;
-  }
-};
-
 export const fetchSinglePosts = async (user_id: string) => {
   return getApi(`/content/posts/${user_id}/`);
 };
 
 export const fetchPostComments = async (post_id: number) => {
-  //TODO: Implement this function
-  return getApi(`/content/posts/${post_id}/comments/`);
+  return getApi(`/content/posts/${post_id}/interactions/comments/`);
 };
 
 export const likePost = async (post_id: number) => {
@@ -135,7 +136,25 @@ export const toggleSavePost = async (
   }
 };
 
-export function addComment(id: string, text: string): Promise<unknown> {
+export function addComment(id: string, text: string): Promise<any> {
   // TODO: Implement this function
   throw new Error("Function not implemented.");
+}
+
+export function updatePost(id: string, data: any): Promise<any> {
+  try {
+    return axiosInstance.patch(`/content/posts/${id}/`, data);
+  } catch (error) {
+    console.error("Error editing post:", error);
+    throw error;
+  }
+}
+
+export function deletePost(id: string): Promise<any> {
+  try {
+    return axiosInstance.delete(`/content/posts/${id}/`);
+  } catch (error) {
+    console.error("Error deleting post:", error);
+    throw error;
+  }
 }

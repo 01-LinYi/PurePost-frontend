@@ -30,8 +30,9 @@ export default function PostLayout() {
         name="[id]/index"
         options={{
           title: "Post Detail",
-          headerShown: true,
+          headerShown: false,
           headerBackTitle: "Back",
+          headerBackVisible: true,
           presentation: "card",
         }}
       />
