@@ -20,6 +20,7 @@ import FollowButton from "@/components/FollowButton";
 
 import { formatDate } from "@/utils/dateUtils";
 import * as api from "@/utils/api";
+import { get } from "react-native/Libraries/TurboModule/TurboModuleRegistry";
 
 // Color palette based on #00c5e3
 const COLORS = {
@@ -102,6 +103,10 @@ export default function ProfileView({
 
     return "https://picsum.photos/200";
   };
+
+  const getPinnedPosts = async () => {
+    return await api.fetchPinnedPosts(profileData.id, true);
+  }
 
   // Show loading state while initial data is being fetched
   if (dataLoading && !profileData) {
@@ -305,7 +310,7 @@ export default function ProfileView({
         <View style={styles.postSection}>
           <Text style={styles.sectionTitle}>Pinned Post</Text>
           <PinnedPostItem
-            post={profileData?.pinnedPost}
+            post={[]} // TODO: Placeholder. Need more discussion
             onSelectPost={() => {
               router.push("/post/my_posts");
             }}

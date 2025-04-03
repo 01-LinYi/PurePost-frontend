@@ -1,7 +1,7 @@
 // app/profile/user/[username].tsx
 import { useState, useEffect } from "react";
 import { Alert, StyleSheet, Animated } from "react-native";
-import { useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, useNavigation} from "expo-router";
 
 import ProfileView from "@/components/profile/ProfileView";
 import AnimatedProfileHeader from "@/components/profile/ProfileHeader";
@@ -10,12 +10,17 @@ import { DefaultProfile, MOCK_STATS } from "@/constants/DefaultProfile";
 import { useMyPosts } from "@/hooks/useMyPosts";
 import { useSocialStats } from "@/hooks/useSocialStat";
 import useProfileCache from "@/hooks/useProfileCache";
+import { UserProfile } from "@/types/profileType";
 import * as api from "@/utils/api";
 
 export default function UserProfileScreen() {
   const { username } = useLocalSearchParams();
-  const profileUsername = typeof username === 'string' ? username : '';
-  
+  const navigation = useNavigation(); // Access navigation object
+
+  useEffect(() => {
+    navigation.setOptions({ headerShown: false }); // Hide the header
+  }, [navigation]);
+
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [dataLoading, setDataLoading] = useState(true);
   const [isFollowing, setIsFollowing] = useState(false);
@@ -29,10 +34,10 @@ export default function UserProfileScreen() {
     isCacheExpired,
   } = useProfileCache();
   
-  const { totalPosts } = useMyPosts({ userId: profileUsername });
+  const { totalPosts } = useMyPosts({ userId: username as string });
   
   const { socialStats, refreshSocialStats } = useSocialStats({ 
-    userId: profileUsername
+    userId: username as string
   });
 
   /**
@@ -53,7 +58,7 @@ export default function UserProfileScreen() {
         }
       }
 
-      const response = await api.fetchUserProfile(profileUsername);
+      const response = await api.fetchUserProfile(username as string);
       console.log("User Profile response:", response.data);
       if (response.data) {
         const userData = {
@@ -67,8 +72,9 @@ export default function UserProfileScreen() {
         // Save default profile if API returns nothing
         const defaultUserProfile = {
           ...DefaultProfile,
-          username: profileUsername,
-          isOwnProfile: false
+          username: username as string,
+          isOwnProfile: false,
+          isMe: false,
         };
         await saveProfileToCache(defaultUserProfile);
       }
@@ -81,8 +87,9 @@ export default function UserProfileScreen() {
       if (!cachedData) {
         const defaultUserProfile = {
           ...DefaultProfile,
-          username: profileUsername,
-          isOwnProfile: false
+          username: username as string,
+          isOwnProfile: false,
+          isMe : false,
         };
         await saveProfileToCache(defaultUserProfile);
       }
@@ -96,10 +103,10 @@ export default function UserProfileScreen() {
   };
 
   useEffect(() => {
-    if (profileUsername) {
+    if (username) {
       fetchUserData();
     }
-  }, [profileUsername]);
+  }, [username]);
 
   /**
    * Handle refresh action
@@ -178,7 +185,7 @@ export default function UserProfileScreen() {
         return (
           <>
             <AnimatedProfileHeader
-              title={profileUsername || "Profile"}
+              title={username as string || "Profile"}
               isOwnProfile={false}
               scrollY={scrollY}
             />

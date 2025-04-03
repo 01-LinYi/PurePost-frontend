@@ -1,5 +1,26 @@
+import { Follow } from "@/types/followType";
+import { Post } from "@/types/postType";
+import { UserProfile } from "@/types/profileType";
 import axiosInstance from "@/utils/axiosInstance";
 
+export interface PaginationResponse<T> {
+  prev: string | null;
+  next: string | null;
+  results: T[];
+}
+
+/**
+ * Perform a GET request to the specified URL using axiosInstance.
+ * @param url
+ * @returns JSON data = {
+ *              'config': {},
+ *              'data': {},
+ *              'headers': {},
+ *              'status': number,
+ *              'request': {},
+ *              'statusText': string
+ * }
+ */
 export const getApi = async (url: string) => {
   try {
     const response = await axiosInstance.get(url);
@@ -49,6 +70,23 @@ export const fetchMySocialStat = async () => {
 export const fetchUserSocialStat = async (user_id: number) => {
   return getApi(`/social/follow/status/${user_id}/`);
 };
+export const fetchPostCounts = async (user_id: number) => {
+  //TODO: Implement this function
+  return 0;
+};
+
+export const fetchPosts = async (userId: number) => {
+  return getApi(`/content/posts/?user_id=${userId}`);
+}
+
+/**
+ * Get the list of posts pinned by the current user
+ * @returns a list of Post
+ */
+export const fetchPinnedPosts = async (userId: number, isPinned: boolean = false): Promise<Post[]> => {
+  const res = await getApi(`/content/posts/?user_id=${userId}&is_pinned=${isPinned}`);
+  return res.data.results;
+}
 
 export const followUser = async (user_id: number) => {
   try {
@@ -58,6 +96,32 @@ export const followUser = async (user_id: number) => {
     console.error("Error following user:", error);
     return error.response;
   }
+};
+
+export const fetchFollowers = async (
+  user_id: number,
+  cursor: string | null
+): Promise<PaginationResponse<Follow>> => {
+  let res = null;
+  if (cursor) {
+    res = await getApi(`/social/followers/${user_id}/?cursor=${cursor}`);
+  } else {
+    res = await getApi(`/social/followers/${user_id}/`);
+  }
+  return res.data;
+};
+
+export const fetchFollowings = async (
+  user_id: number,
+  cursor: string | null
+): Promise<PaginationResponse<Follow>> => {
+  let res = null;
+  if (cursor) {
+    res = await getApi(`/social/following/${user_id}/?cursor=${cursor}`);
+  } else {
+    res = await getApi(`/social/following/${user_id}/`);
+  }
+  return res.data;
 };
 
 export const unfollowUser = async (user_id: number) => {
@@ -80,14 +144,6 @@ export const fetchHomeFeed = async (page: number = 1, limit: number = 10) => {
   return getApi(`/content/posts/?page=${page}&limit=${limit}`);
 };
 
-/**
- * Get the list of posts pinned by the current user
- * @returns a list of Post
- */
-export const fetchPinnedPosts = async () => {
-  //TODO: Implement this function
-  return {};
-};
 
 export const fetchSinglePosts = async (user_id: string) => {
   return getApi(`/content/posts/${user_id}/`);
@@ -158,3 +214,10 @@ export function deletePost(id: string): Promise<any> {
     throw error;
   }
 }
+
+export const searchProfiles = async (
+  username: string
+): Promise<UserProfile[]> => {
+  const res = await getApi(`/users/search/?username=${username}`);
+  return res.data.results;
+};
