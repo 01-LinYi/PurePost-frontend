@@ -154,14 +154,42 @@ export const forgetPassword = async (email: string): Promise<boolean> => {
   return true;
 }
 
-export const resetPassword = async (email: string, password: string, code: string): Promise<string | undefined> => {
+export const resetPassword = async (email: string, password: string, code: string): Promise<string | null> => {
   try {
-    const res = await axiosInstance.put(`/auth/forget/`, {
+    await axiosInstance.put(`/auth/forget/`, {
       "email": email,
       "new_password": password,
       "code": code,
     });
-    return undefined;
+    return null;
+  } catch (error: any) {
+    if (!error.response && error.response.status !== 400) {
+      console.error("Error reseting password: ", error);
+      throw error;
+    }
+    return error.response.data.error;
+  }
+}
+
+export const sendVerificationEmail = async (): Promise<string | null> => {
+  try {
+    await axiosInstance.get("auth/verify/");
+    return null;
+  } catch (error: any) {
+    if (!error.response && error.response.status !== 400) {
+      console.error("Error reseting password: ", error);
+      throw error;
+    }
+    return error.response.data.error;
+  }
+}
+
+export const verifyEmailCode = async (code: string): Promise<string | null> => {
+  try {
+    await axiosInstance.post("auth/verify/", {
+      "code": code
+    })
+    return null;
   } catch (error: any) {
     if (!error.response && error.response.status !== 400) {
       console.error("Error reseting password: ", error);

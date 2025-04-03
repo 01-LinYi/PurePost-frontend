@@ -61,7 +61,7 @@ export default function ForgotPassword() {
     try {
       setIsSubmitting(true);
       const resetPasswordError = await api.resetPassword(email, newPassword, resetCode);
-      if (resetPasswordError !== undefined) {
+      if (resetPasswordError !== null) {
         Alert.alert("Error", resetPasswordError);
       } else {
         Alert.alert("Success", "Your password has been reset.");
@@ -145,7 +145,7 @@ export default function ForgotPassword() {
           </TouchableOpacity>
         </>
       )}
-      <TouchableOpacity onPress={() => router.replace("/login")}>
+      <TouchableOpacity onPress={() => router.back()}>
         <Text style={styles.backToLoginText}>Back to Login</Text>
       </TouchableOpacity>
     </View>
