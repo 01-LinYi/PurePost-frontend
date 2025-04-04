@@ -250,3 +250,14 @@ export const verifyEmailCode = async (code: string): Promise<string | null> => {
     return error.response.data.error;
   }
 }
+export const updateProfileVisibility = async (value: boolean): Promise<boolean> => {
+  try {
+    await axiosInstance.put(`auth/user-visibility/`, {
+      isPrivate: value,
+    });
+    return true;
+  } catch (error: any) {
+    console.error("Error updating profile visibility:", error.response.data);
+    return false;
+  }
+}

@@ -4,7 +4,7 @@ import {
   ScrollView,
   Image,
   TouchableOpacity,
-  Alert,
+  Switch,
   RefreshControl,
   ActivityIndicator,
 } from "react-native";
@@ -61,7 +61,7 @@ export default function ProfileView({
   contentContainerStyle,
 }: ProfileViewProps) {
   const router = useRouter();
-  const {user} = useSession();
+  const { user } = useSession();
   const [isLoading, setIsLoading] = useState(false);
   const [imageError, setImageError] = useState(false);
   const [isFollowLoading, setIsFollowLoading] = useState(false);
@@ -117,6 +117,18 @@ export default function ProfileView({
         <Text style={styles.loadingText}>Loading profile...</Text>
       </View>
     );
+  }
+
+  const [isPrivate, setIsPrivate] = useState(profileData?.is_private || false);
+
+  async function handleToggleVisibility(value: boolean): Promise<void> {
+    setIsPrivate(value);
+    try {
+      await api.updateProfileVisibility(value);
+    } catch (error) {
+      console.error("Failed to update profile visibility:", error);
+      setIsPrivate(!value); // Revert state on failure
+    }
   }
 
   return (
@@ -180,6 +192,21 @@ export default function ProfileView({
             </View>
             <Text style={styles.email}>{profileData?.email || ""}</Text>
           </View>
+
+          {/* Toggle Button for Profile Visibility */}
+          {isOwnProfile && (
+            <View style={styles.toggleContainer}>
+              <Text style={styles.toggleLabel}>
+                {isPrivate ? "Private Profile" : "Public Profile"}
+              </Text>
+              <Switch
+                value={isPrivate}
+                onValueChange={handleToggleVisibility}
+                thumbColor={isPrivate ? COLORS.primary : COLORS.accent}
+                trackColor={{ false: COLORS.textLight, true: COLORS.primary }}
+              />
+            </View>
+          )}
 
           {/* Action Buttons Row */}
           <View style={styles.actionButtonsRow}>
