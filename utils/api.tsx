@@ -295,3 +295,74 @@ export const searchProfiles = async (
   const res = await getApi(`/users/search/?username=${username}`);
   return res.data.results;
 };
+
+export const fetchLikers = async (
+  post_id: number,
+  cursor: string | null
+): Promise<PaginationResponse<UserProfile>> => {
+  let res = null;
+  if (cursor) {
+    res = await getApi(
+      `/content/posts/${post_id}/interactions/likes/?cursor=${cursor}`
+    );
+  } else {
+    res = await getApi(`/content/posts/${post_id}/interactions/likes/`);
+  }
+  return res.data;
+}
+
+export const fetchCommenters = async (
+  post_id: number,
+  cursor: string | null
+): Promise<PaginationResponse<UserProfile>> => {
+  let res = null;
+  if (cursor) {
+    res = await getApi(
+      `/content/posts/${post_id}/interactions/comments/?cursor=${cursor}`
+    );
+  } else {
+    res = await getApi(`/content/posts/${post_id}/interactions/comments/`);
+  }
+  return res.data;
+};
+
+export const fetchSharers = async (
+  post_id: number,
+  cursor: string | null
+): Promise<PaginationResponse<UserProfile>> => {
+  let res = null;
+  if (cursor) {
+    res = await getApi(
+      `/content/posts/${post_id}/interactions/shares/?cursor=${cursor}`
+    );
+  } else {
+    res = await getApi(`/content/posts/${post_id}/interactions/shares/`);
+  }
+  return res.data;
+};
+
+/**
+ * Fetch users who interacted with a post
+ * @param type : 'likes', 'comments', 或 'shares'
+ * @param post_id 
+ * @param cursor 
+ * @returns PaginationResponse<UserProfile>
+ * @description This function fetches users who interacted with a post based on the interaction type (likes, comments, shares).
+ * The function takes the interaction type, post ID, and an optional cursor for pagination.
+ */
+export const fetchInteractionUsers = async (
+  type: 'likes' | 'comments' | 'shares',
+  post_id: number,
+  cursor: string | null = null
+): Promise<PaginationResponse<UserProfile>> => {
+  let res = null;
+  const endpoint = `/content/posts/${post_id}/interactions/${type}/`;
+  
+  if (cursor) {
+    res = await getApi(`${endpoint}?cursor=${cursor}`);
+  } else {
+    res = await getApi(endpoint);
+  }
+  
+  return res.data;
+};
