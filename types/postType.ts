@@ -2,6 +2,7 @@
 
 // Visibility options for posts
 export type PostVisibility = "public" | "private" | "friends";
+export type PostStatus = "draft" | "published";
 
 // Deepfake analysis status options
 export type DeepfakeStatus =
@@ -65,6 +66,7 @@ export interface Post {
   is_pinned: boolean;
   disclaimer: string | null;
   deepfake_status: DeepfakeStatus | null;
+  status: PostStatus;
   
   // Frontend-only fields
   isAuthor?: boolean;
@@ -88,6 +90,7 @@ export interface ApiPost {
   visibility: PostVisibility;
   disclaimer: string | null;
   deepfake_status: DeepfakeStatus | null;
+  status: PostStatus;
   user: {
     id: number | string;
     username: string;
@@ -105,6 +108,7 @@ export interface PostCreate {
   image?: File | null;
   video?: File | null;
   visibility: "public" | "private" | "followers";
+  status: "draft" | "published";
   disclaimer?: string;
 }
 
@@ -127,6 +131,7 @@ export interface Folder {
 export interface PostRequest {
   content: string;
   visibility: "public" | "private";
+  status: "draft" | "published";
   media?: File;
   media_id?: string;
   disclaimer?: string;

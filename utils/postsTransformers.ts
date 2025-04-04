@@ -46,6 +46,7 @@ export const transformApiPostToPost = (apiPost: ApiPost): Post => {
     visibility: apiPost.visibility,
     disclaimer: apiPost.disclaimer,
     deepfake_status: apiPost.deepfake_status,
+    status: apiPost.status,
     is_pinned: apiPost.pinned,
     
     // Calculate frontend-specific fields

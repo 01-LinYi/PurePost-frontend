@@ -1,11 +1,11 @@
 // components/post/MyPostItem.tsx - Individual post item for the My Posts screen
 
-import React from "react";
+import React, { useEffect } from "react";
 import { StyleSheet, TouchableOpacity, Image, Platform, Alert} from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Text, View } from "@/components/Themed";
 import { useRouter } from "expo-router";
-import { Post, PostVisibility } from "@/types/postType";
+import { Post, PostVisibility, PostStatus } from "@/types/postType";
 import AuthorInfo from "@/components/post/AuthorInfo";
 import * as api from "@/utils/api";
 
@@ -23,6 +23,15 @@ const MyPostItem: React.FC<MyPostItemProps> = ({
   onDelete,
   onNavigate,
 }) => {
+
+    // Add debugging to check the post object
+        useEffect(() => {
+          console.log("Post object:", JSON.stringify(post, null, 2));
+          console.log("Post keys:", Object.keys(post));
+          console.log("Post status:", post.status);
+          console.log("Post visibility:", post.visibility);
+        }, [post]); 
+         
   // Extract the first line as title
   const lines = post.content.split("\n");
   const title = lines[0] || "Untitled Post";
@@ -57,7 +66,18 @@ const MyPostItem: React.FC<MyPostItemProps> = ({
     }
   };
 
+  const getStatusProps = (isStatus: PostStatus) => {
+    if(isStatus==="draft")
+        return { icon: "document-text-outline", color: "#FF6B6B", text: "Draft" };
+    else
+        return { icon: "checkmark-circle-outline", color: "#00c5e3", text: "Published" };   
+  };
+
   const visibilityProps = getVisibilityProps(post.visibility);
+  const statusProps = getStatusProps(post.status);
+
+  console.log("Post status:", post.status);
+  console.log("Status props:", statusProps);
 
   const onTogglePin = (postId: string) => {
     // Handle pin/unpin action
@@ -121,17 +141,34 @@ const MyPostItem: React.FC<MyPostItemProps> = ({
             {title}
           </Text>
 
-          <View style={styles.visibilityTag}>
-            <Ionicons
-              name={visibilityProps.icon as any}
-              size={12}
-              color={visibilityProps.color}
-            />
-            <Text
-              style={[styles.visibilityText, { color: visibilityProps.color }]}
-            >
-              {visibilityProps.text}
-            </Text>
+
+          <View style={styles.tagsContainer}>
+            {/* Draft tag - styled similarly to the visibility tag */}
+              <View style={styles.statusTag}>
+                <Ionicons
+                  name={statusProps.icon as any}
+                  size={12}
+                  color={statusProps.color}
+                />
+                <Text 
+                    style={[styles.statusText, { color: statusProps.color }]}
+                >
+                    {statusProps.text}
+                </Text>
+              </View>
+
+            <View style={styles.visibilityTag}>
+              <Ionicons
+                name={visibilityProps.icon as any}
+                size={12}
+                color={visibilityProps.color}
+              />
+              <Text
+                style={[styles.visibilityText, { color: visibilityProps.color }]}
+              >
+                {visibilityProps.text}
+              </Text>
+            </View>
           </View>
         </View>
 
@@ -271,6 +308,10 @@ const styles = StyleSheet.create({
     flex: 1,
     marginBottom: 8,
   },
+  tagsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   visibilityTag: {
     flexDirection: "row",
     alignItems: "center",
@@ -280,6 +321,20 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   visibilityText: {
+    fontSize: 10,
+    marginLeft: 4,
+    fontWeight: "500",
+  },
+  statusTag: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#f0f0f0",
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 12,
+    marginRight: 8,
+  },
+  statusText: {
     fontSize: 10,
     marginLeft: 4,
     fontWeight: "500",
