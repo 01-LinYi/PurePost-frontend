@@ -162,6 +162,7 @@ const PostContent: React.FC<PostContentProps> = ({
 
       {/* Interaction bar */}
       <PostActions
+        postId={post.id}
         isLiked={post.is_liked}
         isSaved={post.is_saved}
         likesCount={post.like_count}
@@ -170,6 +171,7 @@ const PostContent: React.FC<PostContentProps> = ({
         onLike={onLike}
         onShare={onShare}
         onSave={onSave}
+        onComment={() => {}}
       />
 
       {/* Comments section */}

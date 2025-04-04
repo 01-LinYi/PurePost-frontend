@@ -26,8 +26,9 @@ type FeedPostItemProps = {
 };
 
 // Cache control for images
+// temporary disabling cache
 const getCacheKey = (uri: string) => {
-  return `${uri}?timestamp=${Date.now()}`;
+  return uri;
 };
 
 /**
