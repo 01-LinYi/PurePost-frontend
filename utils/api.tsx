@@ -2,6 +2,7 @@ import { Follow } from "@/types/followType";
 import { Post } from "@/types/postType";
 import { UserProfile } from "@/types/profileType";
 import axiosInstance from "@/utils/axiosInstance";
+import { transformUserProfile } from "./transformer";
 
 export interface PaginationResponse<T> {
   prev: string | null;
@@ -56,7 +57,7 @@ export const fetchMySocialStat = async () => {
             'created_at': string,
             'updated_at': string,
             'is_active': boolean,
-            'verified': boolean,
+            'isVerify': boolean,
         }
  */
 export const fetchMyProfile = async () => {
@@ -64,7 +65,8 @@ export const fetchMyProfile = async () => {
 };
 
 export const fetchUserProfile = async (username: string) => {
-  return getApi(`/users/profiles/${username}/`);
+  const res = await getApi(`/users/profiles/${username}/`);
+  return transformUserProfile(res.data);
 };
 
 /**

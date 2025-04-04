@@ -16,8 +16,8 @@ export interface UserProfile {
     date_of_birth?: string;
     created_at?: string;
     updated_at?: string;
-    is_active?: boolean;
-    verified?: boolean;
+    isActive: boolean;
+    isVerify: boolean;
     stats?: UserStats;
     isFollowing?: boolean;
     isMe?: boolean;

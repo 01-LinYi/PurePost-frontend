@@ -14,7 +14,7 @@ import { Ionicons } from "@expo/vector-icons";
 
 import { Text, View } from "@/components/Themed";
 import GradientButton from "@/components/GradientButton";
-import { styles } from "@/components/profile/ProfileStyle";
+import { styles } from "@/components/profile/profileStyle";
 import PinnedPostItem from "@/components/profile/PinnedPostItem";
 import FollowButton from "@/components/FollowButton";
 
@@ -161,7 +161,7 @@ export default function ProfileView({
           <View style={styles.userInfo}>
             <View style={styles.nameContainer}>
               <Text style={styles.name}>{profileData?.username || "User"}</Text>
-              {profileData?.verified ? (
+              {profileData?.isVerify ? (
                 <Ionicons
                   name="checkmark-circle"
                   size={18}

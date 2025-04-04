@@ -9,6 +9,7 @@ import ProfileView from "@/components/profile/ProfileView";
 import * as api from "@/utils/api";
 import { DefaultProfile } from "@/constants/DefaultProfile";
 import { UserProfile } from "@/types/profileType";
+import { useSession } from "@/components/SessionProvider";
 
 export default function UserProfileScreen() {
   const { username } = useLocalSearchParams();
@@ -25,6 +26,10 @@ export default function UserProfileScreen() {
   // Create an animated scroll value
   const scrollY = useRef(new Animated.Value(0)).current;
 
+  // Check if is same profile as current user
+  const { user } = useSession();
+  const isOwnProfile = user?.username === username;
+
   // Fetch user profile data
   const fetchUserData = async (forceRefresh = false) => {
     if (!username) return;
@@ -34,9 +39,8 @@ export default function UserProfileScreen() {
 
       // Call API to get user profile by ID
       const response = await api.fetchUserProfile(username as string);
-
-      if (response.data) {
-        setProfileData(response.data);
+      if (response) {
+        setProfileData(response);
       } else {
         // Handle no data returned
         Alert.alert("Error", "Failed to load user profile.");
@@ -100,7 +104,7 @@ export default function UserProfileScreen() {
     return (
       <ProfileView
         profileData={profileData}
-        isOwnProfile={false}
+        isOwnProfile={isOwnProfile}
         isRefreshing={isRefreshing}
         onRefresh={handleRefresh}
         onFollowStatusChange={handleFollowStatusChange}
@@ -116,7 +120,7 @@ export default function UserProfileScreen() {
     <View style={styles.container}>
       <AnimatedProfileHeader
         title={profileData?.username || "User Profile"}
-        isOwnProfile={false}
+        isOwnProfile={isOwnProfile}
         userId={username as string}
         showBackButton={true}
         onSharePress={handleShareProfile}
