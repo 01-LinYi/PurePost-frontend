@@ -96,7 +96,7 @@ export const fetchPinnedPosts = async (userId: number, isPinned: boolean = false
 
 export const followUser = async (user_id: number) => {
   try {
-    const response = await axiosInstance.post(`/auth/follow/${user_id}/`);
+    const response = await axiosInstance.post(`/social/follow/${user_id}/`);
     return response;
   } catch (error: any) {
     console.error("Error following user:", error);
@@ -127,8 +127,7 @@ export const fetchFollowings = async (user_id: number, cursor: string | null): P
 
 export const unfollowUser = async (user_id: number) => {
   try {
-    const response = await axiosInstance.post(`/auth/unfollow/${user_id}/`);
-    return response;
+    return await axiosInstance.delete(`/social/unfollow/${user_id}/`);
   } catch (error: any) {
     console.error("Error following user:", error);
     return error.response;

@@ -9,7 +9,7 @@ import {
   Platform,
   Image,
 } from "react-native";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Text, View } from "@/components/Themed";
 import axiosInstance from "@/utils/axiosInstance";
@@ -57,9 +57,9 @@ export const transformApiPostToPost = (apiPost: ApiPost): Post => {
 
   let media = null;
   if (apiPost.image) {
-    media = { uri: apiPost.image, name:"", type: "image/jpeg" };
+    media = { uri: apiPost.image, name: "", type: "image/jpeg" };
   } else if (apiPost.video) {
-    media = { uri: apiPost.video,name:"", type: "video/mp4" };
+    media = { uri: apiPost.video, name: "", type: "video/mp4" };
   }
 
   return {
@@ -81,6 +81,7 @@ export const transformApiPostToPost = (apiPost: ApiPost): Post => {
 
 const MyPosts = () => {
   const { user } = useSession();
+  const { userId, username } = useLocalSearchParams();
   const [posts, setPosts] = useState<Post[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -99,7 +100,7 @@ const MyPosts = () => {
 
       const endpoint = "/content/posts/";
       const params = {
-        user_id: user?.id,
+        user_id: userId,
         ordering: getApiOrdering(ordering),
       };
 
@@ -228,7 +229,7 @@ const MyPosts = () => {
     const contentPreview =
       lines.length > 1
         ? lines.slice(1).join(" ").substring(0, 100) +
-          (lines.slice(1).join(" ").length > 100 ? "..." : "")
+        (lines.slice(1).join(" ").length > 100 ? "..." : "")
         : "No additional content";
 
     return (
@@ -355,12 +356,16 @@ const MyPosts = () => {
         <Text style={styles.emptySubtitle}>
           Share your thoughts by creating your first post
         </Text>
-        <TouchableOpacity
-          style={styles.createButton}
-          onPress={navigateToCreatePost}
-        >
-          <Text style={styles.createButtonText}>Create Post</Text>
-        </TouchableOpacity>
+        {user?.id.toString() == userId ? (
+          <TouchableOpacity
+            style={styles.createButton}
+            onPress={navigateToCreatePost}
+          >
+            <Text style={styles.createButtonText}>Create Post</Text>
+          </TouchableOpacity>
+        ) : (
+          <></>
+        )}
       </View>
     );
   };
@@ -370,6 +375,7 @@ const MyPosts = () => {
 
   return (
     <View style={[styles.container, { paddingTop: 5 }]}>
+
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}
@@ -378,15 +384,39 @@ const MyPosts = () => {
         >
           <Ionicons name="arrow-back" size={24} color="#333" />
         </TouchableOpacity>
-        <Text style={styles.pageTitle}>My Posts</Text>
 
-        <TouchableOpacity
-          style={styles.createPostButton}
-          onPress={navigateToCreatePost}
-        >
-          <Ionicons name="add" size={22} color="#FFFFFF" />
-          <Text style={styles.createPostButtonText}>New Post</Text>
-        </TouchableOpacity>
+        {userId == user?.id.toString() ? (
+          <Text style={styles.pageTitle}>My Posts</Text>
+        ) : (
+          <Text style={styles.pageTitle}>
+            {username}'s Posts
+          </Text>
+        )}
+
+        { /* TODO: fix this weird thing :)) */}
+        {user?.id.toString() == userId ? (
+          <TouchableOpacity
+            style={styles.createPostButton}
+            onPress={navigateToCreatePost}
+          >
+            <Ionicons name="add" size={22} color="#FFFFFF" />
+            <Text style={styles.createPostButtonText}>New Post</Text>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              // backgroundColor: "#00c5e3",
+              paddingVertical: 8,
+              paddingHorizontal: 12,
+              borderRadius: 20,
+            }}
+          >
+            <Ionicons name="add" size={22} color="#FFFFFF" />
+            <Text style={styles.createPostButtonText}>New Post</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       <View style={styles.sortOptions}>

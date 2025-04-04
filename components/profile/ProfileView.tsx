@@ -210,7 +210,7 @@ export default function ProfileView({
             )}
 
             {/* Don't show follow button on own profile */}
-            { !isOwnProfile ? (
+            {!isOwnProfile ? (
               <FollowButton
                 userId={profileData.id}
                 initialFollowStatus={profileData.isFollowing}
@@ -236,7 +236,7 @@ export default function ProfileView({
                   }
                 }}
               />
-            ): (
+            ) : (
               <FollowButton
                 userId={profileData.id}
                 initialFollowStatus={profileData.isFollowing}
@@ -264,10 +264,7 @@ export default function ProfileView({
             <TouchableOpacity
               style={styles.stat}
               onPress={
-                () =>
-                  isOwnProfile
-                    ? router.push("/post/my_posts")
-                    : router.push(`/(tabs)`) //TODO : 404 Pages
+                () => router.push(`/post/my_posts?userId=${profileData.id}&username=${profileData.username}`)
               }
               activeOpacity={0.7}
             >
@@ -280,11 +277,11 @@ export default function ProfileView({
             <TouchableOpacity
               style={styles.stat}
               onPress={
-                () =>
-                  isOwnProfile
-                    ? router.push("/profile/followers")
-                    : router.push("/(tabs)") // TODO : 404 Pages
-                // router.push(`/profile/user/${profileData.id}/followers`)
+                () => {
+                  if (isOwnProfile) {
+                    router.push("/profile/followers");
+                  }
+                }
               }
               activeOpacity={0.7}
             >
@@ -297,11 +294,11 @@ export default function ProfileView({
             <TouchableOpacity
               style={styles.stat}
               onPress={
-                () =>
-                  isOwnProfile
-                    ? router.push("/profile/following")
-                    : router.push("/(tabs)") //TODO : 404 Pages
-                //router.push(`/profile/user/${profileData.id}/following`)
+                () => {
+                  if (isOwnProfile) {
+                    router.push("/profile/following");
+                  }
+                }
               }
               activeOpacity={0.7}
             >
@@ -319,7 +316,7 @@ export default function ProfileView({
           <PinnedPostItem
             post={[]} // TODO: Placeholder. Need more discussion
             onSelectPost={() => {
-              router.push("/post/my_posts");
+              router.push(`/post/my_posts?userId=${profileData.id}&username=${profileData.username}`);
             }}
             isOwnProfile={isOwnProfile}
           />

@@ -77,9 +77,16 @@ export default function useSecureProfileCache() {
     setCacheStatus('empty');
     setCacheInfo('Secure cache cleared');
   };
+
+  // TODO: clean this up
+  let profileDataJson = null;
+  if (profileData) {
+    profileDataJson = JSON.parse(profileData);
+    profileDataJson.id = profileDataJson.user_id;
+  }
   
   return {
-    profileData: isLoading ? null : (profileData ? JSON.parse(profileData) : null),
+    profileData: isLoading ? null : profileDataJson,
     isLoading,
     cacheStatus,
     cacheInfo,

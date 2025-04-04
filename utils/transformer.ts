@@ -7,7 +7,7 @@ import { UserProfile } from "@/types/profileType";
  */
 export const transformUserProfile = (data: any): UserProfile => {
   return {
-    id: data.id,
+    id: data.user_id,
     username: data.username,
     email: data.email,
     avatar: data.avatar,

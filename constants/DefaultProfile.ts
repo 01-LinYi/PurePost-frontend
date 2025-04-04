@@ -17,7 +17,7 @@ export const DefaultProfile: UserProfile = {
   date_of_birth: "2000-01-01",
   created_at: "2023-01-01T12:00:00Z",
   updated_at: "2023-02-01T12:00:00Z",
-  isActive: true,
+  is_active: true,
   isVerify: true,
   stats: MOCK_STATS,
 };
