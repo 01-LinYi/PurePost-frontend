@@ -198,7 +198,9 @@ const CreatePost = () => {
       const formData = new FormData();
       formData.append("content", postText.trim());
       formData.append("visibility", visibility);
-
+      if (hasDisclaimer) {
+        formData.append("disclaimer", disclaimerText.trim());
+      }
       if (media) {
         const uriParts =
           media.type === "video"

@@ -66,6 +66,7 @@ const PostDetail = () => {
 
       // Transform API response to our frontend Post model
       const transformedPost = transformApiPostToPost(apiPost);
+      console.log("Transformed post data:", transformedPost);
 
       setPostData({
         post: transformedPost,
