@@ -50,11 +50,11 @@ export default function ProfileScreen() {
 
       // Fetch user profile data from API
       const response = await api.fetchMyProfile();
-      if (response.data) {
+      if (response) {
         // Combine API response with mock stats if needed
         const userData = {
-          ...response.data,
-          stats: response.data.stats || MOCK_STATS,
+          ...response,
+          stats: response.stats || MOCK_STATS,
         };
 
         // Save to cache

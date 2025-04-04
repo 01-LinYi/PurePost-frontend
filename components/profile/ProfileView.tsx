@@ -301,7 +301,7 @@ export default function ProfileView({
               style={styles.stat}
               onPress={
                 () => {
-                  if (!isOwnProfile && profileData?.isPrivate) {
+                  if (!isOwnProfile && profileData?.isPrivate && !profileData?.isFollowing) {
                     Alert.alert("Private Account", "This account is private. Follow to see posts.");
                     return;
                   }

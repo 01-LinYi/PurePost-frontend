@@ -61,7 +61,8 @@ export const fetchMySocialStat = async () => {
         }
  */
 export const fetchMyProfile = async () => {
-  return getApi(`/users/my-profile/`);
+  const res = await getApi(`/users/my-profile/`);
+  return transformUserProfile(res.data);
 };
 
 export const fetchUserProfile = async (username: string) => {
