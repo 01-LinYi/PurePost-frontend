@@ -192,3 +192,62 @@ export const searchProfiles = async (username: string): Promise<UserProfile[]> =
   const res = await getApi(`/users/search/?username=${username}`);
   return res.data.results;
 }
+
+export const forgetPassword = async (email: string): Promise<boolean> => {
+  try {
+    await axiosInstance.post(`/auth/forget/?email=${email}`);
+  } catch (error: any) {
+    if (error.response && error.response.status === 404) {
+      return false;
+    } else {
+      console.error("Error sending resetting password email: ", error);
+      throw error;
+    }
+  }
+  return true;
+}
+
+export const resetPassword = async (email: string, password: string, code: string): Promise<string | null> => {
+  try {
+    await axiosInstance.put(`/auth/forget/`, {
+      "email": email,
+      "new_password": password,
+      "code": code,
+    });
+    return null;
+  } catch (error: any) {
+    if (!error.response && error.response.status !== 400) {
+      console.error("Error reseting password: ", error);
+      throw error;
+    }
+    return error.response.data.error;
+  }
+}
+
+export const sendVerificationEmail = async (): Promise<string | null> => {
+  try {
+    await axiosInstance.get("auth/verify/");
+    return null;
+  } catch (error: any) {
+    if (!error.response && error.response.status !== 400) {
+      console.error("Error reseting password: ", error);
+      throw error;
+    }
+    return error.response.data.error;
+  }
+}
+
+export const verifyEmailCode = async (code: string): Promise<string | null> => {
+  try {
+    await axiosInstance.post("auth/verify/", {
+      "code": code
+    })
+    return null;
+  } catch (error: any) {
+    if (!error.response && error.response.status !== 400) {
+      console.error("Error reseting password: ", error);
+      throw error;
+    }
+    return error.response.data.error;
+  }
+}

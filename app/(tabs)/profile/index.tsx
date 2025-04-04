@@ -8,9 +8,12 @@ import { View } from "@/components/Themed";
 import { DefaultProfile, MOCK_STATS } from "@/constants/DefaultProfile";
 import useProfileCache from "@/hooks/useProfileCache";
 import * as api from "@/utils/api";
+import { useSession } from "@/components/SessionProvider";
 
 export default function ProfileScreen() {
+  const { user } = useSession();
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isAlertShown, setIsAlertShown] = useState(false);
   const [dataLoading, setDataLoading] = useState(true);
   const [isFollowing, setIsFollowing] = useState(false);
   const {
@@ -136,6 +139,13 @@ export default function ProfileScreen() {
       />
     );
   };
+
+  useEffect(() => {
+    if (!isAlertShown && !user?.is_verified) {
+      Alert.alert("Verify Your Email", "Please verify your email in setting.");
+      setIsAlertShown(true); // Mark alert as shown
+    }
+  }, [isAlertShown, user?.is_verified]); // Dependency array ensures this runs only when needed
 
   return (
     <View style={styles.container}>

@@ -8,7 +8,7 @@ const LoginPage = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [isLoading, setIsLoading] = useState(false);
-    const [errors, setErrors] = useState({});
+    const [errors, setErrors] = useState<any>({});
     const [isFormValid, setIsFormValid] = useState(false);
 
     // Check form validity whenever inputs change
@@ -19,11 +19,11 @@ const LoginPage = () => {
 
     // Validate form inputs
     const validateInputs = () => {
-        const newErrors = {};
-        
+        const newErrors: any = {};
+
         if (!email) newErrors.email = "Email/Username is required";
         if (!password) newErrors.password = "Password is required";
-        
+
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
@@ -31,9 +31,9 @@ const LoginPage = () => {
     // Handle login process
     const handleLogin = async () => {
         if (!validateInputs()) return;
-        
+
         setIsLoading(true);
-        
+
         try {
             await logIn(email, password);
             router.replace("/(tabs)");
@@ -54,22 +54,22 @@ const LoginPage = () => {
     const handleForgotPassword = () => {
         if (!email.trim()) {
             Alert.alert(
-                "Email Required", 
+                "Email Required",
                 "Please enter your email address first.",
                 [{ text: "OK" }]
             );
             return;
         }
-        
+
         // This would typically connect to a password reset API
         Alert.alert(
             "Password Reset",
             `We'll send password reset instructions to ${email}`,
             [
                 { text: "Cancel", style: "cancel" },
-                { 
-                    text: "Send", 
-                    onPress: () => Alert.alert("Email Sent(Not really)", "Please check your email for password reset instructions.") 
+                {
+                    text: "Send",
+                    onPress: () => Alert.alert("Email Sent(Not really)", "Please check your email for password reset instructions.")
                 }
             ]
         );
@@ -95,7 +95,7 @@ const LoginPage = () => {
                     value={email}
                     onChangeText={(text) => {
                         setEmail(text);
-                        if (errors.email) setErrors({...errors, email: null});
+                        if (errors.email) setErrors({ ...errors, email: null });
                     }}
                 />
                 {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
@@ -108,14 +108,14 @@ const LoginPage = () => {
                     value={password}
                     onChangeText={(text) => {
                         setPassword(text);
-                        if (errors.password) setErrors({...errors, password: null});
+                        if (errors.password) setErrors({ ...errors, password: null });
                     }}
                 />
                 {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
 
                 <TouchableOpacity
                     style={[
-                        styles.button, 
+                        styles.button,
                         (isLoading || !isFormValid) && styles.buttonDisabled
                     ]}
                     onPress={handleLogin}
@@ -128,7 +128,7 @@ const LoginPage = () => {
                     )}
                 </TouchableOpacity>
 
-                <TouchableOpacity onPress={handleForgotPassword}>
+                <TouchableOpacity onPress={() => router.replace("/forgotPassword")}>
                     <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
                 </TouchableOpacity>
             </View>
