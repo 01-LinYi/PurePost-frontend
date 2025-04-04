@@ -152,8 +152,6 @@ export default function EditProfileScreen() {
     if (!originalData) return true;
 
     // Check if text fields have changed
-    if (name !== (originalData.name || originalData.display_name || ""))
-      return true;
     if (bio !== (originalData.bio || "")) return true;
     if (location !== (originalData.location || "")) return true;
     if (website !== (originalData.website || "")) return true;

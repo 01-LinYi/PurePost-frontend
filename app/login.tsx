@@ -1,15 +1,19 @@
 import { useSession } from '@/components/SessionProvider';
-import { router } from 'expo-router';
+import { useStorageState } from '@/hooks/useStorageState';
+import { useRouter } from 'expo-router';
 import React, { useState, useEffect } from 'react';
 import { Image, StyleSheet, Text, TextInput, TouchableOpacity, View, ActivityIndicator, Alert } from 'react-native';
 
 const LoginPage = () => {
     const { logIn } = useSession();
+    const [[], setUser] = useStorageState("user");
+    const [[],setSession] = useStorageState("session");
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [errors, setErrors] = useState<any>({});
     const [isFormValid, setIsFormValid] = useState(false);
+    const router = useRouter();
 
     // Check form validity whenever inputs change
     useEffect(() => {
@@ -35,6 +39,10 @@ const LoginPage = () => {
         setIsLoading(true);
 
         try {
+            // clear previous session
+            setUser(null);
+            setSession(null);
+            // Attempt to log in
             await logIn(email, password);
             router.replace("/(tabs)");
         } catch (error: any) {
@@ -128,7 +136,7 @@ const LoginPage = () => {
                     )}
                 </TouchableOpacity>
 
-                <TouchableOpacity onPress={() => router.replace("/forgotPassword")}>
+                <TouchableOpacity onPress={() => router.push("/forgotPassword")}>
                     <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
                 </TouchableOpacity>
             </View>
