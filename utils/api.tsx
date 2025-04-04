@@ -208,8 +208,15 @@ export const unpinPost = async (post_id: number): Promise<void> => {
 }
 
 export function addComment(id: string, text: string): Promise<any> {
-  // TODO: Implement this function
   throw new Error("Function not implemented.");
+  try {
+    return axiosInstance.post(`/content/posts/${id}/comment/`, {
+      content: text,
+    });
+  } catch (error) {
+    console.error("Error adding comment:", error);
+    throw error;
+  }
 }
 
 export const forgetPassword = async (email: string): Promise<boolean> => {
