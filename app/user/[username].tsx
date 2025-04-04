@@ -1,21 +1,32 @@
 // app/profile/user/[username].tsx
 import { useState, useEffect } from "react";
 import { Alert, StyleSheet, Animated } from "react-native";
-import { useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, useRouter} from "expo-router";
 
 import ProfileView from "@/components/profile/ProfileView";
 import AnimatedProfileHeader from "@/components/profile/ProfileHeader";
 import { View } from "@/components/Themed";
 import { DefaultProfile, MOCK_STATS } from "@/constants/DefaultProfile";
-import { useMyPosts } from "@/hooks/useMyPosts";
+import { useSession} from "@/components/SessionProvider";
+import { useUserPublicPosts } from "@/hooks/useUserPublicPosts";
+import { usePinnedPost } from "@/hooks/usePinPost";
 import { useSocialStats } from "@/hooks/useSocialStat";
 import useProfileCache from "@/hooks/useProfileCache";
 import * as api from "@/utils/api";
 
 export default function UserProfileScreen() {
   const { username } = useLocalSearchParams();
-  const profileUsername = typeof username === 'string' ? username : '';
-  
+  const { user } = useSession();
+  const router = useRouter(); 
+
+  useEffect(() => {
+    if (username && user) {
+      if (user.username === username) {
+        router.replace("/(tabs)/profile");
+      }
+    }
+  }, [user,username]);
+
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [dataLoading, setDataLoading] = useState(true);
   const [isFollowing, setIsFollowing] = useState(false);
@@ -29,11 +40,13 @@ export default function UserProfileScreen() {
     isCacheExpired,
   } = useProfileCache();
   
-  const { totalPosts } = useMyPosts({ userId: profileUsername });
+  const {totalPublicPosts} = useUserPublicPosts({ userId: profileData?.user_id});
   
   const { socialStats, refreshSocialStats } = useSocialStats({ 
-    userId: profileUsername
+    userId: profileData?.user_id
   });
+
+  const { pinnedPost, refetch } = usePinnedPost(profileData?.user_id, false);
 
   /**
    * Fetch user profile data from API
@@ -53,7 +66,7 @@ export default function UserProfileScreen() {
         }
       }
 
-      const response = await api.fetchUserProfile(profileUsername);
+      const response = await api.fetchUserProfile(username as string);
       console.log("User Profile response:", response.data);
       if (response.data) {
         const userData = {
@@ -67,8 +80,9 @@ export default function UserProfileScreen() {
         // Save default profile if API returns nothing
         const defaultUserProfile = {
           ...DefaultProfile,
-          username: profileUsername,
-          isOwnProfile: false
+          username: username as string,
+          isOwnProfile: false,
+          isMe: false,
         };
         await saveProfileToCache(defaultUserProfile);
       }
@@ -81,8 +95,9 @@ export default function UserProfileScreen() {
       if (!cachedData) {
         const defaultUserProfile = {
           ...DefaultProfile,
-          username: profileUsername,
-          isOwnProfile: false
+          username: username as string,
+          isOwnProfile: false,
+          isMe : false,
         };
         await saveProfileToCache(defaultUserProfile);
       }
@@ -96,10 +111,10 @@ export default function UserProfileScreen() {
   };
 
   useEffect(() => {
-    if (profileUsername) {
+    if (username) {
       fetchUserData();
     }
-  }, [profileUsername]);
+  }, [username]);
 
   /**
    * Handle refresh action
@@ -109,7 +124,8 @@ export default function UserProfileScreen() {
 
     await Promise.all([
       fetchUserData(true),
-      refreshSocialStats()
+      refreshSocialStats(),
+      refetch(profileData?.user_id as number),
     ]);
     setIsRefreshing(false);
   };
@@ -135,8 +151,8 @@ export default function UserProfileScreen() {
     if (profileData) {
       const updatedStats = { ...profileData.stats };
       
-      if (totalPosts !== undefined) {
-        updatedStats.posts_count = totalPosts;
+      if (totalPublicPosts !== undefined) {
+        updatedStats.posts_count = totalPublicPosts;
       }
       
       if (socialStats) {
@@ -146,6 +162,12 @@ export default function UserProfileScreen() {
         viewProfileData = {
           ...profileData,
           isFollowing: socialStats.is_following
+        };
+      }
+      if (pinnedPost) {
+        viewProfileData = {
+          ...viewProfileData,
+          pinned_post: pinnedPost,
         };
       }
       
@@ -178,9 +200,10 @@ export default function UserProfileScreen() {
         return (
           <>
             <AnimatedProfileHeader
-              title={profileUsername || "Profile"}
+              title={username as string || "Profile"}
               isOwnProfile={false}
               scrollY={scrollY}
+              showBackButton={true}
             />
             <ScrollAnimatedProfileView scrollY={scrollY} />
           </>

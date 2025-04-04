@@ -14,9 +14,9 @@ type PinnedPostItemProps = {
 // PinnedPostItem 
 const PinnedPostItem = ({ post, onSelectPost, isOwnProfile=true }: PinnedPostItemProps) => {
   const router = useRouter();
-  
 
-  if (!post && isOwnProfile) {
+  // Case 1: Own profile with no pinned post
+  if (isOwnProfile && (!post || post.length === 0)) {
     return (
       <View style={profileStyles.postContainer}>
         <Ionicons name="pin-outline" size={24} color="#00c5e3" />
@@ -29,6 +29,18 @@ const PinnedPostItem = ({ post, onSelectPost, isOwnProfile=true }: PinnedPostIte
         >
           <Text style={styles.addButtonText}>Select Post</Text>
         </TouchableOpacity>
+      </View>
+    );
+  }
+
+  // Case 2: Viewing someone else's profile with no pinned post
+  if (!isOwnProfile && (!post || post.length === 0)) {
+    return (
+      <View style={profileStyles.postContainer}>
+        <Ionicons name="pin-outline" size={24} color="#00c5e3" />
+        <Text style={[profileStyles.noPostText, { marginTop: 8 }]}>
+          This user has not pinned any posts yet.
+        </Text>
       </View>
     );
   }
@@ -93,7 +105,7 @@ const PinnedPostItem = ({ post, onSelectPost, isOwnProfile=true }: PinnedPostIte
   );
 };
 
-// 仅定义 PinnedPostItem 特有的样式，避免与 profileStyles 重复
+
 const styles = StyleSheet.create({  
   addButton: {
     marginTop: 10,

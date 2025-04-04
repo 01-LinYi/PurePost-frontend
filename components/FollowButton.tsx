@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import { StyleSheet, ViewStyle, TextStyle, Alert } from "react-native";
 import { View, Text } from "./Themed";
 import GradientButton, { GradientButtonProps } from "./GradientButton";
-import { Ionicons } from "@expo/vector-icons";
 
 export interface FollowButtonProps {
   // Core props
@@ -195,7 +194,7 @@ const FollowButton: React.FC<FollowButtonProps> = ({
       return {
         ...baseProps,
         iconName: "checkmark-circle",
-        text: "Youself",
+        text: "Yourself",
         gradientColors: ["#D1D5DB", "#9CA3AF"],
         disabled: true,
         outline: true,

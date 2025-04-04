@@ -1,105 +1,85 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { StyleSheet, FlatList, ActivityIndicator, Alert } from "react-native";
 import { Text, View } from "@/components/Themed";
-
-// Global list of all people the user is following (limited total dataset)
-const allFollowing = [
-  { id: "1", name: "Alice", email: "alice@someuni.edu" },
-  { id: "2", name: "Bob", email: "bob@someuni.edu" },
-  { id: "3", name: "Charlie", email: "charlie@mail.com" },
-  { id: "4", name: "David", email: "david@mail.com" },
-  { id: "5", name: "Eve", email: "eve@mail.com" },
-  { id: "6", name: "Frank", email: "frank@mail.com" },
-  { id: "7", name: "Grace", email: "grace@mail.com" },
-  { id: "8", name: "Hannah", email: "hannah@mail.com" },
-  { id: "9", name: "Ivy", email: "ivy@mail.com" },
-  { id: "10", name: "Jack", email: "jack@mail.com" },
-  { id: "11", name: "Karen", email: "karen@mail.com" },
-  { id: "12", name: "Leo", email: "leo@mail.com" },
-  { id: "13", name: "Mona", email: "mona@mail.com" },
-  { id: "14", name: "Nancy", email: "nancy@mail.com" },
-  { id: "15", name: "Oscar", email: "oscar@mail.com" },
-  { id: "16", name: "Pam", email: "pam@mail.com" },
-  { id: "17", name: "Quinn", email: "quinn@mail.com" },
-  { id: "18", name: "Rita", email: "rita@mail.com" },
-  { id: "19", name: "Sam", email: "sam@mail.com" },
-  { id: "20", name: "Tina", email: "tina@mail.com" },
-];
+import * as api from "@/utils/api";
+import { useSession } from "@/components/SessionProvider";
+import { Follow } from "@/types/followType";
 
 export default function Following() {
-  const [following, setFollowing] = useState(allFollowing.slice(0, 10)); // Initially load the first 10 people
+  const [following, setFollowing] = useState<Follow[]>([]); // Initially load the first 10 people
+  const [next, setNext] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false); // Loading more state
   const [refreshing, setRefreshing] = useState(false); // Refreshing state
-  const [page, setPage] = useState(1); // Current page number
-  const itemsPerPage = 10; // Number of items per page
+  const { user } = useSession();
+  if (!user) {
+    console.error("Current User not found"); // should never happen
+    return null;
+  }
 
   // Function to fetch more people the user is following
-  const fetchMoreFollowing = () => {
-    if (loadingMore || following.length >= allFollowing.length) return;
+  const fetchMoreFollowing = async () => {
+    if (loadingMore || next === null) return;
 
     setLoadingMore(true);
-
-    setTimeout(() => {
-      const nextPage = page + 1;
-      const startIndex = page * itemsPerPage; // Calculate starting index for the next page
-      const endIndex = startIndex + itemsPerPage; // Calculate ending index for the next page
-      const newFollowing = allFollowing.slice(startIndex, endIndex); // Get the next set of people
-
-      setFollowing((prevFollowing) => [...prevFollowing, ...newFollowing]);
-      setPage(nextPage);
-      setLoadingMore(false);
-
-      if (following.length + newFollowing.length >= allFollowing.length) {
-        // Alert.alert("All Loaded","You have loaded all the people you're following.");
-      }
-    }, 1000); // Simulate network delay
+    const res = await api.fetchFollowings(user.id, next);
+    console.log(res);
+    setFollowing(res.results);
+    setNext(res.next);
+    setLoadingMore(false);
   };
 
   // Function to refresh the list of people the user is following
-  const refreshFollowing = () => {
-    if (following.length >= allFollowing.length) return; 
-    // Stop refreshing if all people are loaded
-
+  const refreshFollowing = async () => {
     setRefreshing(true);
-
-    setTimeout(() => {
-      const refreshedFollowing = allFollowing.slice(
-        0,
-        following.length + itemsPerPage
-      ); // Load more items on refresh
-      setFollowing(refreshedFollowing);
-      setRefreshing(false);
-
-      if (refreshedFollowing.length >= allFollowing.length) {
-        Alert.alert(
-          "All Loaded",
-          "You have loaded all the people you're following."
-        );
-      }
-    }, 1000); // Simulate network delay
+    setNext(null); // Reset next to null to start from the beginning
+    await fetchMoreFollowing(); // Fetch more followers
+    setRefreshing(false);
   };
+
+  useEffect(() => {
+    // Initial fetch of the list of people the user is following
+    const fetchInitialFollowing = async () => {
+      try {
+        const res = await api.fetchFollowings(user.id, null);
+        setFollowing(res.results);
+        setNext(res.next);
+      } catch (error) {
+        console.error("Error fetching followings:", error);
+        Alert.alert("Error", "Failed to load followings.");
+      }
+    };
+
+    fetchInitialFollowing();
+  }, []);
 
   return (
     <View style={styles.container}>
-      <FlatList
-        data={following}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <View style={styles.item}>
-            <Text style={styles.name}>{item.name}</Text>
-            <Text style={styles.email}>{item.email}</Text>
-          </View>
-        )}
-        onEndReached={fetchMoreFollowing} // Triggered when the user scrolls to the end
-        onEndReachedThreshold={0.5} // Trigger when 50% of the list is scrolled
-        ListFooterComponent={
-          loadingMore ? (
-            <ActivityIndicator size="small" color="#007bff" />
-          ) : null
-        }
-        refreshing={refreshing} // Pull-to-refresh state
-        onRefresh={refreshFollowing} // Triggered when the user performs a pull-to-refresh
-      />
+      {following.length > 0 ? (
+        <FlatList
+          data={following}
+          keyExtractor={(item) => item.id.toString()}
+          renderItem={({ item }) => (
+            <View style={styles.item}>
+              <Text style={styles.name}>{item.following_details.username}</Text>
+              <Text style={styles.email}>{item.following_details.email}</Text>
+            </View>
+          )}
+          onEndReached={fetchMoreFollowing} // Triggered when the user scrolls to the end
+          onEndReachedThreshold={0.5} // Trigger when 50% of the list is scrolled
+          ListFooterComponent={
+            loadingMore ? (
+              <ActivityIndicator size="small" color="#007bff" />
+            ) : null
+          }
+          refreshing={refreshing} // Pull-to-refresh state
+          onRefresh={refreshFollowing} // Triggered when the user performs a pull-to-refresh
+        />
+      ) : (
+        <Text style={{ textAlign: "center", marginTop: 20 }}>
+          You are not following anyone yet.
+        </Text>
+        // Display a message when there are no followings
+      )}
     </View>
   );
 }

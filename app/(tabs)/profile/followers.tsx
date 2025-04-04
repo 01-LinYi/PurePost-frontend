@@ -1,6 +1,10 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { StyleSheet, FlatList, ActivityIndicator, Alert } from "react-native";
 import { Text, View } from "@/components/Themed";
+import { UserProfile } from "@/types/profileType";
+import { useSession } from "@/components/SessionProvider";
+import * as api from "@/utils/api";
+import { Follow } from "@/types/followType";
 
 // Global list of all followers (limited total dataset)
 const allFollowers = [
@@ -27,78 +31,80 @@ const allFollowers = [
 ];
 
 export default function Followers() {
-  const [followers, setFollowers] = useState(allFollowers.slice(0, 10)); // Initially load the first 3 followers
+  const [followers, setFollowers] = useState<Follow[]>([]); // Initially load the first 3 followers
+  const [next, setNext] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false); // Loading more state
   const [refreshing, setRefreshing] = useState(false); // Refreshing state
-  const [page, setPage] = useState(1); // Current page number
-  const itemsPerPage = 10; // Number of items per page
-
+  const { user } = useSession();
+  if (!user) {
+    console.error("Current User not found"); // should never happen
+    return null;
+  }
+  
   // Function to fetch more followers
-  const fetchMoreFollowers = () => {
-    if (loadingMore || followers.length >= allFollowers.length) return;
-
+  const fetchMoreFollowers = async () => {
+    if (loadingMore || next === null) return;
     setLoadingMore(true);
-
-    setTimeout(() => {
-      const nextPage = page + 1;
-      const startIndex = page * itemsPerPage; // Calculate starting index for the next page
-      const endIndex = startIndex + itemsPerPage; // Calculate ending index for the next page
-      const newFollowers = allFollowers.slice(startIndex, endIndex); // Get the next set of followers
-
-      setFollowers((prevFollowers) => [...prevFollowers, ...newFollowers]);
-      setPage(nextPage);
-      setLoadingMore(false);
-
-      if (followers.length + newFollowers.length >= allFollowers.length) {
-        // Alert.alert("All Followers Loaded", "You have loaded all available followers.");
-      }
-    }, 1000); // Simulate network delay
+    const res = await api.fetchFollowers(user.id, next);
+    console.log(res);
+    setFollowers(res.results);
+    setNext(res.next);
+    setLoadingMore(false);
   };
 
   // Function to refresh followers
-  const refreshFollowers = () => {
-    if (followers.length >= allFollowers.length) return; // Stop refreshing if all followers are loaded
-
+  const refreshFollowers = async () => {
     setRefreshing(true);
-
-    setTimeout(() => {
-      const refreshedFollowers = allFollowers.slice(
-        0,
-        followers.length + itemsPerPage
-      ); // Load more items on refresh
-      setFollowers(refreshedFollowers);
-      setRefreshing(false);
-
-      if (refreshedFollowers.length >= allFollowers.length) {
-        Alert.alert(
-          "All Followers Loaded",
-          "You have loaded all available followers."
-        );
-      }
-    }, 1000); // Simulate network delay
+    setNext(null); // Reset next to null to start from the beginning
+    await fetchMoreFollowers(); // Fetch more followers
+    setRefreshing(false);
   };
+
+  useEffect(() => {
+      // Initial fetch of the list of people the user is following
+      const fetchInitialFollowing = async () => {
+        try {
+          const res = await api.fetchFollowers(user.id, null);
+          setFollowers(res.results);
+          setNext(res.next);
+        } catch (error) {
+          console.error("Error fetching followings:", error);
+          Alert.alert("Error", "Failed to load followings.");
+        }
+      };
+  
+      fetchInitialFollowing();
+    }, []);
 
   return (
     <View style={styles.container}>
-      <FlatList
-        data={followers}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <View style={styles.item}>
-            <Text style={styles.name}>{item.name}</Text>
-            <Text style={styles.email}>{item.email}</Text>
-          </View>
-        )}
-        onEndReached={fetchMoreFollowers} // Triggered when the user scrolls to the end
-        onEndReachedThreshold={0.5} // Trigger when 50% of the list is scrolled
-        ListFooterComponent={
-          loadingMore ? (
-            <ActivityIndicator size="small" color="#007bff" />
-          ) : null
-        }
-        refreshing={refreshing} // Pull-to-refresh state
-        onRefresh={refreshFollowers} // Triggered when the user performs a pull-to-refresh
-      />
+      {followers.length > 0 ? (
+        <FlatList
+          data={followers}
+          keyExtractor={(item) => item.id.toString()}
+          renderItem={({ item }) => (
+            <View style={styles.item}>
+              <Text style={styles.name}>{item.follower_details.username}</Text>
+              <Text style={styles.email}>{item.follower_details.email}</Text>
+            </View>
+          )}
+          onEndReached={() => {console.log("here"); fetchMoreFollowers()}} // Triggered when the user scrolls to the end
+          onEndReachedThreshold={0.5} // Trigger when 50% of the list is scrolled
+          ListFooterComponent={
+            loadingMore ? (
+              <ActivityIndicator size="small" color="#007bff" />
+            ) : null
+          }
+          refreshing={refreshing} // Pull-to-refresh state
+          onRefresh={refreshFollowers} 
+          // Triggered when the user performs a pull-to-refresh
+        />
+      ) : (
+        <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+          <Text>No followers found.</Text>
+        </View>
+      )
+      }
     </View>
   );
 }

@@ -62,6 +62,7 @@ export interface Post {
   updated_at: string;
   is_liked: boolean;
   is_saved: boolean;
+  is_pinned: boolean;
   disclaimer: string | null;
   deepfake_status: DeepfakeStatus | null;
   
@@ -83,6 +84,7 @@ export interface ApiPost {
   share_count: number;
   is_liked: boolean;
   is_saved: boolean;
+  pinned: boolean;
   visibility: PostVisibility;
   disclaimer: string | null;
   deepfake_status: DeepfakeStatus | null;

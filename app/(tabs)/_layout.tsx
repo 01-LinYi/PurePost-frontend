@@ -1,5 +1,5 @@
 import FontAwesome from "@expo/vector-icons/FontAwesome";
-import { Redirect, SplashScreen, Tabs, router } from "expo-router";
+import { SplashScreen, Tabs, router } from "expo-router";
 import React, { useEffect } from "react";
 import { Pressable, View, StyleSheet, Platform, Animated } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
@@ -154,7 +154,7 @@ export default function TabLayout() {
     if (loading) {
       SplashScreen.preventAutoHideAsync();
     } else {
-      SplashScreen.hideAsync().catch(() => {});
+      SplashScreen.hideAsync().catch(() => { });
     }
   }, [loading]);
 
@@ -286,6 +286,15 @@ export default function TabLayout() {
           }}
         />
       ))}
+
+      {/* Hide verify email from tab bar */}
+      <Tabs.Screen
+        name="verifyEmail"
+        options={{ 
+          title: "Verify Email",
+          href: null
+        }}
+      />
     </Tabs>
   );
 }

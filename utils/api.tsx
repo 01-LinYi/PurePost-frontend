@@ -1,5 +1,26 @@
+import { Follow } from "@/types/followType";
+import { ApiPost, Post } from "@/types/postType";
+import { UserProfile } from "@/types/profileType";
 import axiosInstance from "@/utils/axiosInstance";
 
+export interface PaginationResponse<T> {
+  prev: string | null;
+  next: string | null;
+  results: T[];
+}
+
+/**
+ * Perform a GET request to the specified URL using axiosInstance.
+ * @param url
+ * @returns JSON data = {
+ *              'config': {},
+ *              'data': {},
+ *              'headers': {},
+ *              'status': number,
+ *              'request': {},
+ *              'statusText': string
+ * }
+ */
 export const getApi = async (url: string) => {
   try {
     const response = await axiosInstance.get(url);
@@ -50,6 +71,19 @@ export const fetchUserSocialStat = async (user_id: number) => {
   return getApi(`/social/follow/status/${user_id}/`);
 };
 
+export const fetchPosts = async (userId: number) => {
+  return getApi(`/content/posts/?user_id=${userId}`);
+}
+
+/**
+ * Get the list of posts pinned by the current user
+ * @returns a list of Post
+ */
+export const fetchPinnedPosts = async (userId: number, isPinned: boolean = false): Promise<ApiPost[]> => {
+  const res = await getApi(`/content/posts/?user_id=${userId}&is_pinned=${isPinned}`);
+  return res.data.results;
+}
+
 export const followUser = async (user_id: number) => {
   try {
     const response = await axiosInstance.post(`/social/follow/${user_id}/`);
@@ -60,9 +94,35 @@ export const followUser = async (user_id: number) => {
   }
 };
 
+export const fetchFollowers = async (
+  user_id: number,
+  cursor: string | null
+): Promise<PaginationResponse<Follow>> => {
+  let res = null;
+  if (cursor) {
+    res = await getApi(`/social/followers/${user_id}/?cursor=${cursor}`);
+  } else {
+    res = await getApi(`/social/followers/${user_id}/`);
+  }
+  return res.data;
+};
+
+export const fetchFollowings = async (
+  user_id: number,
+  cursor: string | null
+): Promise<PaginationResponse<Follow>> => {
+  let res = null;
+  if (cursor) {
+    res = await getApi(`/social/following/${user_id}/?cursor=${cursor}`);
+  } else {
+    res = await getApi(`/social/following/${user_id}/`);
+  }
+  return res.data;
+};
+
 export const unfollowUser = async (user_id: number) => {
   try {
-    const response = await axiosInstance.post(`/social/unfollow/${user_id}/`);
+    const response = await axiosInstance.delete(`/social/unfollow/${user_id}/`);
     return response;
   } catch (error: any) {
     console.error("Error following user:", error);
@@ -80,14 +140,6 @@ export const fetchHomeFeed = async (page: number = 1, limit: number = 10) => {
   return getApi(`/content/posts/?page=${page}&limit=${limit}`);
 };
 
-/**
- * Get the list of posts pinned by the current user
- * @returns a list of Post
- */
-export const fetchPinnedPosts = async () => {
-  //TODO: Implement this function
-  return {};
-};
 
 export const fetchSinglePosts = async (user_id: string) => {
   return getApi(`/content/posts/${user_id}/`);
@@ -136,9 +188,87 @@ export const toggleSavePost = async (
   }
 };
 
+
+export const pinPost = async (post_id: number): Promise<void> => {
+  try {
+    await axiosInstance.post(`/content/posts/${post_id}/pin/`);
+  } catch (error) {
+    console.error("Error pinning post:", error);
+    throw error;
+  }
+}
+
+export const unpinPost = async (post_id: number): Promise<void> => {
+  try {
+    await axiosInstance.post(`/content/posts/${post_id}/unpin/`);
+  } catch (error) {
+    console.error("Error unpinning post:", error);
+    throw error;
+  }
+}
+
 export function addComment(id: string, text: string): Promise<any> {
   // TODO: Implement this function
   throw new Error("Function not implemented.");
+}
+
+export const forgetPassword = async (email: string): Promise<boolean> => {
+  try {
+    await axiosInstance.post(`/auth/forget/?email=${email}`);
+  } catch (error: any) {
+    if (error.response && error.response.status === 404) {
+      return false;
+    } else {
+      console.error("Error sending resetting password email: ", error);
+      throw error;
+    }
+  }
+  return true;
+}
+
+export const resetPassword = async (email: string, password: string, code: string): Promise<string | null> => {
+  try {
+    await axiosInstance.put(`/auth/forget/`, {
+      "email": email,
+      "new_password": password,
+      "code": code,
+    });
+    return null;
+  } catch (error: any) {
+    if (!error.response && error.response.status !== 400) {
+      console.error("Error reseting password: ", error);
+      throw error;
+    }
+    return error.response.data.error;
+  }
+}
+
+export const sendVerificationEmail = async (): Promise<string | null> => {
+  try {
+    await axiosInstance.get("auth/verify/");
+    return null;
+  } catch (error: any) {
+    if (!error.response && error.response.status !== 400) {
+      console.error("Error reseting password: ", error);
+      throw error;
+    }
+    return error.response.data.error;
+  }
+}
+
+export const verifyEmailCode = async (code: string): Promise<string | null> => {
+  try {
+    await axiosInstance.post("auth/verify/", {
+      "code": code
+    })
+    return null;
+  } catch (error: any) {
+    if (!error.response && error.response.status !== 400) {
+      console.error("Error reseting password: ", error);
+      throw error;
+    }
+    return error.response.data.error;
+  }
 }
 
 export function updatePost(id: string, data: any): Promise<any> {
@@ -158,3 +288,10 @@ export function deletePost(id: string): Promise<any> {
     throw error;
   }
 }
+
+export const searchProfiles = async (
+  username: string
+): Promise<UserProfile[]> => {
+  const res = await getApi(`/users/search/?username=${username}`);
+  return res.data.results;
+};

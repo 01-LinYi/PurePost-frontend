@@ -11,7 +11,7 @@ import { useSession } from "@/components/SessionProvider";
 import { useRouter } from "expo-router";
 const SettingsScreen = () => {
   const [isDeleting, setIsDeleting] = useState(false);
-  const { logOut, deleteAccount } = useSession();
+  const { user, logOut, deleteAccount } = useSession();
   const router = useRouter();
 
   const handleLogout = () => {
@@ -95,6 +95,14 @@ const SettingsScreen = () => {
     );
   };
 
+  const handleVerifyEmail = () => {
+    if (user?.is_verified) {
+      Alert.alert("Info", "Your email is already verified.");
+    } else {
+      router.replace("/verifyEmail");
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
@@ -113,6 +121,16 @@ const SettingsScreen = () => {
             </View>
             <Ionicons name="chevron-forward" size={20} color="#999" />
           </TouchableOpacity>
+
+          {!user?.is_verified && <TouchableOpacity style={styles.option} onPress={handleVerifyEmail}>
+            <View style={styles.optionContent}>
+              <Ionicons name="mail-outline" size={22} color="#333" />
+              <Text style={styles.optionText}>
+                {user?.is_verified ? "Email Verified" : "Verify Email"}
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#999" />
+          </TouchableOpacity>}
 
           <TouchableOpacity
             style={[styles.option, styles.dangerOption]}

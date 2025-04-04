@@ -158,6 +158,30 @@ const CreatePost = () => {
     setVisibility((prev) => (prev === "public" ? "private" : "public"));
   }, []);
 
+  // Preview navigation
+  const handlePreview = useCallback(() => {
+    if (!postText.trim() && !media) {
+      Alert.alert(
+        "Error",
+        "Please write something or add media before previewing."
+      );
+      return;
+    }
+
+    // Navigate to preview screen with post data
+    router.push({
+      pathname: "/post/preview",
+      params: {
+        postText: encodeURIComponent(postText),
+        mediaUri: media?.uri || "",
+        mediaType: media?.type || "",
+        visibility,
+        hasDisclaimer: hasDisclaimer ? "true" : "false",
+        disclaimerText: encodeURIComponent(disclaimerText || ""),
+      },
+    });
+  }, [postText, media, visibility, hasDisclaimer, disclaimerText]);
+
   const handlePost = useCallback(async () => {
     if (!postText.trim() && !media) {
       Alert.alert(
@@ -233,6 +257,8 @@ const CreatePost = () => {
   }, [postText, media, visibility]);
 
   const isPostDisabled = (!postText.trim() && !media) || isLoading;
+  const isPreviewDisabled = (!postText.trim() && !media) || isLoading;
+
 
   return (
     <KeyboardAvoidingView
@@ -344,7 +370,21 @@ const CreatePost = () => {
             textStyle={styles.mediaButtonText}
           />
 
+           {/* Preview Button */}
+           <ActionButton
+            icon={<Ionicons name="eye-outline" size={20} color="#FFFFFF" />}
+            text="Preview"
+            onPress={handlePreview}
+            disabled={isPreviewDisabled}
+            style={[
+                styles.previewButton,
+                isPreviewDisabled && styles.previewButtonDisabled,
+              ]}
+            textStyle={styles.previewButtonText}
+          />
+
           <ActionButton
+            icon={<Ionicons name="paper-plane-outline" size={20} color="#FFFFFF" />}
             text="Post"
             onPress={handlePost}
             disabled={isPostDisabled}
@@ -401,6 +441,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     backgroundColor: "#f9f9f9",
     textAlignVertical: "top",
+    marginTop: "10%",
     marginBottom: 4,
     color: "#333333",
     ...Platform.select({
@@ -503,6 +544,22 @@ const styles = StyleSheet.create({
     color: "#00c5e3",
     fontWeight: "500",
   },
+  previewButton: {
+    backgroundColor: "#00c5e3",
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 24,
+    minWidth: 100,
+  },
+  previewButtonDisabled: {
+    backgroundColor: "#B6E0E8",
+  },
+  previewButtonText: {
+    color: "#FFFFFF",
+    fontWeight: "600",
+    fontSize: 16,
+    marginLeft: 2,
+  },
   postButton: {
     backgroundColor: "#00c5e3",
     paddingVertical: 12,
@@ -517,6 +574,7 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontWeight: "600",
     fontSize: 16,
+    marginLeft: 2,
   },
   limitContainer: {
     marginTop: 16,

@@ -1,12 +1,13 @@
 // components/post/MyPostItem.tsx - Individual post item for the My Posts screen
 
 import React from "react";
-import { StyleSheet, TouchableOpacity, Image, Platform } from "react-native";
+import { StyleSheet, TouchableOpacity, Image, Platform, Alert} from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Text, View } from "@/components/Themed";
-import { router } from "expo-router";
+import { useRouter } from "expo-router";
 import { Post, PostVisibility } from "@/types/postType";
 import AuthorInfo from "@/components/post/AuthorInfo";
+import * as api from "@/utils/api";
 
 interface MyPostItemProps {
   post: Post;
@@ -25,6 +26,7 @@ const MyPostItem: React.FC<MyPostItemProps> = ({
   // Extract the first line as title
   const lines = post.content.split("\n");
   const title = lines[0] || "Untitled Post";
+  const router = useRouter();
 
   // Create a preview of the remaining content
   const contentPreview =
@@ -56,6 +58,45 @@ const MyPostItem: React.FC<MyPostItemProps> = ({
   };
 
   const visibilityProps = getVisibilityProps(post.visibility);
+
+  const onTogglePin = (postId: string) => {
+    // Handle pin/unpin action
+    if (post.is_pinned) {
+      // Unpin the post
+      api.unpinPost(Number(postId)).then(() => {
+        // Update the post state or refetch posts
+      }
+      ).catch((error) => {
+        console.error("Error unpinning post:", error);
+      });
+    } else {
+      // Pin the post
+      api.pinPost(Number(postId)).then(() => {
+        // Update the post state or refetch posts
+      }
+      ).catch((error) => {
+        console.error("Error pinning post:", error);
+      });
+    }
+    Alert.alert(
+      post.is_pinned ? "Unpinned" : "Pinned",
+      post.is_pinned
+        ? "The post has been unpinned."
+        : "The post has been pinned to your profile.",
+      [
+        { 
+          text: post.is_pinned ? "OK" : "View Profile", 
+          onPress: post.is_pinned 
+            ? () => {} 
+            : () => router.replace('/profile')
+        },
+        {
+          text: "Stay here", 
+          style: "cancel",
+        }
+      ]
+    );
+  };
 
   return (
     <TouchableOpacity
@@ -166,6 +207,20 @@ const MyPostItem: React.FC<MyPostItemProps> = ({
           >
             <Ionicons name="pencil-outline" size={16} color="#00c5e3" />
             <Text style={styles.actionButtonText}>Edit</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => onTogglePin(post.id)}
+          >
+            <Ionicons 
+              name={post.is_pinned ? "pin" : "pin-outline"} 
+              size={16} 
+              color="#00c5e3" 
+            />
+            <Text style={styles.actionButtonText}>
+              {post.is_pinned ? "Unpin" : "Pin"}
+            </Text>
           </TouchableOpacity>
 
           <TouchableOpacity

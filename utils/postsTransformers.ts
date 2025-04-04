@@ -46,6 +46,7 @@ export const transformApiPostToPost = (apiPost: ApiPost): Post => {
     visibility: apiPost.visibility,
     disclaimer: apiPost.disclaimer,
     deepfake_status: apiPost.deepfake_status,
+    is_pinned: apiPost.pinned,
     
     // Calculate frontend-specific fields
     isAuthor: true, // For "My Posts" page, all posts are by the current user

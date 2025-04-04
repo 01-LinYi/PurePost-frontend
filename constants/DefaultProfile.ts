@@ -7,6 +7,7 @@ export const MOCK_STATS: UserStats = {
 };
 
 export const DefaultProfile: UserProfile = {
+    id: 123456,
     username: "johndoe",
     email: "johndoe@example.com",
     avatar: "https://picsum.photos/200",
