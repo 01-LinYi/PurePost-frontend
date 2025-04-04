@@ -8,6 +8,7 @@ export interface User {
   // TODO: merge fields
   isActive?: boolean;
   isVerify?: boolean;
+  isPrivate?: boolean;
   created_at?: string;
   updated_at?: string;
 }

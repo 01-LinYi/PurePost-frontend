@@ -19,6 +19,8 @@ export const transformUserProfile = (data: any): UserProfile => {
     updated_at: data.updated_at,
     isActive: data.is_active,
     isVerify: data.is_verified,
+    isPrivate: data.is_private,
+    is_private: data.is_private,
     stats: data.stats
       ? {
         posts_count: data.stats.posts_count,

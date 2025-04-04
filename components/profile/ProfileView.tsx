@@ -7,6 +7,7 @@ import {
   Switch,
   RefreshControl,
   ActivityIndicator,
+  Alert,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
@@ -194,7 +195,7 @@ export default function ProfileView({
           </View>
 
           {/* Toggle Button for Profile Visibility */}
-          {isOwnProfile && (
+          {isOwnProfile ? (
             <View style={styles.toggleContainer}>
               <Text style={styles.toggleLabel}>
                 {isPrivate ? "Private Profile" : "Public Profile"}
@@ -205,6 +206,14 @@ export default function ProfileView({
                 thumbColor={isPrivate ? COLORS.primary : COLORS.accent}
                 trackColor={{ false: COLORS.textLight, true: COLORS.primary }}
               />
+            </View>
+          ) : (
+            <View style={styles.toggleContainer}>
+              <Text style={styles.toggleLabel}>
+                {profileData?.isPrivate
+                  ? "This account is private"
+                  : "This account is public"}
+              </Text>
             </View>
           )}
 
@@ -241,14 +250,14 @@ export default function ProfileView({
               <FollowButton
                 userId={profileData.id}
                 initialFollowStatus={profileData.isFollowing}
-                isLocked={
-                  profileData.isPrivate && !profileData.isFollowRequestSent
-                }
-                lockReason={
-                  profileData.isPrivate
-                    ? "This is a private account. Send a follow request to follow this user."
-                    : ""
-                }
+                // isLocked={
+                //   profileData.isPrivate && !profileData.isFollowRequestSent
+                // }
+                // lockReason={
+                //   profileData.isPrivate
+                //     ? "This is a private account. Send a follow request to follow this user."
+                //     : ""
+                // }
                 style={styles.actionButton}
                 gradientProps={{
                   gradientColors: ["#00c5e3", "#0072ff"],
@@ -291,7 +300,13 @@ export default function ProfileView({
             <TouchableOpacity
               style={styles.stat}
               onPress={
-                () => router.push(`/post/my_posts?userId=${profileData.id}&username=${profileData.username}`)
+                () => {
+                  if (!isOwnProfile && profileData?.isPrivate) {
+                    Alert.alert("Private Account", "This account is private. Follow to see posts.");
+                    return;
+                  }
+                  router.push(`/post/my_posts?userId=${profileData.id}&username=${profileData.username}`)
+                }
               }
               activeOpacity={0.7}
             >
