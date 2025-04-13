@@ -2,13 +2,14 @@ import { useState } from "react";
 import { StyleSheet, SafeAreaView, Alert, TextInput, TouchableOpacity, View, Text } from "react-native";
 import { useSession } from "@/components/SessionProvider";
 import * as api from "utils/api";
-import { router } from "expo-router";
+import { useRouter } from "expo-router";
 
 const VerifyEmailScreen = () => {
   const { setUserVerify } = useSession();
   const [verificationCode, setVerificationCode] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isFirstResend, setIsFirstResend] = useState(true); // Track if it's the first resend
+  const router = useRouter();
 
   const handleVerifyCode = async () => {
     if (!verificationCode.trim() || verificationCode.length !== 6) {

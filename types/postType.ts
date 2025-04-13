@@ -1,99 +1,141 @@
 // postType.ts
 
-export interface Author {
+// Visibility options for posts
+export type PostVisibility = "public" | "private" | "friends";
+export type PostStatus = "draft" | "published";
+
+// Deepfake analysis status options
+export type DeepfakeStatus =
+  | "not_analyzed" // Content hasn't been analyzed yet
+  | "analyzing" // Analysis in progress
+  | "flagged" // Identified as potentially manipulated
+  | "not_flagged" // Confirmed as authentic
+  | "analysis_failed"; // Unable to complete analysis
+
+export type AnalysisStatus =
+  | "pending" // Analysis is pending
+  | "processing" // Analysis is in progress
+  | "completed" // Analysis has been completed
+  | "failed"; // Analysis has failed
+
+export interface User {
   id: string;
-  name: string;
-  avatar: string;
+  username: string;
+  email: string;
+  bio: string;
+  profile_picture: string;
+  is_private: boolean;
 }
 
 export interface Media {
-  uri: string;
-  name: string;
-  type: string; // "image/jpeg", "image/png", "video/mp4" 
+  image?: string;
+  video?: string;
+  type: string;
+  name?: string;
+  uri?: string;
 }
 
-// The Comment interface is used to represent a comment on a post
-/**
- * class Meta:
-        model = Comment
-        fields = ['id', 'user', 'post', 'content', 'parent', 'created_at', 'replies']
-        read_only_fields = ['user', 'post', 'created_at', 'replies']
- */
 export interface Comment {
   id: string;
-  post_id: string; // The ID of the post to which the comment belongs
-  user: Author; // The user who made the comment
+  user: User;
+  post: string; // Post ID
   content: string;
+  parent: string | null;
   created_at: string;
-  replies?: Comment[]; // Nested comments
-  parent?: Comment | null; // Parent comment for nested comments
+  replies: Comment[];
+
   isSubmitting?: boolean;
-  updatedAt?: string;
   isEdited?: boolean;
 }
 
-
+// Post data structure as returned from the API
 export interface Post {
   id: string;
-  text: string;
-  media?: Media | null;
-  author: Author;
-  createdAt: string;
-  likesCount: number;
-  commentsCount: number;
-  shareCount?: number;
-  isLiked: boolean;
-  isSaved?: boolean;        
-  isAuthor?: boolean; // Indicates if the current user is the author of the post       
-  visibility?: "public" | "private"; 
-  updatedAt?: string;   
-  isEdited?: boolean;       
-  savedFolderId?: string | null; 
+  user: User;
+  content: string;
+  image: string | null;
+  video: string | null;
+  visibility: PostVisibility;
+  like_count: number;
+  share_count: number;
+  comment_count: number;
+  created_at: string;
+  updated_at: string;
+  is_liked: boolean;
+  is_saved: boolean;
+  is_pinned: boolean;
+  disclaimer: string | null;
+  deepfake_status: DeepfakeStatus | null;
+  status: PostStatus;
+  
+  // Frontend-only fields
+  isAuthor?: boolean;
+  isEdited?: boolean;
+  savedFolderId?: string | null;
+  deepfake_score?: number | null; // Score from deepfake analysis
+}
+
+// Raw post data structure from the API
+export interface ApiPost {
+  id: string;
+  content: string;
+  created_at: string;
+  updated_at: string;
+  comment_count: number;
+  like_count: number;
+  share_count: number;
+  is_liked: boolean;
+  is_saved: boolean;
+  pinned: boolean;
+  visibility: PostVisibility;
+  disclaimer: string | null;
+  deepfake_status: DeepfakeStatus | null;
+  status: PostStatus;
+  user: {
+    id: number | string;
+    username: string;
+    email: string;
+    bio: string;
+    profile_picture: string;
+    is_private: boolean;
+  };
+  image: string | null;
+  video: string | null;
+}
+
+export interface PostCreate {
+  content?: string;
+  image?: File | null;
+  video?: File | null;
+  visibility: "public" | "private" | "followers";
+  status: "draft" | "published";
   disclaimer?: string;
 }
 
-
 export interface SavedPost {
-  id: string;             
-  post: Post;             
-  folderId: string | null; 
-  createdAt: string;     
+  id: string;
+  post: Post;
+  folder_name: string;
+  saved_at: string;
 }
-
 
 export interface Folder {
   id: string;
+  user: User;
   name: string;
-  postCount: number;
-  createdAt: string;
-  updatedAt?: string;
+  created_at: string;
+  updated_at: string;
+  post_count: number;
 }
-
-
-export interface ApiResponse<T> {
-  results: T;    
-}
-
-
-export interface AddCommentRequest {
-  text: string;
-}
-
-
-export interface SavePostRequest {
-  post_id: string;
-  folder_id?: string | null;
-}
-
 
 export interface PostRequest {
   content: string;
   visibility: "public" | "private";
-  media?: File;  
+  status: "draft" | "published";
+  media?: File;
   media_id?: string;
   disclaimer?: string;
 }
-
 
 export interface FolderRequest {
   name: string;

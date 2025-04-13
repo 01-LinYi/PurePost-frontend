@@ -1,22 +1,36 @@
-// app/profile/index.tsx
+// app/user/[username].tsx
 import { useState, useEffect } from "react";
 import { Alert, StyleSheet, Animated } from "react-native";
+import { useLocalSearchParams, useRouter} from "expo-router";
 
 import ProfileView from "@/components/profile/ProfileView";
 import AnimatedProfileHeader from "@/components/profile/ProfileHeader";
 import { View } from "@/components/Themed";
 import { DefaultProfile, MOCK_STATS } from "@/constants/DefaultProfile";
-import { useMyPosts } from "@/hooks/useMyPosts";
-import { useSocialStats } from "@/hooks/useSocialStat";
+import { useSession} from "@/components/SessionProvider";
+import { useUserPublicPosts } from "@/hooks/useUserPublicPosts";
 import { usePinnedPost } from "@/hooks/usePinPost";
+import { useSocialStats } from "@/hooks/useSocialStat";
 import useProfileCache from "@/hooks/useProfileCache";
 import * as api from "@/utils/api";
+import { DefaultProfile } from "@/constants/DefaultProfile";
+import { UserProfile } from "@/types/profileType";
 import { useSession } from "@/components/SessionProvider";
 
-export default function ProfileScreen() {
+export default function UserProfileScreen() {
+  const { username } = useLocalSearchParams();
   const { user } = useSession();
+  const router = useRouter(); 
+
+  useEffect(() => {
+    if (username && user) {
+      if (user.username === username) {
+        router.replace("/(tabs)/profile");
+      }
+    }
+  }, [user,username]);
+
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [isAlertShown, setIsAlertShown] = useState(false);
   const [dataLoading, setDataLoading] = useState(true);
   const [isFollowing, setIsFollowing] = useState(false);
   
@@ -29,12 +43,10 @@ export default function ProfileScreen() {
     isCacheExpired,
   } = useProfileCache();
   
-
-  const { totalPosts } = useMyPosts({ userId: profileData?.user_id });
+  const {totalPublicPosts} = useUserPublicPosts({ userId: profileData?.user_id});
   
-
   const { socialStats, refreshSocialStats } = useSocialStats({ 
-    userId: profileData?.isOwnProfile ? 'me' : profileData?.user_id
+    userId: profileData?.user_id
   });
 
   const { pinnedPost, refetch } = usePinnedPost(profileData?.user_id, false);
@@ -57,31 +69,40 @@ export default function ProfileScreen() {
         }
       }
 
-
-      const response = await api.fetchMyProfile();
-      console.log("Profile response:", response.data);
-      if (response) {
+      const response = await api.fetchUserProfile(username as string);
+      console.log("User Profile response:", response.data);
+      if (response.data) {
         const userData = {
-          ...response,
-          stats: response.stats || MOCK_STATS,
+          ...response.data,
+          isOwnProfile: false,
+          stats: MOCK_STATS,
         };
-
 
         await saveProfileToCache(userData);
       } else {
-
-        await saveProfileToCache(DefaultProfile);
+        // Save default profile if API returns nothing
+        const defaultUserProfile = {
+          ...DefaultProfile,
+          username: username as string,
+          isOwnProfile: false,
+          isMe: false,
+        };
+        await saveProfileToCache(defaultUserProfile);
       }
 
       setDataLoading(false);
     } catch (error) {
       console.error("Error fetching user data:", error);
-
       
       const cachedData = await loadProfileFromCache();
       if (!cachedData) {
-      
-        await saveProfileToCache(DefaultProfile);
+        const defaultUserProfile = {
+          ...DefaultProfile,
+          username: username as string,
+          isOwnProfile: false,
+          isMe : false,
+        };
+        await saveProfileToCache(defaultUserProfile);
       }
 
       Alert.alert(
@@ -92,10 +113,11 @@ export default function ProfileScreen() {
     }
   };
 
-
   useEffect(() => {
-    fetchUserData();
-  }, []);
+    if (username) {
+      fetchUserData();
+    }
+  }, [username]);
 
   /**
    * Handle refresh action
@@ -128,39 +150,30 @@ export default function ProfileScreen() {
       { useNativeDriver: false }
     );
     
-
     let viewProfileData = profileData;
     if (profileData) {
-
       const updatedStats = { ...profileData.stats };
       
-
-      if (totalPosts !== undefined) {
-        updatedStats.posts_count = totalPosts;
+      if (totalPublicPosts !== undefined) {
+        updatedStats.posts_count = totalPublicPosts;
       }
       
-
       if (socialStats) {
         updatedStats.followers_count = socialStats.follower_count;
         updatedStats.following_count = socialStats.following_count;
         
-
-        if (!profileData.isOwnProfile) {
-          viewProfileData = {
-            ...profileData,
-            isFollowing: socialStats.is_following
-          };
-        }
+        viewProfileData = {
+          ...profileData,
+          isFollowing: socialStats.is_following
+        };
       }
-
       if (pinnedPost) {
         viewProfileData = {
           ...viewProfileData,
-          pinned_post: pinnedPost
+          pinned_post: pinnedPost,
         };
       }
       
-
       viewProfileData = {
         ...viewProfileData,
         stats: updatedStats
@@ -170,7 +183,7 @@ export default function ProfileScreen() {
     return (
       <ProfileView
         profileData={viewProfileData}
-        isOwnProfile={true}
+        isOwnProfile={false}
         isRefreshing={isRefreshing}
         onRefresh={handleRefresh}
         onFollowStatusChange={handleFollowStatusChange}
@@ -183,13 +196,6 @@ export default function ProfileScreen() {
     );
   };
 
-  useEffect(() => {
-    if (!isAlertShown && !user?.is_verified) {
-      Alert.alert("Verify Your Email", "Please verify your email in setting.");
-      setIsAlertShown(true); // Mark alert as shown
-    }
-  }, [isAlertShown, user?.is_verified]); // Dependency array ensures this runs only when needed
-
   return (
     <View style={styles.container}>
       {(() => {
@@ -197,9 +203,10 @@ export default function ProfileScreen() {
         return (
           <>
             <AnimatedProfileHeader
-              title="My Profile"
-              isOwnProfile={true}
+              title={username as string || "Profile"}
+              isOwnProfile={false}
               scrollY={scrollY}
+              showBackButton={true}
             />
             <ScrollAnimatedProfileView scrollY={scrollY} />
           </>

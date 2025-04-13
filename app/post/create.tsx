@@ -43,8 +43,71 @@ const CreatePost = () => {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState<boolean>(false);
   const [hasDisclaimer, setHasDisclaimer] = useState<boolean>(false);
   const [disclaimerText, setDisclaimerText] = useState<string>("");
+  const [isSaving, setIsSaving] = useState<boolean>(false);
+  const [draftId, setDraftId] = useState<number | null>(null);
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
+
+  useEffect(() => {
+    const checkForDraft = async () => {
+      try {
+        const response = await axiosInstance.get("/content/posts/draft/");
+        const draft = response.data;
+        
+        Alert.alert(
+          "Draft Found",
+          "Would you like to continue with your saved draft?",
+          [
+            {
+              text: "Discard",
+              style: "destructive",
+              onPress: async () => {
+                try {
+                  await axiosInstance.delete(`/content/posts/${draft.id}/`);
+                  console.log("Draft discarded");
+                } catch (error) {
+                  console.error("Error discarding draft:", error);
+                }
+              }
+            },
+            {
+              text: "Load Draft",
+              onPress: () => {
+                setPostText(draft.content || "");
+                
+                if (draft.image) {
+                  setMedia({
+                    image: draft.image,
+                    type: "image",
+                    name: draft.image.split('/').pop() || "image.jpg",
+                  });
+                } else if (draft.video) {
+                  setMedia({
+                    video: draft.video,
+                    type: "video", 
+                    name: draft.video.split('/').pop() || "video.mp4",
+                  });
+                }
+                
+                setVisibility(draft.visibility);
+                setHasDisclaimer(!!draft.disclaimer);
+                setDisclaimerText(draft.disclaimer || "");
+                setDraftId(draft.id);
+              }
+            }
+          ]
+        );
+      } catch (error) {
+        // No draft or error fetching - that's okay, just continue with new post
+        if ((error as any)?.response?.status !== 404) {
+          console.error("Error checking for draft:", error);
+        }
+      }
+    };
+    
+    checkForDraft();
+  }, []);
+
 
   useEffect(() => {
     const hasContent = postText.trim().length > 0 || media !== null;
@@ -81,7 +144,6 @@ const CreatePost = () => {
       setDisclaimerText("");
     }
   }, [hasDisclaimer]);
-
 
   const pickMedia = useCallback(async () => {
     try {
@@ -121,14 +183,23 @@ const CreatePost = () => {
           return;
         }
 
-        setMedia({
-          uri: asset.uri,
-          type: mediaType,
-          name: formatUploadFileName(
-            mediaType as "image" | "video",
-            asset.fileName || "media"
-          ),
-        });
+        mediaType === "image"
+          ? setMedia({
+              image: asset.uri,
+              type: "image",
+              name: formatUploadFileName(
+                "image",
+                asset.uri.split("/").pop() || "image.jpg"
+              ),
+            })
+          : setMedia({
+              video: asset.uri,
+              type: "video",
+              name: formatUploadFileName(
+                "video",
+                asset.uri.split("/").pop() || "video.mp4"
+              ),
+            });
       }
     } catch (error) {
       Alert.alert(
@@ -150,6 +221,96 @@ const CreatePost = () => {
     setVisibility((prev) => (prev === "public" ? "private" : "public"));
   }, []);
 
+  // Preview navigation
+  const handlePreview = useCallback(() => {
+    if (!postText.trim() && !media) {
+      Alert.alert(
+        "Error",
+        "Please write something or add media before previewing."
+      );
+      return;
+    }
+
+    // Navigate to preview screen with post data
+    router.push({
+      pathname: "/post/preview",
+      params: {
+        postText: encodeURIComponent(postText),
+        mediaUri: media?.uri || "",
+        mediaType: media?.type || "",
+        visibility,
+        hasDisclaimer: hasDisclaimer ? "true" : "false",
+        disclaimerText: encodeURIComponent(disclaimerText || ""),
+      },
+    });
+  }, [postText, media, visibility, hasDisclaimer, disclaimerText]);
+
+  const handleSaveDraft = useCallback(async () => {
+    try {
+      setIsSaving(true);
+      
+      // Create form data object
+      const formData = new FormData();
+      formData.append("content", postText);
+      formData.append("visibility", visibility);
+      formData.append("status", "draft");
+      
+      if (hasDisclaimer) {
+        formData.append("disclaimer", disclaimerText);
+      }
+  
+      if (media) {
+        const fileType = media.type === "video" ? "video" : "image";
+        
+        // @ts-ignore - RN FormData type issue
+        formData.append(fileType, {
+          uri: Platform.OS === "android" 
+            ? (media.type === "video" ? media.video : media.image)
+            : (media.type === "video" ? media.video?.replace("file://", "") : media.image?.replace("file://", "")),
+          name: media.name,
+          type: media.type === "video" ? "video/mp4" : "image/jpeg",
+        });
+      }
+  
+      // Either update or create a draft
+      const endpoint = draftId 
+        ? `/content/posts/${draftId}/update-draft/` 
+        : "/content/posts/save-draft/";
+      
+      const method = draftId ? "patch" : "post";
+      
+      const response = await axiosInstance({
+        method,
+        url: endpoint,
+        data: formData,
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+      
+      setDraftId(response.data.id);
+      setHasUnsavedChanges(false);
+      
+      Alert.alert(
+        "Draft Saved",
+        "Your post has been saved as a draft.",
+        [{ text: "OK" }]
+      );
+      
+    } catch (error) {
+      const errorMessage =
+        (error as any)?.response?.data?.detail ||
+        (error as Error).message ||
+        "Unknown error occurred";
+        
+      Alert.alert("Error", `Failed to save draft: ${errorMessage}`);
+      console.error("Draft saving error:", error);
+    } finally {
+      setIsSaving(false);
+    }
+  }, [postText, media, visibility, hasDisclaimer, disclaimerText, draftId]);
+
+
   const handlePost = useCallback(async () => {
     if (!postText.trim() && !media) {
       Alert.alert(
@@ -162,51 +323,80 @@ const CreatePost = () => {
     try {
       setIsLoading(true);
 
-      // Create form data object
-      const formData = new FormData();
-      formData.append("content", postText.trim());
-      formData.append("visibility", visibility);
+      // ADDED: Check if we're publishing a draft
+    if (draftId)
+    {
+        const response = await axiosInstance.post(`/content/posts/${draftId}/publish/`);
+        
+        Alert.alert("Success", "Your post has been published!", [
+          {
+            text: "View Post",
+            onPress: () => router.push(`/post/${response.data.id}`),
+          },
+          {
+            text: "Go Home",
+            onPress: () => router.push("/(tabs)"),
+          },
+        ]);
+      } 
+      else 
+      {
+        // Create form data object
+        const formData = new FormData();
+        formData.append("content", postText.trim());
+        formData.append("visibility", visibility);
+        formData.append("status", "published");
+        if (hasDisclaimer) {
+          formData.append("disclaimer", disclaimerText.trim());
+        }
+      
 
-      if (media) {
-        const uriParts = media.uri.split("/");
-        const fileName = uriParts[uriParts.length - 1];
-        const fileType = media.type === "video" ? "video" : "image";
+        if (media) {
+            const uriParts =
+            media.type === "video"
+                ? media.video?.split("/") || []
+                : media.image?.split("/") || [];
 
-        // @ts-ignore - RN FormData type issue
-        formData.append(fileType, {
-          uri:
-            Platform.OS === "android"
-              ? media.uri
-              : media.uri.replace("file://", ""),
-          name: media.name || fileName,
-          type: media.type === "video" ? "video/mp4" : "image/jpeg", // Simplified for example
+            const fileName = uriParts[uriParts.length - 1];
+            const fileType = media.type === "video" ? "video" : "image";
+
+            // @ts-ignore - RN FormData type issue
+            formData.append(fileType, {
+            uri:
+                Platform.OS === "android"
+                ? media.image
+                : media.image?.replace("file://", "") ?? "",
+            name: media.name || fileName,
+            type: media.type === "video" ? "video/mp4" : "image/jpeg", // Simplified for example
+            });
+        }
+
+        // Submit post with media if present
+        const response = await axiosInstance.post("/content/posts/", formData, {
+            headers: {
+            "Content-Type": "multipart/form-data",
+            },
         });
+        console.log("Post created:", response.data);
+
+        Alert.alert("Success", "Your post has been published!", [
+            {
+            text: "View Post",
+            onPress: () => router.push(`/post/${response.data.id}`),
+            },
+            {
+            text: "Go Home",
+            onPress: () => router.push("/(tabs)"),
+            },
+        ]);
+
+        setPostText("");
+        setMedia(null);
+        setHasUnsavedChanges(false);
+        setHasDisclaimer(false);
+        setDisclaimerText("");
+        setDraftId(null);
       }
-
-      // Submit post with media if present
-      const response = await axiosInstance.post("/content/posts/", formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      });
-      console.log("Post created:", response.data);
-
-      Alert.alert("Success", "Your post has been published!", [
-        {
-          text: "View Post",
-          onPress: () => router.push(`/post/${response.data.id}`),
-        },
-        {
-          text: "Go Home",
-          onPress: () => router.push("/(tabs)"),
-        },
-      ]);
-
-      setPostText("");
-      setMedia(null);
-      setHasUnsavedChanges(false);
-      setHasDisclaimer(false);
-      setDisclaimerText("");
     } catch (error) {
       const errorMessage =
         (error as any)?.response?.data?.detail ||
@@ -220,7 +410,10 @@ const CreatePost = () => {
     }
   }, [postText, media, visibility]);
 
-  const isPostDisabled = (!postText.trim() && !media) || isLoading;
+  // Added isSaving to disabled state checks
+  const isPostDisabled = (!postText.trim() && !media) || isLoading || isSaving;
+  const isPreviewDisabled = (!postText.trim() && !media) || isLoading || isSaving;
+  const isSaveDisabled = (!postText.trim() && !media) || isLoading || isSaving;
 
   return (
     <KeyboardAvoidingView
@@ -270,8 +463,8 @@ const CreatePost = () => {
             <Switch
               value={hasDisclaimer}
               onValueChange={toggleDisclaimer}
-              trackColor={{ false: '#e0e0e0', true: '#00c5e3' }}
-              thumbColor={hasDisclaimer ? '#00c5e3' : '#f4f3f4'}
+              trackColor={{ false: "#e0e0e0", true: "#00c5e3" }}
+              thumbColor={hasDisclaimer ? "#00c5e3" : "#f4f3f4"}
               ios_backgroundColor="#f9f9f9"
             />
           </View>
@@ -291,7 +484,9 @@ const CreatePost = () => {
               returnKeyType="default"
               textAlignVertical="top"
             />
-            <Text style={styles.disclaimerCharCount}>{disclaimerText.length}/200</Text>
+            <Text style={styles.disclaimerCharCount}>
+              {disclaimerText.length}/200
+            </Text>
           </View>
         )}
 
@@ -329,8 +524,38 @@ const CreatePost = () => {
             style={styles.mediaButton}
             textStyle={styles.mediaButtonText}
           />
+        </View>
+
+        <View style={styles.actionBar}>
+
+          {/* Preview Button */}
+          <ActionButton
+            icon={<Ionicons name="eye-outline" size={20} color="#FFFFFF" />}
+            text="Preview"
+            onPress={handlePreview}
+            disabled={isPreviewDisabled}
+            style={[
+                styles.previewButton,
+                isPreviewDisabled && styles.previewButtonDisabled,
+              ]}
+            textStyle={styles.previewButtonText}
+          />
 
           <ActionButton
+            icon={<Ionicons name="document-outline" size={20} color="#FFFFFF" />}
+            text="Save Draft"
+            onPress={handleSaveDraft}
+            disabled={isSaveDisabled}
+            loading={isSaving}
+            style={[
+            styles.saveDraftButton,
+            isSaveDisabled && styles.saveDraftButtonDisabled,
+            ]}
+            textStyle={styles.saveDraftButtonText}
+          />
+
+          <ActionButton
+            icon={<Ionicons name="paper-plane-outline" size={20} color="#FFFFFF" />}
             text="Post"
             onPress={handlePost}
             disabled={isPostDisabled}
@@ -387,6 +612,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     backgroundColor: "#f9f9f9",
     textAlignVertical: "top",
+    marginTop: "10%",
     marginBottom: 4,
     color: "#333333",
     ...Platform.select({
@@ -489,6 +715,38 @@ const styles = StyleSheet.create({
     color: "#00c5e3",
     fontWeight: "500",
   },
+  previewButton: {
+    backgroundColor: "#00c5e3",
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 24,
+    minWidth: 100,
+  },
+  previewButtonDisabled: {
+    backgroundColor: "#B6E0E8",
+  },
+  previewButtonText: {
+    color: "#FFFFFF",
+    fontWeight: "600",
+    fontSize: 16,
+    marginLeft: 2,
+  },
+  saveDraftButtonText: {
+    color: "#FFFFFF",
+    fontWeight: "600",
+    fontSize: 16,
+    marginLeft: 2,
+  },
+  saveDraftButton: {
+    backgroundColor: "#00c5e3",
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 24,
+    minWidth: 100,
+  },
+  saveDraftButtonDisabled: {
+    backgroundColor: "#B6E0E8",
+  },
   postButton: {
     backgroundColor: "#00c5e3",
     paddingVertical: 12,
@@ -503,6 +761,7 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontWeight: "600",
     fontSize: 16,
+    marginLeft: 2,
   },
   limitContainer: {
     marginTop: 16,

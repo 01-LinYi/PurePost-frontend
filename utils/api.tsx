@@ -1,5 +1,5 @@
 import { Follow } from "@/types/followType";
-import { Post } from "@/types/postType";
+import { ApiPost, Post } from "@/types/postType";
 import { UserProfile } from "@/types/profileType";
 import axiosInstance from "@/utils/axiosInstance";
 import { transformUserProfile } from "./transformer";
@@ -12,7 +12,7 @@ export interface PaginationResponse<T> {
 
 /**
  * Perform a GET request to the specified URL using axiosInstance.
- * @param url 
+ * @param url
  * @returns JSON data = {
  *              'config': {},
  *              'data': {},
@@ -30,18 +30,6 @@ export const getApi = async (url: string) => {
     console.error("Error fetching data:", error);
     return error.response;
   }
-};
-
-/**
- * Get the social stats of current user
- * @returns  JSON data = {
-            'is_following': boolean,
-            'follower_count': int,
-            'following_count':int
-        }
- */
-export const fetchMySocialStat = async () => {
-  return getApi(`/social/follow/status/`);
 };
 
 /**
@@ -71,15 +59,19 @@ export const fetchUserProfile = async (username: string) => {
 };
 
 /**
- * Get the post counts of given user id
- * If user is current user, will return the post counts of all posts
- * If user is not current user, will return the post counts of public posts
- * @param user_id
- * @returns number of posts
+ * Get the social stats of current user
+ * @returns  JSON data = {
+            'is_following': boolean,
+            'follower_count': int,
+            'following_count':int
+        }
  */
-export const fetchPostCounts = async (user_id: number) => {
-  //TODO: Implement this function
-  return 0;
+export const fetchMySocialStat = async () => {
+  return getApi(`/social/follow/status/`);
+};
+
+export const fetchUserSocialStat = async (user_id: number) => {
+  return getApi(`/social/follow/status/${user_id}/`);
 };
 
 export const fetchPosts = async (userId: number) => {
@@ -90,13 +82,14 @@ export const fetchPosts = async (userId: number) => {
  * Get the list of posts pinned by the current user
  * @returns a list of Post
  */
-export const fetchPinnedPosts = async (userId: number, isPinned: boolean = false): Promise<Post[]> => {
+export const fetchPinnedPosts = async (userId: number, isPinned: boolean = false): Promise<ApiPost[]> => {
   const res = await getApi(`/content/posts/?user_id=${userId}&is_pinned=${isPinned}`);
   return res.data.results;
 }
 
 export const followUser = async (user_id: number) => {
   try {
+    const response = await axiosInstance.post(`/social/follow/${user_id}/`);
     const response = await axiosInstance.post(`/social/follow/${user_id}/`);
     return response;
   } catch (error: any) {
@@ -105,7 +98,10 @@ export const followUser = async (user_id: number) => {
   }
 };
 
-export const fetchFollowers = async (user_id: number, cursor: string | null): Promise<PaginationResponse<Follow>> => {
+export const fetchFollowers = async (
+  user_id: number,
+  cursor: string | null
+): Promise<PaginationResponse<Follow>> => {
   let res = null;
   if (cursor) {
     res = await getApi(`/social/followers/${user_id}/?cursor=${cursor}`);
@@ -113,9 +109,12 @@ export const fetchFollowers = async (user_id: number, cursor: string | null): Pr
     res = await getApi(`/social/followers/${user_id}/`);
   }
   return res.data;
-}
+};
 
-export const fetchFollowings = async (user_id: number, cursor: string | null): Promise<PaginationResponse<Follow>> => {
+export const fetchFollowings = async (
+  user_id: number,
+  cursor: string | null
+): Promise<PaginationResponse<Follow>> => {
   let res = null;
   if (cursor) {
     res = await getApi(`/social/following/${user_id}/?cursor=${cursor}`);
@@ -123,8 +122,7 @@ export const fetchFollowings = async (user_id: number, cursor: string | null): P
     res = await getApi(`/social/following/${user_id}/`);
   }
   return res.data;
-}
-
+};
 
 export const unfollowUser = async (user_id: number) => {
   try {
@@ -135,13 +133,23 @@ export const unfollowUser = async (user_id: number) => {
   }
 };
 
+/**
+ * Get the home feed posts
+ * @param page Page number for pagination
+ * @param limit Number of posts per page
+ * @returns List of feed posts
+ */
+export const fetchHomeFeed = async (page: number = 1, limit: number = 10) => {
+  return getApi(`/content/posts/?page=${page}&limit=${limit}`);
+};
+
+
 export const fetchSinglePosts = async (user_id: string) => {
   return getApi(`/content/posts/${user_id}/`);
 };
 
 export const fetchPostComments = async (post_id: number) => {
-  //TODO: Implement this function
-  return getApi(`/content/posts/${post_id}/comments/`);
+  return getApi(`/content/posts/${post_id}/interactions/comments/`);
 };
 
 export const likePost = async (post_id: number) => {
@@ -183,14 +191,35 @@ export const toggleSavePost = async (
   }
 };
 
-export function addComment(id: string, text: string): Promise<unknown> {
-  // TODO: Implement this function
-  throw new Error("Function not implemented.");
+
+export const pinPost = async (post_id: number): Promise<void> => {
+  try {
+    await axiosInstance.post(`/content/posts/${post_id}/pin/`);
+  } catch (error) {
+    console.error("Error pinning post:", error);
+    throw error;
+  }
 }
 
-export const searchProfiles = async (username: string): Promise<UserProfile[]> => {
-  const res = await getApi(`/users/search/?username=${username}`);
-  return res.data.results;
+export const unpinPost = async (post_id: number): Promise<void> => {
+  try {
+    await axiosInstance.post(`/content/posts/${post_id}/unpin/`);
+  } catch (error) {
+    console.error("Error unpinning post:", error);
+    throw error;
+  }
+}
+
+export function addComment(id: string, text: string): Promise<any> {
+  throw new Error("Function not implemented.");
+  try {
+    return axiosInstance.post(`/content/posts/${id}/comment/`, {
+      content: text,
+    });
+  } catch (error) {
+    console.error("Error adding comment:", error);
+    throw error;
+  }
 }
 
 export const forgetPassword = async (email: string): Promise<boolean> => {
@@ -250,6 +279,7 @@ export const verifyEmailCode = async (code: string): Promise<string | null> => {
     }
     return error.response.data.error;
   }
+>>>>>>>>> Temporary merge branch 2
 }
 export const updateProfileVisibility = async (value: boolean): Promise<boolean> => {
   try {
@@ -260,5 +290,101 @@ export const updateProfileVisibility = async (value: boolean): Promise<boolean> 
   } catch (error: any) {
     console.error("Error updating profile visibility:", error.response.data);
     return false;
+  }}
+
+
+export function updatePost(id: string, data: any): Promise<any> {
+  try {
+    return axiosInstance.patch(`/content/posts/${id}/`, data);
+  } catch (error) {
+    console.error("Error editing post:", error);
+    throw error;
   }
 }
+
+export function deletePost(id: string): Promise<any> {
+  try {
+    return axiosInstance.delete(`/content/posts/${id}/`);
+  } catch (error) {
+    console.error("Error deleting post:", error);
+    throw error;
+  }
+}
+
+export const searchProfiles = async (
+  username: string
+): Promise<UserProfile[]> => {
+  const res = await getApi(`/users/search/?username=${username}`);
+  return res.data.results;
+};
+
+export const fetchLikers = async (
+  post_id: number,
+  cursor: string | null
+): Promise<PaginationResponse<UserProfile>> => {
+  let res = null;
+  if (cursor) {
+    res = await getApi(
+      `/content/posts/${post_id}/interactions/likes/?cursor=${cursor}`
+    );
+  } else {
+    res = await getApi(`/content/posts/${post_id}/interactions/likes/`);
+  }
+  return res.data;
+}
+
+export const fetchCommenters = async (
+  post_id: number,
+  cursor: string | null
+): Promise<PaginationResponse<UserProfile>> => {
+  let res = null;
+  if (cursor) {
+    res = await getApi(
+      `/content/posts/${post_id}/interactions/comments/?cursor=${cursor}`
+    );
+  } else {
+    res = await getApi(`/content/posts/${post_id}/interactions/comments/`);
+  }
+  return res.data;
+};
+
+export const fetchSharers = async (
+  post_id: number,
+  cursor: string | null
+): Promise<PaginationResponse<UserProfile>> => {
+  let res = null;
+  if (cursor) {
+    res = await getApi(
+      `/content/posts/${post_id}/interactions/shares/?cursor=${cursor}`
+    );
+  } else {
+    res = await getApi(`/content/posts/${post_id}/interactions/shares/`);
+  }
+  return res.data;
+};
+
+/**
+ * Fetch users who interacted with a post
+ * @param type : 'likes', 'comments', 或 'shares'
+ * @param post_id 
+ * @param cursor 
+ * @returns PaginationResponse<UserProfile>
+ * @description This function fetches users who interacted with a post based on the interaction type (likes, comments, shares).
+ * The function takes the interaction type, post ID, and an optional cursor for pagination.
+ */
+export const fetchInteractionUsers = async (
+  type: 'likes' | 'comments' | 'shares',
+  post_id: number,
+  cursor: string | null = null
+): Promise<PaginationResponse<UserProfile>> => {
+  let res = null;
+  const endpoint = `/content/posts/${post_id}/interactions/${type}/`;
+  
+  if (cursor) {
+    res = await getApi(`${endpoint}?cursor=${cursor}`);
+  } else {
+    res = await getApi(endpoint);
+  }
+  
+  return res.data;
+};

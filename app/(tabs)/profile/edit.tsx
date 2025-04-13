@@ -58,7 +58,6 @@ export default function EditProfileScreen() {
   const [avatar, setAvatar] = useState("");
   const [avatarFile, setAvatarFile] = useState<Media | null>(null);
   const [email, setEmail] = useState("");
-  const [name, setName] = useState("");
   const [username, setUsername] = useState("");
   const [bio, setBio] = useState("");
   const [location, setLocation] = useState("");
@@ -133,7 +132,6 @@ export default function EditProfileScreen() {
     // Set other fields
     setEmail(data.email || "");
     setUsername(data.username ? `@${data.username.replace(/^@/, "")}` : "");
-    setName(data.name || data.display_name || "");
     setBio(data.bio || "");
     setLocation(data.location || "");
     setWebsite(data.website || "");
@@ -154,8 +152,6 @@ export default function EditProfileScreen() {
     if (!originalData) return true;
 
     // Check if text fields have changed
-    if (name !== (originalData.name || originalData.display_name || ""))
-      return true;
     if (bio !== (originalData.bio || "")) return true;
     if (location !== (originalData.location || "")) return true;
     if (website !== (originalData.website || "")) return true;
@@ -196,7 +192,7 @@ export default function EditProfileScreen() {
         // Get original file name or create a default file name
         const originalFileName =
           avatarFile.name ||
-          `avatar.${avatarFile.uri.split(".").pop() || "png"}`;
+          `avatar.${avatarFile.image?.split(".").pop() ?? "png"}`;
 
         // Generate unique file name
         const uniqueFileName = formatUploadFileName("avatar", originalFileName);
@@ -214,12 +210,6 @@ export default function EditProfileScreen() {
       // Only add changed fields to reduce request payload
       const originalData = routeProfileData || cachedProfile;
 
-      if (
-        !originalData ||
-        name !== (originalData.name || originalData.display_name || "")
-      ) {
-        formData.append("name", name);
-      }
 
       if (!originalData || bio !== (originalData.bio || "")) {
         formData.append("bio", bio);
@@ -361,17 +351,6 @@ export default function EditProfileScreen() {
             <Text style={styles.helperText}>Email cannot be changed</Text>
           </View>
 
-          {/* Name Input */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Name</Text>
-            <TextInput
-              style={styles.input}
-              value={name}
-              onChangeText={setName}
-              placeholder="Your full name"
-              placeholderTextColor={COLORS.textLight}
-            />
-          </View>
 
           {/* Bio Input */}
           <View style={styles.inputGroup}>

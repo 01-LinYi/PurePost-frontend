@@ -1,8 +1,7 @@
-import { router } from "expo-router";
+import { useRouter } from "expo-router";
 import {
   Text,
   View,
-  Image,
   TextInput,
   TouchableOpacity,
   StyleSheet,
@@ -10,19 +9,25 @@ import {
   Alert,
   Platform,
   Keyboard,
-  Dimensions,
 } from "react-native";
 import { useState, useEffect } from "react";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
-  withTiming,
   withSpring,
-  runOnJS,
 } from "react-native-reanimated";
 import axiosInstance from "@/utils/axiosInstance";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { Ionicons } from "@expo/vector-icons";
+import { useStorageState } from "@/hooks/useStorageState";
+
+type RegError = {
+  email?: string | null;
+  username?: string | null;
+  password?: string | null;
+  passwordConfirm?: string | null;
+  terms?: string | null;
+};
 
 const RegisterPage = () => {
   // State variables for form fields
@@ -30,9 +35,12 @@ const RegisterPage = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
+  const [[], setUser] = useStorageState("user");
+  const [[], setSession] = useStorageState("session");
+  const router = useRouter();
 
   // State for form validation errors
-  const [errors, setErrors] = useState({});
+  const [errors, setErrors] = useState<RegError>({});
 
   // Loading state for registration process
   const [isLoading, setIsLoading] = useState(false);
@@ -44,22 +52,14 @@ const RegisterPage = () => {
   // Default logo size, input position and keyboard height
   const logoSize = useSharedValue(150);
   const inputTranslateY = useSharedValue(0);
-  const keyboardHeight = useSharedValue(0);
-  const isKeyboardVisible = useSharedValue(false); // Track keyboard state
-  var cnt = 0;
 
-  // Get Screen
-  const { height: screenHeight } = Dimensions.get("window");
-
-  const bottomMargin = 0.19 * screenHeight;
 
   useEffect(() => {
     const showListener = Keyboard.addListener(
       Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow",
       () => {
         logoSize.value = withSpring(80, { damping: 15, stiffness: 100 }); // Shrink logo
-        inputTranslateY.value = withSpring( -70, { damping: 12, stiffness: 80 }
-        ); // Move inputs up
+        inputTranslateY.value = withSpring(-70, { damping: 12, stiffness: 80 }); // Move inputs up
       }
     );
 
@@ -113,7 +113,7 @@ const RegisterPage = () => {
 
   // Validate form inputs
   const validateInputs = () => {
-    const newErrors = {};
+    const newErrors:RegError = {};
 
     if (!email) newErrors.email = "Email is required";
     else if (!validateEmail(email)) newErrors.email = "Invalid email format";
@@ -147,6 +147,10 @@ const RegisterPage = () => {
     setIsLoading(true);
 
     try {
+      // clear previous session
+      setUser(null);
+      setSession(null);
+      // Attempt to register
       const response = await axiosInstance.post("auth/register/", {
         email: email,
         password: password,
@@ -162,7 +166,7 @@ const RegisterPage = () => {
       } else {
         Alert.alert("Registration Failed", "Please try again later.");
       }
-    } catch (error) {
+    } catch (error:any) {
       console.error("Registration error:", error);
 
       // Handle different types of errors
@@ -197,8 +201,8 @@ const RegisterPage = () => {
   return (
     <KeyboardAwareScrollView
       contentContainerStyle={styles.container}
-      enableOnAndroid={true}  // Enables keyboard awareness on Android
-      extraScrollHeight={20}   // Adjust scrolling height
+      enableOnAndroid={true} // Enables keyboard awareness on Android
+      extraScrollHeight={20} // Adjust scrolling height
       keyboardShouldPersistTaps="handled" // Allows tapping outside to dismiss keyboard
     >
       {/* Logo and App Name */}
@@ -294,18 +298,14 @@ const RegisterPage = () => {
               I have read and agree to the
               <Text
                 style={styles.termsLink}
-                onPress={() =>
-                  router.push("/guidePolicy?tab=termsOfService")
-                }
+                onPress={() => router.push("/guidePolicy?tab=termsOfService")}
               >
                 {" Terms of Service"}
               </Text>
               {" and "}
               <Text
                 style={styles.termsLink}
-                onPress={() =>
-                  router.push("/guidePolicy?tab=privacyPolicy")
-                }
+                onPress={() => router.push("/guidePolicy?tab=privacyPolicy")}
               >
                 Privacy Policy
               </Text>

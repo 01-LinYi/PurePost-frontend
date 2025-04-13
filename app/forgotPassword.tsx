@@ -31,7 +31,10 @@ export default function ForgotPassword() {
       if (!isEmailSent) {
         Alert.alert("Email not found!");
       } else {
-        Alert.alert("Email sent!", "Please check your email for the reset code.");
+        Alert.alert(
+          "Email sent!",
+          "Please check your email for the reset code."
+        );
         setStep("reset"); // Move to the reset step
       }
     } catch (error) {
@@ -43,7 +46,11 @@ export default function ForgotPassword() {
   };
 
   const handlePasswordReset = async () => {
-    if (!resetCode.trim() || !newPassword.trim() || !newPasswordConfirm.trim()) {
+    if (
+      !resetCode.trim() ||
+      !newPassword.trim() ||
+      !newPasswordConfirm.trim()
+    ) {
       Alert.alert("Error", "Please fill in all fields.");
       return;
     }
@@ -60,7 +67,11 @@ export default function ForgotPassword() {
 
     try {
       setIsSubmitting(true);
-      const resetPasswordError = await api.resetPassword(email, newPassword, resetCode);
+      const resetPasswordError = await api.resetPassword(
+        email,
+        newPassword,
+        resetCode
+      );
       if (resetPasswordError !== null) {
         Alert.alert("Error", resetPasswordError);
       } else {
@@ -145,7 +156,11 @@ export default function ForgotPassword() {
           </TouchableOpacity>
         </>
       )}
-      <TouchableOpacity onPress={() => router.back()}>
+      <TouchableOpacity
+        onPress={() => {
+          router.canGoBack() ? router.back() : router.replace("/login");
+        }}
+      >
         <Text style={styles.backToLoginText}>Back to Login</Text>
       </TouchableOpacity>
     </View>

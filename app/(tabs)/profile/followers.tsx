@@ -78,25 +78,33 @@ export default function Followers() {
 
   return (
     <View style={styles.container}>
-      <FlatList
-        data={followers}
-        keyExtractor={(item) => item.id.toString()}
-        renderItem={({ item }) => (
-          <View style={styles.item}>
-            <Text style={styles.name}>{item.follower_details.username}</Text>
-            <Text style={styles.email}>{item.follower_details.email}</Text>
-          </View>
-        )}
-        onEndReached={() => {console.log("here"); fetchMoreFollowers()}} // Triggered when the user scrolls to the end
-        onEndReachedThreshold={0.5} // Trigger when 50% of the list is scrolled
-        ListFooterComponent={
-          loadingMore ? (
-            <ActivityIndicator size="small" color="#007bff" />
-          ) : null
-        }
-        refreshing={refreshing} // Pull-to-refresh state
-        onRefresh={refreshFollowers} // Triggered when the user performs a pull-to-refresh
-      />
+      {followers.length > 0 ? (
+        <FlatList
+          data={followers}
+          keyExtractor={(item) => item.id.toString()}
+          renderItem={({ item }) => (
+            <View style={styles.item}>
+              <Text style={styles.name}>{item.follower_details.username}</Text>
+              <Text style={styles.email}>{item.follower_details.email}</Text>
+            </View>
+          )}
+          onEndReached={() => {console.log("here"); fetchMoreFollowers()}} // Triggered when the user scrolls to the end
+          onEndReachedThreshold={0.5} // Trigger when 50% of the list is scrolled
+          ListFooterComponent={
+            loadingMore ? (
+              <ActivityIndicator size="small" color="#007bff" />
+            ) : null
+          }
+          refreshing={refreshing} // Pull-to-refresh state
+          onRefresh={refreshFollowers} 
+          // Triggered when the user performs a pull-to-refresh
+        />
+      ) : (
+        <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+          <Text>No followers found.</Text>
+        </View>
+      )
+      }
     </View>
   );
 }

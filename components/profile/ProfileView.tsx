@@ -15,13 +15,14 @@ import { Ionicons } from "@expo/vector-icons";
 
 import { Text, View } from "@/components/Themed";
 import GradientButton from "@/components/GradientButton";
-import { styles } from "@/components/profile/profileStyle";
+import { styles } from "@/components/profile/ProfileStyle";
 import PinnedPostItem from "@/components/profile/PinnedPostItem";
 import FollowButton from "@/components/FollowButton";
 
 import { formatDate } from "@/utils/dateUtils";
 import * as api from "@/utils/api";
 import { useSession } from "../SessionProvider";
+import { Post } from "@/types/postType";
 
 // Color palette based on #00c5e3
 const COLORS = {
@@ -106,10 +107,6 @@ export default function ProfileView({
     return "https://picsum.photos/200";
   };
 
-  const getPinnedPosts = async () => {
-    return await api.fetchPinnedPosts(profileData.id, true);
-  }
-
   // Show loading state while initial data is being fetched
   if (dataLoading && !profileData) {
     return (
@@ -148,13 +145,6 @@ export default function ProfileView({
         scrollEventThrottle={scrollEventThrottle}
         onScroll={onScroll}
       >
-        {/* Cache Info - Useful for debugging, can be removed in production */}
-        {cacheInfo && (
-          <View style={styles.cacheInfoContainer}>
-            <Text style={styles.cacheInfoText}>{cacheInfo}</Text>
-          </View>
-        )}
-
         {/* Profile Card */}
         <View style={styles.profileCard}>
           {/* Avatar with gradient border */}
@@ -234,10 +224,7 @@ export default function ProfileView({
               <GradientButton
                 text="Message"
                 onPress={() => {
-                  router.push({
-                    pathname: "/message",
-                    params: { userId: profileData.id },
-                  });
+                  router.push("/(tabs)/(message)/conversation");
                 }}
                 gradientColors={[COLORS.primary, COLORS.accent]}
                 style={styles.actionButton}
@@ -248,7 +235,7 @@ export default function ProfileView({
             {/* Don't show follow button on own profile */}
             {!isOwnProfile ? (
               <FollowButton
-                userId={profileData.id}
+                userId={profileData.user_id}
                 initialFollowStatus={profileData.isFollowing}
                 // isLocked={
                 //   profileData.isPrivate && !profileData.isFollowRequestSent
@@ -311,7 +298,7 @@ export default function ProfileView({
               activeOpacity={0.7}
             >
               <Text style={styles.statNumber}>
-                {profileData?.stats?.posts || "0"}
+                {profileData.stats.posts_count || "0"}
               </Text>
               <Text style={styles.statLabel}>Posts</Text>
             </TouchableOpacity>
@@ -319,16 +306,13 @@ export default function ProfileView({
             <TouchableOpacity
               style={styles.stat}
               onPress={
-                () => {
-                  if (isOwnProfile) {
-                    router.push("/profile/followers");
-                  }
-                }
+                () => (isOwnProfile ? router.push("/profile/followers") : {}) // Do nothing for now
+                // router.push(`/profile/user/${profileData.id}/followers`)
               }
               activeOpacity={0.7}
             >
               <Text style={styles.statNumber}>
-                {profileData?.stats?.followers || "0"}
+                {profileData.stats.followers_count || "0"}
               </Text>
               <Text style={styles.statLabel}>Followers</Text>
             </TouchableOpacity>
@@ -336,16 +320,13 @@ export default function ProfileView({
             <TouchableOpacity
               style={styles.stat}
               onPress={
-                () => {
-                  if (isOwnProfile) {
-                    router.push("/profile/following");
-                  }
-                }
+                () => (isOwnProfile ? router.push("/profile/following") : {}) // Do nothing for now
+                //router.push(`/profile/user/${profileData.id}/following`)
               }
               activeOpacity={0.7}
             >
               <Text style={styles.statNumber}>
-                {profileData?.stats?.following || "0"}
+                {profileData?.stats?.following_count || "0"}
               </Text>
               <Text style={styles.statLabel}>Following</Text>
             </TouchableOpacity>
@@ -356,7 +337,7 @@ export default function ProfileView({
         <View style={styles.postSection}>
           <Text style={styles.sectionTitle}>Pinned Post</Text>
           <PinnedPostItem
-            post={[]} // TODO: Placeholder. Need more discussion
+            post={profileData.pinned_post ? profileData.pinned_post : []}
             onSelectPost={() => {
               router.push(`/post/my_posts?userId=${profileData.id}&username=${profileData.username}`);
             }}
