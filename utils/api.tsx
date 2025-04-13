@@ -2,8 +2,10 @@ import { Follow } from "@/types/followType";
 import { ApiPost, Post } from "@/types/postType";
 import { UserProfile } from "@/types/profileType";
 import axiosInstance from "@/utils/axiosInstance";
-import { transformUserProfile } from "@/utils/transformers/profileTransformers";
+import { transformUser, transformUserProfile } from "@/utils/transformers/profileTransformers";
 import { transformApiPostToPost } from "@/utils/transformers/postsTransformers";
+import axios from "axios";
+import { LoginResponse } from "@/types/authType";
 
 export interface PaginationResponse<T> {
   prev: string | null;
@@ -31,6 +33,103 @@ export const getApi = async (url: string) => {
     console.error("Error fetching data:", error);
     return error.response;
   }
+};
+
+export const login = async (
+  username: string,
+  password: string
+): Promise<LoginResponse> => {
+  try {
+    const response = await axiosInstance.post("auth/login/", {
+      username: username,
+      password: password,
+    });
+
+    if (response.status === 200) {
+      return {
+        user: transformUser(response.data.user),
+        token: response.data.token,
+        error: null,
+      };
+    } else {
+      console.error("Login failed:", response);
+    }
+  } catch (error) {
+    if (axios.isAxiosError(error) && (error.response!.status === 401 || error.response!.status === 400)) {
+      return {
+        error: "Invalid username or password.",
+        token: "",
+        user: null,
+      }
+    } else {
+      console.error("Login error: ", error);
+    }
+  }
+  return {
+    error: "An error occurred while logging in.",
+    token: "",
+    user: null
+  };
+}
+
+export const logout = async (): Promise<string | null> => {
+  try {
+    // Call the logout endpoint
+    const response = await axiosInstance.post("auth/logout/");
+    if (response.status === 200) {
+      return null;
+    } else {
+      console.error("Logout failed:", response);
+    }
+  } catch (error) {
+    if (axios.isAxiosError(error) && error.response!.status === 401) {
+      return "Unauthorized";
+    } else {
+      console.error("Logout error:", error);
+    }
+  }
+  return "An error occurred while logging out.";
+}
+
+export const deleteAccount = async (password: string): Promise<string | null> => {
+  try {
+    const response = await axiosInstance.post(
+      "auth/delete-account/",
+      { password: password }
+    );
+
+    if (response.status === 200 || response.status === 204) {
+      return null;
+    } else {
+      console.error(
+        `Account deletion failed with status ${response.statusText}:`,
+        response
+      );
+    }
+  } catch (error) {
+    if (axios.isAxiosError(error) && error.response) {
+      if (error.response.status === 400) {
+        return "Incorrect password";
+      } else {
+        console.error("Account deletion error:", error.response.data);
+      }
+    } else {
+      console.error("Account deletion error:", error);
+    }
+  }
+  return "An error occurred while deleting the account.";
+}
+
+/**
+ * Get the social stats of current user
+ * @returns  JSON data = {
+            'is_following': boolean,
+            'follower_count': int,
+            'following_count':int
+        }
+ */
+export const fetchMySocialStat = async () => {
+  return getApi(`/social/follow/status/`);
 };
 
 /**

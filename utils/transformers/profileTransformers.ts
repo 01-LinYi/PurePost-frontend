@@ -1,5 +1,6 @@
 // utils/transformers/profileTransformers.ts
 import { ApiUserProfile, UserProfile } from "@/types/profileType";
+import { User } from "@/types/userType";
 
 export const transformUserProfile = (data: ApiUserProfile): UserProfile => {
   return {
@@ -37,3 +38,16 @@ export const transformUserProfile = (data: ApiUserProfile): UserProfile => {
       : undefined,
   };
 };
+
+export const transformUser = (data: any): User => {
+  return {
+    id: data.id,
+    username: data.username,
+    email: data.email,
+    isActive: data.is_active,
+    isVerified: data.is_verified,
+    isPrivate: data.is_private,
+    createdAt: data.created_at,
+    updatedAt: data.updated_at,
+  };
+}
