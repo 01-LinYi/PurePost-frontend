@@ -6,7 +6,7 @@ export default function PostLayout() {
         <Stack.Screen
             name="[username]"
             options={{
-                title: "All Posts",
+                title: "User Profile",
                 headerShown: false,
             }}
         />

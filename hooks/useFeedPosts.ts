@@ -12,7 +12,7 @@ import {
 import {
   getApiOrdering,
   transformApiPostToPost,
-} from "@/utils/postsTransformers";
+} from "@/utils/transformers/postsTransformers";
 import { performOptimisticUpdate } from "@/utils/optimiticeUP";
 
 interface UseFeedPostsProps {
@@ -435,7 +435,6 @@ export const useFeedPosts = ({
             const response = await axiosInstance.post(
               `/deepfake/posts/${postId}/analysis/`
             );
-
 
             // Update post with the analysis status
             updatePostWithAnalysisResult(

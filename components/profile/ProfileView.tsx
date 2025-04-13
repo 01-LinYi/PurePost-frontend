@@ -4,9 +4,10 @@ import {
   ScrollView,
   Image,
   TouchableOpacity,
-  Alert,
+  Switch,
   RefreshControl,
   ActivityIndicator,
+  Alert,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
@@ -21,7 +22,6 @@ import FollowButton from "@/components/FollowButton";
 import { formatDate } from "@/utils/dateUtils";
 import * as api from "@/utils/api";
 import { useSession } from "../SessionProvider";
-import { Post } from "@/types/postType";
 
 // Color palette based on #00c5e3
 const COLORS = {
@@ -116,6 +116,18 @@ export default function ProfileView({
     );
   }
 
+  const [isPrivate, setIsPrivate] = useState(profileData?.isPrivate || false);
+
+  async function handleToggleVisibility(value: boolean): Promise<void> {
+    setIsPrivate(value);
+    try {
+      await api.updateProfileVisibility(value);
+    } catch (error) {
+      console.error("Failed to update profile visibility:", error);
+      setIsPrivate(!value); // Revert state on failure
+    }
+  }
+
   return (
     <View style={styles.container}>
       <ScrollView
@@ -152,7 +164,7 @@ export default function ProfileView({
           <View style={styles.userInfo}>
             <View style={styles.nameContainer}>
               <Text style={styles.name}>{profileData?.username || "User"}</Text>
-              {user?.is_verified ? (
+              {profileData?.isVerify ? (
                 <Ionicons
                   name="checkmark-circle"
                   size={18}
@@ -170,6 +182,29 @@ export default function ProfileView({
             </View>
             <Text style={styles.email}>{profileData?.email || ""}</Text>
           </View>
+
+          {/* Toggle Button for Profile Visibility */}
+          {isOwnProfile ? (
+            <View style={styles.toggleContainer}>
+              <Text style={styles.toggleLabel}>
+                {isPrivate ? "Private Profile" : "Public Profile"}
+              </Text>
+              <Switch
+                value={isPrivate}
+                onValueChange={handleToggleVisibility}
+                thumbColor={isPrivate ? COLORS.primary : COLORS.accent}
+                trackColor={{ false: COLORS.textLight, true: COLORS.primary }}
+              />
+            </View>
+          ) : (
+            <View style={styles.toggleContainer}>
+              <Text style={styles.toggleLabel}>
+                {profileData?.isPrivate
+                  ? "This account is private"
+                  : "This account is public"}
+              </Text>
+            </View>
+          )}
 
           {/* Action Buttons Row */}
           <View style={styles.actionButtonsRow}>
@@ -199,16 +234,16 @@ export default function ProfileView({
             {/* Don't show follow button on own profile */}
             {!isOwnProfile ? (
               <FollowButton
-                userId={profileData.user_id}
+                userId={profileData.id}
                 initialFollowStatus={profileData.isFollowing}
-                isLocked={
-                  profileData.isPrivate && !profileData.isFollowRequestSent
-                }
-                lockReason={
-                  profileData.isPrivate
-                    ? "This is a private account. Send a follow request to follow this user."
-                    : ""
-                }
+                // isLocked={
+                //   profileData.isPrivate && !profileData.isFollowRequestSent
+                // }
+                // lockReason={
+                //   profileData.isPrivate
+                //     ? "This is a private account. Send a follow request to follow this user."
+                //     : ""
+                // }
                 style={styles.actionButton}
                 gradientProps={{
                   gradientColors: ["#00c5e3", "#0072ff"],
@@ -251,7 +286,13 @@ export default function ProfileView({
             <TouchableOpacity
               style={styles.stat}
               onPress={
-                () => (isOwnProfile ? router.push("/post/my_posts") : {}) // Do nothing for now
+                () => {
+                  if (!isOwnProfile && profileData?.isPrivate && !profileData?.isFollowing) {
+                    Alert.alert("Private Account", "This account is private. Follow to see posts.");
+                    return;
+                  }
+                  router.push(`/post/my_posts?userId=${profileData.id}&username=${profileData.username}`)
+                }
               }
               activeOpacity={0.7}
             >
@@ -297,7 +338,7 @@ export default function ProfileView({
           <PinnedPostItem
             post={profileData.pinned_post ? profileData.pinned_post : []}
             onSelectPost={() => {
-              router.push("/post/my_posts");
+              router.push(`/post/my_posts?userId=${profileData.id}&username=${profileData.username}`);
             }}
             isOwnProfile={isOwnProfile}
           />

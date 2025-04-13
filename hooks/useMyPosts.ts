@@ -4,12 +4,14 @@ import { useState, useCallback, useEffect } from "react";
 import { Alert } from "react-native";
 import axiosInstance from "@/utils/axiosInstance";
 import { Post, ApiPost } from "@/types/postType";
-import { getApiOrdering, transformApiPostToPost } from "@/utils/postsTransformers";
+import {
+  getApiOrdering,
+  transformApiPostToPost,
+} from "@/utils/transformers/postsTransformers";
 
 interface UseMyPostsProps {
   userId?: string;
 }
-
 
 /**
  * Custom hook to handle fetching, sorting, and managing user posts
@@ -31,7 +33,7 @@ export const useMyPosts = ({ userId }: UseMyPostsProps) => {
       setTotalPosts(0);
       return [];
     }
-    
+
     try {
       setError(null);
       console.log("Fetching posts with user ID:", userId);
@@ -45,10 +47,9 @@ export const useMyPosts = ({ userId }: UseMyPostsProps) => {
       console.log("Making request to:", endpoint, "with params:", params);
       const response = await axiosInstance.get(endpoint, { params });
 
-
       let apiPosts: ApiPost[] = [];
       let count = 0;
-      
+
       if (Array.isArray(response.data)) {
         apiPosts = response.data;
         count = response.data.length;
@@ -58,12 +59,12 @@ export const useMyPosts = ({ userId }: UseMyPostsProps) => {
       }
 
       console.log(`Found ${apiPosts.length} posts out of ${count} total`);
-      
+
       const newPosts = apiPosts.map(transformApiPostToPost);
-      
+
       setPosts(newPosts);
       setTotalPosts(count);
-      
+
       return newPosts;
     } catch (error) {
       console.error("Error fetching posts:", error);
@@ -77,29 +78,31 @@ export const useMyPosts = ({ userId }: UseMyPostsProps) => {
   /**
    * Get post count by type/status
    */
-  const getPostsCount = useCallback((status?: string): number => {
-    if (!status) {
-      return totalPosts; 
-    }
-    
-
-    return posts.filter(post => {
-      switch(status) {
-        case 'public':
-        case 'private':
-        case 'friends':
-          return post.visibility === status;
-        case 'with_media':
-          return !!post.image || !!post.video;
-        case 'with_comments':
-          return post.comment_count > 0;
-        case 'liked':
-          return post.like_count > 0;
-        default:
-          return true;
+  const getPostsCount = useCallback(
+    (status?: string): number => {
+      if (!status) {
+        return totalPosts;
       }
-    }).length;
-  }, [posts, totalPosts]);
+
+      return posts.filter((post) => {
+        switch (status) {
+          case "public":
+          case "private":
+          case "friends":
+            return post.visibility === status;
+          case "with_media":
+            return !!post.image || !!post.video;
+          case "with_comments":
+            return post.comment_count > 0;
+          case "liked":
+            return post.like_count > 0;
+          default:
+            return true;
+        }
+      }).length;
+    },
+    [posts, totalPosts]
+  );
 
   /**
    * Load data with optional loading indicator
@@ -158,41 +161,37 @@ export const useMyPosts = ({ userId }: UseMyPostsProps) => {
   /**
    * Delete a post with confirmation
    */
-  const deletePost = useCallback(
-    (postId: string) => {
-      Alert.alert("Delete Post", "Are you sure you want to delete this post?", [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              setIsLoading(true);
-              await axiosInstance.delete(`/content/posts/${postId}/`);
+  const deletePost = useCallback((postId: string) => {
+    Alert.alert("Delete Post", "Are you sure you want to delete this post?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            setIsLoading(true);
+            await axiosInstance.delete(`/content/posts/${postId}/`);
 
-              setPosts((currentPosts) =>
-                currentPosts.filter((post) => post.id !== postId)
-              );
-              
+            setPosts((currentPosts) =>
+              currentPosts.filter((post) => post.id !== postId)
+            );
 
-              setTotalPosts(prevTotal => Math.max(0, prevTotal - 1));
+            setTotalPosts((prevTotal) => Math.max(0, prevTotal - 1));
 
-              Alert.alert("Success", "Post deleted successfully");
-            } catch (error) {
-              console.error("Error deleting post:", error);
-              Alert.alert(
-                "Error",
-                (error as any)?.response?.data?.detail || "Failed to delete post"
-              );
-            } finally {
-              setIsLoading(false);
-            }
-          },
+            Alert.alert("Success", "Post deleted successfully");
+          } catch (error) {
+            console.error("Error deleting post:", error);
+            Alert.alert(
+              "Error",
+              (error as any)?.response?.data?.detail || "Failed to delete post"
+            );
+          } finally {
+            setIsLoading(false);
+          }
         },
-      ]);
-    },
-    []
-  );
+      },
+    ]);
+  }, []);
 
   return {
     posts,
@@ -201,7 +200,7 @@ export const useMyPosts = ({ userId }: UseMyPostsProps) => {
     error,
     ordering,
     totalPosts,
-    getPostsCount,      
+    getPostsCount,
     handleRefresh,
     handleSortChange,
     deletePost,

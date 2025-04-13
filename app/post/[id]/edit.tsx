@@ -23,7 +23,7 @@ import ActionButton from "@/components/ActionButton";
 import * as api from "@/utils/api";
 import { formatUploadFileName } from "@/utils/formatUploadFileName";
 import { Post, Media } from "@/types/postType";
-import { transformApiPostToPost } from "@/utils/postsTransformers";
+import { transformApiPostToPost } from "@/utils/transformers/postsTransformers";
 
 const getMediaType = (uri: string): string => {
   const uriLower = uri.toLowerCase();

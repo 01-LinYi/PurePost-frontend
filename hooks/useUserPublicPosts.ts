@@ -6,7 +6,7 @@ import { Post, ApiPost } from "@/types/postType";
 import {
   getApiOrdering,
   transformApiPostToPost,
-} from "@/utils/postsTransformers";
+} from "@/utils/transformers/postsTransformers";
 
 interface UseUserPublicPostsProps {
   userId?: string;

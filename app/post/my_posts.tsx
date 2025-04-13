@@ -7,7 +7,7 @@ import {
   RefreshControl,
   ActivityIndicator,
 } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { Text, View } from "@/components/Themed";
 import { useSession } from "@/components/SessionProvider";
 import { useMyPosts } from "@/hooks/useMyPosts";

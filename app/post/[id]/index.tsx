@@ -18,7 +18,7 @@ import CommentInput from "@/components/post/CommentInput";
 import CompactHeader from "@/components/CompactHeader";
 import * as api from "@/utils/api";
 import { Post, Comment } from "@/types/postType";
-import { transformApiPostToPost } from "@/utils/postsTransformers";
+import { transformApiPostToPost } from "@/utils/transformers/postsTransformers";
 import { performOptimisticUpdate } from "@/utils/optimiticeUP";
 
 /**

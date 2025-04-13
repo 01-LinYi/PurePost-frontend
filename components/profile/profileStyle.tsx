@@ -324,4 +324,17 @@ export const styles = StyleSheet.create({
     fontStyle: "italic",
     fontWeight: "500",
   },
+
+  toggleContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 16,
+    paddingHorizontal: 16,
+  },
+  
+  toggleLabel: {
+    fontSize: 16,
+    color: COLORS.text,
+  },
 });
