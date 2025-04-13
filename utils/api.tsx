@@ -159,17 +159,6 @@ export const fetchUserProfile = async (username: string) => {
   return transformUserProfile(res.data);
 };
 
-/**
- * Get the social stats of current user
- * @returns  JSON data = {
-            'is_following': boolean,
-            'follower_count': int,
-            'following_count':int
-        }
- */
-export const fetchMySocialStat = async () => {
-  return getApi(`/social/follow/status/`);
-};
 
 export const fetchUserSocialStat = async (user_id: number) => {
   return getApi(`/social/follow/status/${user_id}/`);
