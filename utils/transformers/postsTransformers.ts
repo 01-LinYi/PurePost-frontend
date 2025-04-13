@@ -1,6 +1,6 @@
-// utils/postTransformers.ts - Functions for transforming post data
+// @/utils/transformers/postsTransformers.ts
 
-import { ApiPost, Post } from '@/types/postType';
+import { ApiPost, Post } from "@/types/postType";
 
 /**
  * Maps frontend ordering parameters to API ordering parameters
@@ -10,7 +10,7 @@ import { ApiPost, Post } from '@/types/postType';
 export const getApiOrdering = (frontendOrdering: string): string => {
   const mapping: Record<string, string> = {
     "-createdAt": "-created_at",
-    "createdAt": "created_at",
+    createdAt: "created_at",
     "-likesCount": "-like_count",
     "-commentsCount": "-comment_count",
   };
@@ -34,7 +34,7 @@ export const transformApiPostToPost = (apiPost: ApiPost): Post => {
       email: apiPost.user.email,
       bio: apiPost.user.bio || "",
       profile_picture: apiPost.user.profile_picture || "",
-      is_private: apiPost.user.is_private
+      is_private: apiPost.user.is_private,
     },
     created_at: apiPost.created_at,
     updated_at: apiPost.updated_at,
@@ -48,7 +48,7 @@ export const transformApiPostToPost = (apiPost: ApiPost): Post => {
     deepfake_status: apiPost.deepfake_status,
     status: apiPost.status,
     is_pinned: apiPost.pinned,
-    
+
     // Calculate frontend-specific fields
     isAuthor: true, // For "My Posts" page, all posts are by the current user
     isEdited: new Date(apiPost.updated_at) > new Date(apiPost.created_at),

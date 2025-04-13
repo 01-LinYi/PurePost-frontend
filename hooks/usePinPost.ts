@@ -2,12 +2,11 @@
 import { useState, useEffect, useCallback } from "react";
 import { fetchPinnedPosts } from "@/utils/api";
 import { Post, ApiPost } from "@/types/postType";
-import { transformApiPostToPost } from "@/utils/postsTransformers";
-import { Alert } from "react-native";
+import { transformApiPostToPost } from "@/utils/transformers/postsTransformers";
 
 interface UsePinnedPostResult {
   pinnedPost: Post | null;
-  loading: boolean;
+  isLoading: boolean;
   error: Error | null;
   refetch: (userId?: number) => Promise<void>;
 }
@@ -23,7 +22,7 @@ export const usePinnedPost = (
   initialFetch: boolean = true
 ): UsePinnedPostResult => {
   const [pinnedPost, setPinnedPost] = useState<Post | null>(null);
-  const [loading, setLoading] = useState<boolean>(false);
+  const [isLoading, setisLoading] = useState<boolean>(false);
   const [error, setError] = useState<Error | null>(null);
 
   const fetchData = useCallback(
@@ -36,7 +35,7 @@ export const usePinnedPost = (
       const targetUserId = id ?? userId;
 
       try {
-        setLoading(true);
+        setisLoading(true);
         setError(null);
 
         // Fetch pinned posts
@@ -52,7 +51,7 @@ export const usePinnedPost = (
         );
         setPinnedPost(null);
       } finally {
-        setLoading(false);
+        setisLoading(false);
       }
     },
     [userId]
@@ -68,7 +67,7 @@ export const usePinnedPost = (
   // Return the pinned post, loading state, error, and refetch function
   return {
     pinnedPost,
-    loading,
+    isLoading,
     error,
     refetch: fetchData,
   };

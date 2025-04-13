@@ -153,7 +153,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
       return;
     }
 
-    jsonUser.is_verified = isVerify;
+    jsonUser.isVerified = isVerify;
     setJsonUser(jsonUser);
     setUser(JSON.stringify(jsonUser));
   }

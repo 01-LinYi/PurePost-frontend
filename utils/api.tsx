@@ -2,7 +2,8 @@ import { Follow } from "@/types/followType";
 import { ApiPost, Post } from "@/types/postType";
 import { UserProfile } from "@/types/profileType";
 import axiosInstance from "@/utils/axiosInstance";
-import { transformUserProfile } from "./transformer";
+import { transformUserProfile } from "@/utils/transformers/profileTransformers";
+import { transformApiPostToPost } from "@/utils/transformers/postsTransformers";
 
 export interface PaginationResponse<T> {
   prev: string | null;
@@ -50,6 +51,7 @@ export const getApi = async (url: string) => {
  */
 export const fetchMyProfile = async () => {
   const res = await getApi(`/users/my-profile/`);
+  console.log("fetchMyProfile", res.data);
   return transformUserProfile(res.data);
 };
 
@@ -89,7 +91,6 @@ export const fetchPinnedPosts = async (userId: number, isPinned: boolean = false
 
 export const followUser = async (user_id: number) => {
   try {
-    const response = await axiosInstance.post(`/social/follow/${user_id}/`);
     const response = await axiosInstance.post(`/social/follow/${user_id}/`);
     return response;
   } catch (error: any) {
@@ -279,8 +280,8 @@ export const verifyEmailCode = async (code: string): Promise<string | null> => {
     }
     return error.response.data.error;
   }
->>>>>>>>> Temporary merge branch 2
 }
+
 export const updateProfileVisibility = async (value: boolean): Promise<boolean> => {
   try {
     await axiosInstance.put(`auth/user-visibility/`, {

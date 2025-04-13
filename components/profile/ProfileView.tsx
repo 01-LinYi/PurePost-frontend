@@ -22,7 +22,6 @@ import FollowButton from "@/components/FollowButton";
 import { formatDate } from "@/utils/dateUtils";
 import * as api from "@/utils/api";
 import { useSession } from "../SessionProvider";
-import { Post } from "@/types/postType";
 
 // Color palette based on #00c5e3
 const COLORS = {
@@ -235,7 +234,7 @@ export default function ProfileView({
             {/* Don't show follow button on own profile */}
             {!isOwnProfile ? (
               <FollowButton
-                userId={profileData.user_id}
+                userId={profileData.id}
                 initialFollowStatus={profileData.isFollowing}
                 // isLocked={
                 //   profileData.isPrivate && !profileData.isFollowRequestSent
