@@ -1,5 +1,5 @@
 import { useStorageState } from '@/hooks/useStorageState';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { UserProfile } from '@/types/profileType';
 
 export default function useSecureProfileCache() {
@@ -82,7 +82,6 @@ export default function useSecureProfileCache() {
   let profileDataJson = null;
   if (profileData) {
     profileDataJson = JSON.parse(profileData);
-    profileDataJson.id = profileDataJson.user_id;
   }
   
   return {

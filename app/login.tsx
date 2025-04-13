@@ -35,7 +35,11 @@ const LoginPage = () => {
         setIsLoading(true);
 
         try {
-            await logIn(email, password);
+            const error = await logIn(email, password);
+            if (error) {
+                Alert.alert("Login Error", error);
+                return;
+            }
             router.replace("/(tabs)");
         } catch (error: any) {
             // Handle different error cases
@@ -48,31 +52,6 @@ const LoginPage = () => {
         } finally {
             setIsLoading(false);
         }
-    };
-
-    // Handle password reset
-    const handleForgotPassword = () => {
-        if (!email.trim()) {
-            Alert.alert(
-                "Email Required",
-                "Please enter your email address first.",
-                [{ text: "OK" }]
-            );
-            return;
-        }
-
-        // This would typically connect to a password reset API
-        Alert.alert(
-            "Password Reset",
-            `We'll send password reset instructions to ${email}`,
-            [
-                { text: "Cancel", style: "cancel" },
-                {
-                    text: "Send",
-                    onPress: () => Alert.alert("Email Sent(Not really)", "Please check your email for password reset instructions.")
-                }
-            ]
-        );
     };
 
     return (

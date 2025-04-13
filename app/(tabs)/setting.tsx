@@ -56,9 +56,9 @@ const SettingsScreen = () => {
                     setIsDeleting(true);
 
                     try {
-                      const success = await deleteAccount(password);
+                      const error = await deleteAccount(password);
 
-                      if (success) {
+                      if (!error) {
                         Alert.alert(
                           "Success",
                           "Your account has been deleted successfully",
@@ -96,7 +96,7 @@ const SettingsScreen = () => {
   };
 
   const handleVerifyEmail = () => {
-    if (user?.is_verified) {
+    if (user?.isVerify) {
       Alert.alert("Info", "Your email is already verified.");
     } else {
       router.replace("/verifyEmail");
@@ -122,11 +122,11 @@ const SettingsScreen = () => {
             <Ionicons name="chevron-forward" size={20} color="#999" />
           </TouchableOpacity>
 
-          {!user?.is_verified && <TouchableOpacity style={styles.option} onPress={handleVerifyEmail}>
+          {!user?.isVerify && <TouchableOpacity style={styles.option} onPress={handleVerifyEmail}>
             <View style={styles.optionContent}>
               <Ionicons name="mail-outline" size={22} color="#333" />
               <Text style={styles.optionText}>
-                {user?.is_verified ? "Email Verified" : "Verify Email"}
+                {user?.isVerify ? "Email Verified" : "Verify Email"}
               </Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color="#999" />

@@ -8,12 +8,12 @@ export interface UserStats {
 }
 
 export interface UserProfile extends User {
-    avatar: string;
-    bio?: string;
-    location?: string;
-    website?: string;
-    date_of_birth?: string;
-    stats?: UserStats;
-    isFollowing?: boolean;
-    isMe?: boolean;
-  }
+  avatar: string;
+  bio?: string;
+  location?: string;
+  website?: string;
+  date_of_birth?: string;
+  stats?: UserStats;
+  isFollowing?: boolean;
+  isMe?: boolean;
+}

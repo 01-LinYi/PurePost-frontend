@@ -1,4 +1,5 @@
 import { UserProfile } from "@/types/profileType";
+import { User } from "@/types/userType";
 
 /**
  * Convert backend response to UserProfile type
@@ -7,7 +8,7 @@ import { UserProfile } from "@/types/profileType";
  */
 export const transformUserProfile = (data: any): UserProfile => {
   return {
-    id: data.user_id,
+    id: data.id,
     username: data.username,
     email: data.email,
     avatar: data.avatar,
@@ -20,7 +21,6 @@ export const transformUserProfile = (data: any): UserProfile => {
     isActive: data.is_active,
     isVerify: data.is_verified,
     isPrivate: data.is_private,
-    is_private: data.is_private,
     stats: data.stats
       ? {
         posts_count: data.stats.posts_count,
@@ -32,3 +32,16 @@ export const transformUserProfile = (data: any): UserProfile => {
     isFollowing: data.is_followed, // Transform snake_case to camelCase
   };
 };
+
+export const transformUser = (data: any): User => {
+  return {
+    id: data.id,
+    username: data.username,
+    email: data.email,
+    isActive: data.is_active,
+    isVerify: data.is_verified,
+    isPrivate: data.is_private,
+    created_at: data.created_at,
+    updated_at: data.updated_at,
+  };
+}

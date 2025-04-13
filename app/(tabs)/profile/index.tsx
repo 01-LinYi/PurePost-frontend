@@ -141,11 +141,11 @@ export default function ProfileScreen() {
   };
 
   useEffect(() => {
-    if (!isAlertShown && !user?.is_verified) {
+    if (!isAlertShown && !user?.isVerify) {
       Alert.alert("Verify Your Email", "Please verify your email in setting.");
       setIsAlertShown(true); // Mark alert as shown
     }
-  }, [isAlertShown, user?.is_verified]); // Dependency array ensures this runs only when needed
+  }, [isAlertShown, user?.isVerify]); // Dependency array ensures this runs only when needed
 
   return (
     <View style={styles.container}>

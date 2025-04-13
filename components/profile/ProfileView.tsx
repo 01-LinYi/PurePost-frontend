@@ -120,7 +120,7 @@ export default function ProfileView({
     );
   }
 
-  const [isPrivate, setIsPrivate] = useState(profileData?.is_private || false);
+  const [isPrivate, setIsPrivate] = useState(profileData?.isPrivate || false);
 
   async function handleToggleVisibility(value: boolean): Promise<void> {
     setIsPrivate(value);
