@@ -28,7 +28,7 @@ export const usePinnedPost = (
   const fetchData = useCallback(
     async (id?: number) => {
       // If userId is not provided and no override id is provided, return early
-      if (!userId && !id) {
+      if ((!userId && userId == -1) && !id) {
         return;
       }
 

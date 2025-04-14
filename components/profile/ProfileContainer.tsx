@@ -1,14 +1,13 @@
 // components/profile/ProfileContainer.tsx
-import { useRef, useEffect } from "react";
-import { Animated, StyleSheet, Alert } from "react-native";
+import { useRef} from "react";
+import { Animated, StyleSheet } from "react-native";
 import { View } from "@/components/Themed";
 import ProfileView from "@/components/profile/ProfileView";
 import AnimatedProfileHeader from "@/components/profile/ProfileHeader";
 import useProfileData from "@/hooks/useProfileData";
-import { useSession } from "@/components/SessionProvider";
 
 interface ProfileContainerProps {
-  userId?: string | number;
+  userId?: "me" | "";
   username?: string;
   isOwnProfile: boolean;
   headerTitle: string;
@@ -21,7 +20,6 @@ export default function ProfileContainer({
   headerTitle,
 }: ProfileContainerProps) {
   const scrollY = useRef(new Animated.Value(0)).current;
-  const { user } = useSession();
 
   const {
     profileData,
@@ -57,6 +55,7 @@ export default function ProfileContainer({
         title={headerTitle}
         isOwnProfile={isOwnProfile}
         scrollY={scrollY}
+        showBackButton={!isOwnProfile}
       />
 
       <ProfileView

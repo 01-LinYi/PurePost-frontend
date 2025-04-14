@@ -23,6 +23,7 @@ export default function UserProfileScreen() {
 
   return (
     <ProfileContainer
+      userId={""}
       username={username}
       isOwnProfile={isOwnProfile}
       headerTitle={headerTitle}
