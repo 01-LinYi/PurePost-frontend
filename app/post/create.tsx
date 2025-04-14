@@ -35,6 +35,13 @@ const getMediaType = (uri: string): string => {
   return "image";
 };
 
+// Validation function for tags
+const validateTag = (tag: string): boolean => {
+  // Allow alphanumeric, spaces, underscores, and hyphens, 1-30 characters
+  return /^[a-zA-Z0-9 _-]{1,30}$/.test(tag);
+};
+
+
 const CreatePost = () => {
   const [postText, setPostText] = useState<string>("");
   const [media, setMedia] = useState<Media | null>(null);
@@ -47,6 +54,10 @@ const CreatePost = () => {
   const [draftId, setDraftId] = useState<number | null>(null);
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
+  const [caption, setCaption] = useState<string>("");
+  const [tagInput, setTagInput] = useState<string>("");
+  const [tags, setTags] = useState<string[]>([]);
+  const [showCaptionAndTags, setShowCaptionAndTags] = useState<boolean>(false);
 
   useEffect(() => {
     const checkForDraft = async () => {
@@ -135,7 +146,7 @@ const CreatePost = () => {
     });
 
     return unsubscribe;
-  }, [navigation, postText, media]);
+  }, [navigation, postText, media, caption, tags]);
 
   // Toggle disclaimer
   const toggleDisclaimer = useCallback(() => {
@@ -144,6 +155,11 @@ const CreatePost = () => {
       setDisclaimerText("");
     }
   }, [hasDisclaimer]);
+
+  // Toggle caption and tags section
+  const toggleCaptionAndTags = useCallback(() => {
+    setShowCaptionAndTags(!showCaptionAndTags);
+  }, [showCaptionAndTags]);
 
   const pickMedia = useCallback(async () => {
     try {
@@ -236,6 +252,8 @@ const CreatePost = () => {
       pathname: "/post/preview",
       params: {
         postText: encodeURIComponent(postText),
+        caption: encodeURIComponent(caption),
+        tags: encodeURIComponent(JSON.stringify(tags)),
         mediaUri: media?.uri || "",
         mediaType: media?.type || "",
         visibility,
@@ -243,7 +261,7 @@ const CreatePost = () => {
         disclaimerText: encodeURIComponent(disclaimerText || ""),
       },
     });
-  }, [postText, media, visibility, hasDisclaimer, disclaimerText]);
+  }, [postText, media, visibility, hasDisclaimer, disclaimerText, caption, tags]);
 
   const handleSaveDraft = useCallback(async () => {
     try {
@@ -255,8 +273,19 @@ const CreatePost = () => {
       formData.append("visibility", visibility);
       formData.append("status", "draft");
       
-      if (hasDisclaimer) {
+      if (hasDisclaimer)
+      {
         formData.append("disclaimer", disclaimerText);
+      }
+
+      if (caption.trim())
+      {
+        formData.append("caption", caption.trim());
+      }
+      
+      if (tags.length > 0)
+      {
+        formData.append("tags", JSON.stringify(tags));
       }
   
       if (media) {
@@ -310,6 +339,44 @@ const CreatePost = () => {
     }
   }, [postText, media, visibility, hasDisclaimer, disclaimerText, draftId]);
 
+  // Add a tag
+  const addTag = useCallback(() => {
+    const trimmedTag = tagInput.trim();
+    
+    if (!trimmedTag)
+    {
+      return;
+    }
+    
+    if (!validateTag(trimmedTag))
+    {
+      Alert.alert(
+        "Invalid Tag", 
+        "Tags can only contain letters, numbers, spaces, underscores, and hyphens, and must be 1-30 characters long."
+      );
+      return;
+    }
+    
+    if (tags.includes(trimmedTag))
+    {
+      Alert.alert("Duplicate Tag", "This tag has already been added.");
+      return;
+    }
+    
+    if (tags.length >= 10)
+    {
+      Alert.alert("Tag Limit", "You can add a maximum of 10 tags.");
+      return;
+    }
+    
+    setTags([...tags, trimmedTag]);
+    setTagInput("");
+  }, [tagInput, tags]);
+
+  // Remove a tag
+  const removeTag = useCallback((tagToRemove: string) => {
+    setTags(tags.filter(tag => tag !== tagToRemove));
+  }, [tags]);
 
   const handlePost = useCallback(async () => {
     if (!postText.trim() && !media) {
@@ -346,8 +413,20 @@ const CreatePost = () => {
         formData.append("content", postText.trim());
         formData.append("visibility", visibility);
         formData.append("status", "published");
-        if (hasDisclaimer) {
-          formData.append("disclaimer", disclaimerText.trim());
+
+        if (hasDisclaimer)
+        {
+          formData.append("disclaimer", disclaimerText);
+        }
+
+        if (caption.trim())
+        {
+          formData.append("caption", caption.trim());
+        }
+        
+        if (tags.length > 0)
+        {
+          formData.append("tags", JSON.stringify(tags));
         }
       
 
@@ -452,6 +531,93 @@ const CreatePost = () => {
         <Text style={styles.charCount}>{postText.length}/2000</Text>
 
         <MediaPreview media={media} onRemove={removeMedia} />
+
+        {/* Caption and Tags Toggle Button */}
+        <TouchableOpacity
+          style={styles.captionToggleButton}
+          onPress={toggleCaptionAndTags}
+        >
+          <View style={styles.captionToggleContent}>
+            <Ionicons 
+              name={showCaptionAndTags ? "chevron-up-outline" : "chevron-down-outline"} 
+              size={20} 
+              color="#00c5e3" 
+            />
+            <Text style={styles.captionToggleText}>
+              {showCaptionAndTags ? "Hide Caption & Tags" : "Add Caption & Tags"}
+            </Text>
+          </View>
+        </TouchableOpacity>
+
+        {/* Caption and Tags Section */}
+        {showCaptionAndTags && (
+          <View style={styles.captionTagsContainer}>
+            {/* Caption Input */}
+            <View style={styles.captionContainer}>
+              <Text style={styles.sectionLabel}>Caption</Text>
+              <TextInput
+                style={styles.captionInput}
+                placeholder="Add a short caption to your post..."
+                placeholderTextColor="#9E9E9E"
+                multiline
+                value={caption}
+                onChangeText={setCaption}
+                maxLength={100}
+                returnKeyType="default"
+              />
+              <Text style={styles.charCount}>{caption.length}/100</Text>
+            </View>
+            
+            {/* Tags Input */}
+            <View style={styles.tagsContainer}>
+              <Text style={styles.sectionLabel}>Tags</Text>
+              <View style={styles.tagInputContainer}>
+                <TextInput
+                  style={styles.tagInput}
+                  placeholder="Add tags..."
+                  placeholderTextColor="#9E9E9E"
+                  value={tagInput}
+                  onChangeText={setTagInput}
+                  maxLength={30}
+                  returnKeyType="done"
+                  onSubmitEditing={addTag}
+                  autoCapitalize="none"
+                />
+                <TouchableOpacity 
+                  style={styles.addTagButton}
+                  onPress={addTag}
+                  disabled={!tagInput.trim()}
+                >
+                  <Ionicons name="add-circle-outline" size={24} color="#00c5e3" />
+                </TouchableOpacity>
+              </View>
+              
+              {/* Tags Display */}
+              {tags.length > 0 && (
+                <View style={styles.tagsWrap}>
+                  {tags.map((tag, index) => (
+                    <View key={index} style={styles.tagChip}>
+                      <Text style={styles.tagText}>#{tag}</Text>
+                      <TouchableOpacity
+                        onPress={() => removeTag(tag)}
+                        style={styles.removeTagButton}
+                      >
+                        <Ionicons name="close-circle" size={16} color="#666666" />
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                </View>
+              )}
+              
+              {tags.length > 0 && (
+                <Text style={styles.tagCountText}>
+                  {tags.length}/10 tags added
+                </Text>
+              )}
+            </View>
+          </View>
+        )}
+
 
         {/* Disclaimer Toggle */}
         <View style={styles.disclaimerToggleContainer}>
@@ -633,6 +799,110 @@ const styles = StyleSheet.create({
     color: "#9E9E9E",
     marginBottom: 16,
   },
+  captionToggleButton: {
+    backgroundColor: "#f9f9f9",
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    marginTop: 8,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "#00c5e3",
+  },
+  captionToggleContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#f9f9f9",
+  },
+  captionToggleText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#00c5e3",
+    marginLeft: 8,
+  },
+  captionTagsContainer: {
+    borderRadius: 10,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "#e0e0e0",
+  },
+  sectionLabel: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#333333",
+    marginBottom: 8,
+  },
+  captionContainer: {
+    marginBottom: 16,
+  },
+  captionInput: {
+    width: "100%",
+    minHeight: 60,
+    borderWidth: 1,
+    borderColor: "#00c5e3",
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 14,
+    backgroundColor: "#f9f9f9",
+    textAlignVertical: "top",
+    marginBottom: 4,
+    color: "#333333",
+  },
+  tagsContainer: {
+    marginBottom: 8,
+  },
+  tagInputContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  tagInput: {
+    flex: 1,
+    height: 40,
+    borderWidth: 1,
+    borderColor: "#00c5e3",
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    fontSize: 14,
+    backgroundColor: "#f9f9f9",
+    color: "#333333",
+    marginRight: 8,
+  },
+  addTagButton: {
+    padding: 6,
+  },
+  tagsWrap: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    marginBottom: 8,
+    backgroundColor: "#ffffff",
+  },
+  tagChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#E1F5FE",
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 16,
+    marginRight: 8,
+    marginBottom: 8,
+  },
+  tagText: {
+    fontSize: 12,
+    color: "#00c5e3",
+    fontWeight: "500",
+  },
+  removeTagButton: {
+    marginLeft: 6,
+    padding: 2,
+  },
+  tagCountText: {
+    fontSize: 12,
+    color: "#666666",
+    marginTop: 4,
+  },
   disclaimerToggleContainer: {
     marginBottom: 12,
     backgroundColor: "#f9f9f9",
@@ -718,7 +988,7 @@ const styles = StyleSheet.create({
   previewButton: {
     backgroundColor: "#00c5e3",
     paddingVertical: 12,
-    paddingHorizontal: 24,
+    paddingHorizontal: 16,
     borderRadius: 24,
     minWidth: 100,
   },
@@ -740,7 +1010,7 @@ const styles = StyleSheet.create({
   saveDraftButton: {
     backgroundColor: "#00c5e3",
     paddingVertical: 12,
-    paddingHorizontal: 24,
+    paddingHorizontal: 16,
     borderRadius: 24,
     minWidth: 100,
   },
@@ -750,7 +1020,7 @@ const styles = StyleSheet.create({
   postButton: {
     backgroundColor: "#00c5e3",
     paddingVertical: 12,
-    paddingHorizontal: 24,
+    paddingHorizontal: 16,
     borderRadius: 24,
     minWidth: 100,
   },
