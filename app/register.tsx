@@ -58,8 +58,14 @@ const RegisterPage = () => {
     const showListener = Keyboard.addListener(
       Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow",
       () => {
-        logoSize.value = withSpring(80, { damping: 15, stiffness: 100 }); // Shrink logo
-        inputTranslateY.value = withSpring(-70, { damping: 12, stiffness: 80 }); // Move inputs up
+        try {
+          logoSize.value = withSpring(80, { damping: 15, stiffness: 100 }); // Shrink logo
+          inputTranslateY.value = withSpring(-70, { damping: 12, stiffness: 80 }); // Move inputs up
+        } catch (error) {
+          console.error("Animation error:", error);
+          logoSize.value = 80;
+          inputTranslateY.value = -70;
+        }
       }
     );
 

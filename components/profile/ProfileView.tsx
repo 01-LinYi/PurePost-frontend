@@ -1,14 +1,14 @@
 // components/profile/ProfileView.tsx
-import { useState, useEffect } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import {
   ScrollView,
-  Image,
   TouchableOpacity,
   Switch,
   RefreshControl,
   ActivityIndicator,
   Alert,
 } from "react-native";
+import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
@@ -35,6 +35,8 @@ const COLORS = {
   textLight: "#6B7280",
   divider: "#F3F4F6",
 };
+
+const PLACEHOLDER_AVATAR = "https://picsum.photos/200";
 
 type ProfileViewProps = {
   profileData: any;
@@ -65,14 +67,27 @@ export default function ProfileView({
   const { user } = useSession();
   const [isLoading, setIsLoading] = useState(false);
   const [imageError, setImageError] = useState(false);
-  const [isFollowLoading, setIsFollowLoading] = useState(false);
+  const [isPrivate, setIsPrivate] = useState(profileData?.isPrivate || false);
+
+  /**
+   * Get avatar URL from user data handling different possible field names
+   * Falls back to placeholder if no avatar or on error
+   */
+  const avatarUrl = useMemo(() => {
+    return profileData?.avatar;
+  }, [profileData?.avatar, imageError]);
+
+  useEffect(() => {
+    console.log("Profile data:", profileData);
+    console.log("Avatar from profile data:", profileData?.avatar);
+    console.log("Using avatar URL:", avatarUrl);
+  }, [profileData, avatarUrl]);
 
   /**
    * Handle edit profile button press
    * Shows loading state briefly before navigation
-   * Passes user data to edit screen
    */
-  const handleEditProfile = () => {
+  const handleEditProfile = useCallback(() => {
     setIsLoading(true);
     setTimeout(() => {
       setIsLoading(false);
@@ -86,25 +101,56 @@ export default function ProfileView({
         router.push("/profile/edit");
       }
     }, 0);
-  };
+  }, [profileData, router]);
 
   /**
-   * Get avatar URL from user data handling different possible field names
-   * Falls back to placeholder if no avatar or on error
-   * @returns Avatar URL string
+   * Handle visibility toggle for private/public profile
    */
-  const getAvatarUrl = () => {
-    if (imageError) {
-      return "https://picsum.photos/200";
+  const handleToggleVisibility = useCallback(async (value: boolean) => {
+    setIsPrivate(value);
+    try {
+      await api.updateProfileVisibility(value);
+    } catch (error) {
+      console.error("Failed to update profile visibility:", error);
+      setIsPrivate(!value); // Revert state on failure
     }
+  }, []);
 
-    // Check different possible avatar field names
-    if (profileData?.avatar) {
-      return profileData.avatar;
+  /**
+   * Navigate to user posts
+   */
+  const navigateToPosts = useCallback(() => {
+    if (!isOwnProfile && profileData?.isPrivate && !profileData?.isFollowing) {
+      Alert.alert(
+        "Private Account",
+        "This account is private. Follow to see posts."
+      );
+      return;
     }
+    router.push(
+      `/post/my_posts?userId=${profileData.id}&username=${profileData.username}`
+    );
+  }, [isOwnProfile, profileData, router]);
 
-    return "https://picsum.photos/200";
-  };
+  /**
+   * Navigate to followers list
+   */
+  const navigateToFollowers = useCallback(() => {
+    if (isOwnProfile) {
+      router.push("/profile/followers");
+    }
+    // Future implementation for other users' followers
+  }, [isOwnProfile, router]);
+
+  /**
+   * Navigate to following list
+   */
+  const navigateToFollowing = useCallback(() => {
+    if (isOwnProfile) {
+      router.push("/profile/following");
+    }
+    // Future implementation for other users' following
+  }, [isOwnProfile, router]);
 
   // Show loading state while initial data is being fetched
   if (dataLoading && !profileData) {
@@ -114,18 +160,6 @@ export default function ProfileView({
         <Text style={styles.loadingText}>Loading profile...</Text>
       </View>
     );
-  }
-
-  const [isPrivate, setIsPrivate] = useState(profileData?.isPrivate || false);
-
-  async function handleToggleVisibility(value: boolean): Promise<void> {
-    setIsPrivate(value);
-    try {
-      await api.updateProfileVisibility(value);
-    } catch (error) {
-      console.error("Failed to update profile visibility:", error);
-      setIsPrivate(!value); // Revert state on failure
-    }
   }
 
   return (
@@ -153,9 +187,9 @@ export default function ProfileView({
               style={styles.avatarGradientBorder}
             >
               <Image
-                source={{ uri: getAvatarUrl() }}
+                source={{ uri: avatarUrl }}
                 style={styles.avatar}
-                onError={() => setImageError(true)}
+                onError={() => {setImageError(true);}}
               />
             </LinearGradient>
           </View>
@@ -184,27 +218,25 @@ export default function ProfileView({
           </View>
 
           {/* Toggle Button for Profile Visibility */}
-          {isOwnProfile ? (
-            <View style={styles.toggleContainer}>
-              <Text style={styles.toggleLabel}>
-                {isPrivate ? "Private Profile" : "Public Profile"}
-              </Text>
+          <View style={styles.toggleContainer}>
+            <Text style={styles.toggleLabel}>
+              {isPrivate ? "Private Profile" : "Public Profile"}
+            </Text>
+            {isOwnProfile ? (
               <Switch
                 value={isPrivate}
                 onValueChange={handleToggleVisibility}
                 thumbColor={isPrivate ? COLORS.primary : COLORS.accent}
                 trackColor={{ false: COLORS.textLight, true: COLORS.primary }}
               />
-            </View>
-          ) : (
-            <View style={styles.toggleContainer}>
+            ) : (
               <Text style={styles.toggleLabel}>
                 {profileData?.isPrivate
                   ? "This account is private"
                   : "This account is public"}
               </Text>
-            </View>
-          )}
+            )}
+          </View>
 
           {/* Action Buttons Row */}
           <View style={styles.actionButtonsRow}>
@@ -222,78 +254,49 @@ export default function ProfileView({
               // Message Button (only shown on other's profile)
               <GradientButton
                 text="Message"
-                onPress={() => {
-                  router.push("/(tabs)/(message)/conversation");
-                }}
+                onPress={() => router.push("/(tabs)/(message)/conversation")}
                 gradientColors={[COLORS.primary, COLORS.accent]}
                 style={styles.actionButton}
                 borderRadius={8}
               />
             )}
 
-            {/* Don't show follow button on own profile */}
-            {!isOwnProfile ? (
-              <FollowButton
-                userId={profileData.id}
-                initialFollowStatus={profileData.isFollowing}
-                // isLocked={
-                //   profileData.isPrivate && !profileData.isFollowRequestSent
-                // }
-                // lockReason={
-                //   profileData.isPrivate
-                //     ? "This is a private account. Send a follow request to follow this user."
-                //     : ""
-                // }
-                style={styles.actionButton}
-                gradientProps={{
-                  gradientColors: ["#00c5e3", "#0072ff"],
-                }}
-                // API Calls
-                followUser={api.followUser}
-                unfollowUser={api.unfollowUser}
-                // State Update
-                onFollowStatusChange={(newStatus, userId) => {
-                  if (onFollowStatusChange) {
-                    onFollowStatusChange(newStatus, userId.toString());
-                  }
-                }}
-              />
-            ) : (
-              <FollowButton
-                userId={profileData.id}
-                initialFollowStatus={profileData.isFollowing}
-                isLocked={true}
-                lockReason={"You cannot follow yourself."}
-                style={styles.actionButton}
-                gradientProps={{
-                  gradientColors: ["#00c5e3", "#0072ff"],
-                }}
-                // API Calls
-                followUser={api.followUser}
-                unfollowUser={api.unfollowUser}
-                // State Update
-                onFollowStatusChange={(newStatus, userId) => {
-                  if (onFollowStatusChange) {
-                    onFollowStatusChange(newStatus, userId.toString());
-                  }
-                }}
-              />
-            )}
+            {/* Follow button with conditional rendering */}
+            <FollowButton
+              userId={profileData.id}
+              initialFollowStatus={profileData.isFollowing}
+              isLocked={
+                isOwnProfile ||
+                (profileData.isPrivate && !profileData.isFollowRequestSent)
+              }
+              lockReason={
+                isOwnProfile
+                  ? "You cannot follow yourself."
+                  : profileData.isPrivate
+                  ? "This is a private account. Send a follow request to follow this user."
+                  : ""
+              }
+              style={styles.actionButton}
+              gradientProps={{
+                gradientColors: ["#00c5e3", "#0072ff"],
+              }}
+              // API Calls
+              followUser={api.followUser}
+              unfollowUser={api.unfollowUser}
+              // State Update
+              onFollowStatusChange={(newStatus, userId) => {
+                if (onFollowStatusChange) {
+                  onFollowStatusChange(newStatus, userId.toString());
+                }
+              }}
+            />
           </View>
 
           {/* User Stats Section */}
           <View style={styles.statsContainer}>
             <TouchableOpacity
               style={styles.stat}
-              onPress={
-                () => {
-                  if (!isOwnProfile && profileData?.isPrivate && !profileData?.isFollowing) {
-                    Alert.alert("Private Account", "This account is private. Follow to see posts.");
-                    return;
-                  }
-                  router.push(`/post/my_posts?userId=${profileData.id}&username=${profileData.username}`)
-                }
-              }
+              onPress={navigateToPosts}
               activeOpacity={0.7}
             >
               <Text style={styles.statNumber}>
@@ -304,10 +307,7 @@ export default function ProfileView({
 
             <TouchableOpacity
               style={styles.stat}
-              onPress={
-                () => (isOwnProfile ? router.push("/profile/followers") : {}) // Do nothing for now
-                // router.push(`/profile/user/${profileData.id}/followers`)
-              }
+              onPress={navigateToFollowers}
               activeOpacity={0.7}
             >
               <Text style={styles.statNumber}>
@@ -318,10 +318,7 @@ export default function ProfileView({
 
             <TouchableOpacity
               style={styles.stat}
-              onPress={
-                () => (isOwnProfile ? router.push("/profile/following") : {}) // Do nothing for now
-                //router.push(`/profile/user/${profileData.id}/following`)
-              }
+              onPress={navigateToFollowing}
               activeOpacity={0.7}
             >
               <Text style={styles.statNumber}>
@@ -332,14 +329,12 @@ export default function ProfileView({
           </View>
         </View>
 
-        {/* Selected Posts */}
+        {/* Pinned Posts */}
         <View style={styles.postSection}>
           <Text style={styles.sectionTitle}>Pinned Post</Text>
           <PinnedPostItem
-            post={profileData.pinned_post ? profileData.pinned_post : []}
-            onSelectPost={() => {
-              router.push(`/post/my_posts?userId=${profileData.id}&username=${profileData.username}`);
-            }}
+            post={profileData.pinned_post || []}
+            onSelectPost={navigateToPosts}
             isOwnProfile={isOwnProfile}
           />
         </View>
