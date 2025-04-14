@@ -204,7 +204,7 @@ export default function FeedPostItem({
 
   // Get avatar display
   const renderAvatar = () => {
-    const avatarUrl = post.user?.profile_picture || "";
+    const avatarUrl = post.user.profile_picture || "";
     const username = post.user?.username || "User";
 
     if (avatarUrl) {

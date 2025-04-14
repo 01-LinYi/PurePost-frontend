@@ -96,7 +96,7 @@ const SettingsScreen = () => {
   };
 
   const handleVerifyEmail = () => {
-    if (user?.isVerify) {
+    if (user?.isVerified) {
       Alert.alert("Info", "Your email is already verified.");
     } else {
       router.replace("/verifyEmail");
@@ -122,11 +122,11 @@ const SettingsScreen = () => {
             <Ionicons name="chevron-forward" size={20} color="#999" />
           </TouchableOpacity>
 
-          {!user?.isVerify && <TouchableOpacity style={styles.option} onPress={handleVerifyEmail}>
+          {!user?.isVerified && <TouchableOpacity style={styles.option} onPress={handleVerifyEmail}>
             <View style={styles.optionContent}>
               <Ionicons name="mail-outline" size={22} color="#333" />
               <Text style={styles.optionText}>
-                {user?.isVerify ? "Email Verified" : "Verify Email"}
+                {user?.isVerified ? "Email Verified" : "Verify Email"}
               </Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color="#999" />
@@ -145,6 +145,21 @@ const SettingsScreen = () => {
             </View>
             <Ionicons name="chevron-forward" size={20} color="#999" />
           </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.option}
+            onPress={() => {
+              router.push("/(tabs)");
+            }}
+          >
+            <View style={styles.optionContent}>
+              <Ionicons name="bug" size={22} color="#333" />
+              <Text style={styles.optionText}>Test Page (Dev Only)</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#999" />
+          </TouchableOpacity>
+
+
         </View>
 
         <View style={styles.section}>
