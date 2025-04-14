@@ -122,15 +122,17 @@ const SettingsScreen = () => {
             <Ionicons name="chevron-forward" size={20} color="#999" />
           </TouchableOpacity>
 
-          {!user?.isVerified && <TouchableOpacity style={styles.option} onPress={handleVerifyEmail}>
-            <View style={styles.optionContent}>
-              <Ionicons name="mail-outline" size={22} color="#333" />
-              <Text style={styles.optionText}>
-                {user?.isVerified ? "Email Verified" : "Verify Email"}
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color="#999" />
-          </TouchableOpacity>}
+          {!user?.isVerified && (
+            <TouchableOpacity style={styles.option} onPress={handleVerifyEmail}>
+              <View style={styles.optionContent}>
+                <Ionicons name="mail-outline" size={22} color="#333" />
+                <Text style={styles.optionText}>
+                  {user?.isVerified ? "Email Verified" : "Verify Email"}
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#999" />
+            </TouchableOpacity>
+          )}
 
           <TouchableOpacity
             style={[styles.option, styles.dangerOption]}
@@ -158,8 +160,16 @@ const SettingsScreen = () => {
             </View>
             <Ionicons name="chevron-forward" size={20} color="#999" />
           </TouchableOpacity>
-
-
+          <TouchableOpacity
+            style={[styles.option, styles.adminOption]}
+            onPress={() => {router.push("/admin");}}
+          >
+            <View style={styles.optionContent}>
+              <Ionicons name="shield-outline" size={22} color="#007AFF" />
+              <Text style={styles.adminText}>Content Moderation</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#999" />
+          </TouchableOpacity>
         </View>
 
         <View style={styles.section}>
@@ -275,6 +285,14 @@ const styles = StyleSheet.create({
     color: "#999",
     lineHeight: 18,
     textAlign: "center",
+  },
+  adminOption: {
+    borderBottomWidth: 0,
+  },
+  adminText: {
+    color: "#007AFF",
+    fontSize: 16,
+    marginLeft: 12,
   },
 });
 
