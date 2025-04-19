@@ -55,6 +55,7 @@ export default function ProfileContainer({
     <View style={styles.container}>
       <AnimatedProfileHeader
         title={headerTitle}
+        showBackButton={!isOwnProfile}
         isOwnProfile={isOwnProfile}
         scrollY={scrollY}
       />
