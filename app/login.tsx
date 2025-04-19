@@ -38,24 +38,18 @@ const LoginPage = () => {
 
         setIsLoading(true);
 
-        try {
-            // clear previous session
-            setUser(null);
-            setSession(null);
-            // Attempt to log in
-            await logIn(email, password);
+        // clear previous session
+        setUser(null);
+        setSession(null);
+
+        // Attempt to log in
+        const error = await logIn(email, password);
+        if (error === null) {
             router.replace("/(tabs)");
-        } catch (error: any) {
-            // Handle different error cases
-            if (error.message && error.message.includes('401')) {
-                Alert.alert("Login Failed", "Invalid email or password.");
-            } else {
-                Alert.alert("Login Error", error.message || "An unexpected error occurred. Please try again.");
-            }
-            console.error("Login error:", error);
-        } finally {
-            setIsLoading(false);
+        } else {
+            Alert.alert("Login Failed", error);
         }
+        setIsLoading(false);
     };
 
     return (

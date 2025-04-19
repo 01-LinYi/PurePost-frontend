@@ -40,11 +40,12 @@ export const login = async (
   password: string
 ): Promise<LoginResponse> => {
   try {
+    console.log("Login attempt with username:", username);
     const response = await axiosInstance.post("auth/login/", {
       username: username,
       password: password,
     });
-
+    console.log("Login response:", response);
     if (response.status === 200) {
       return {
         user: transformUser(response.data.user),
@@ -55,7 +56,7 @@ export const login = async (
       console.error("Login failed:", response);
     }
   } catch (error) {
-    if (axios.isAxiosError(error) && (error.response!.status === 401 || error.response!.status === 400)) {
+    if (axios.isAxiosError(error) && (error.response?.status === 401 || error.response?.status === 400)) {
       return {
         error: "Invalid username or password.",
         token: "",
