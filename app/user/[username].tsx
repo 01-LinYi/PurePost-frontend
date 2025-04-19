@@ -7,7 +7,7 @@ import { useRouter } from "expo-router";
 
 export default function UserProfileScreen() {
 
-  const { username } = useLocalSearchParams<{ username: string }>();
+  const { username, id } = useLocalSearchParams<{ username: string, id?: string }>();
   const { user } = useSession();
   const router = useRouter();
   
@@ -25,6 +25,7 @@ export default function UserProfileScreen() {
     <ProfileContainer
       userId={""}
       username={username}
+      userId={id}
       isOwnProfile={isOwnProfile}
       headerTitle={headerTitle}
     />
