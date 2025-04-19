@@ -7,7 +7,7 @@ import { usePinnedPost } from "@/hooks/usePinPost";
 import * as api from "@/utils/api";
 
 interface UseProfileDataProps {
-  userId?: "me" | ""; // userId can only be "me" or an empty string
+  userId?: "me" | number; // userId can only be "me" or a number
   username?: string;
   isOwnProfile: boolean;
 }

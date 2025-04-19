@@ -7,7 +7,7 @@ import AnimatedProfileHeader from "@/components/profile/ProfileHeader";
 import useProfileData from "@/hooks/useProfileData";
 
 interface ProfileContainerProps {
-  userId?: "me" | "";
+  userId?: "me" | number;
   username?: string;
   isOwnProfile: boolean;
   headerTitle: string;

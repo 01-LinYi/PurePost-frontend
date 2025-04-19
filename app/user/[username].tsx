@@ -12,6 +12,7 @@ export default function UserProfileScreen() {
   const router = useRouter();
   
   const isOwnProfile = user?.username === username;
+  const userId = isOwnProfile ? "me" : Number(id);
   
   const headerTitle = isOwnProfile ? "My Profile" : `${username}'s Profile`;
 
@@ -23,9 +24,8 @@ export default function UserProfileScreen() {
 
   return (
     <ProfileContainer
-      userId={""}
       username={username}
-      userId={id}
+      userId={userId}
       isOwnProfile={isOwnProfile}
       headerTitle={headerTitle}
     />
