@@ -7,7 +7,7 @@ import { usePinnedPost } from "@/hooks/usePinPost";
 import * as api from "@/utils/api";
 
 interface UseProfileDataProps {
-  userId?: string | number;
+  userId?: "me" | number; // userId can only be "me" or a number
   username?: string;
   isOwnProfile: boolean;
 }
@@ -20,12 +20,7 @@ export function useProfileData({
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [dataLoading, setDataLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  // Resolve the actual userId based on available information
-  const effectiveUserId = useMemo(() => {
-    if (isOwnProfile) return "me";
-    return userId || username;
-  }, [isOwnProfile, userId, username]);
+  const [profileId, setProfileId] = useState<number | null>(null);
 
   // Cache management
   const {
@@ -39,30 +34,38 @@ export function useProfileData({
     clearCache,
   } = useSecureProfileCache();
 
-  // Social stats data
+  // Extract numeric user ID from cached profile and update state
+  useEffect(() => {
+    if (cachedProfile?.user_id) {
+      setProfileId(Number(cachedProfile.user_id));
+    } else if (cachedProfile?.id) {
+      setProfileId(Number(cachedProfile.id));
+    }
+  }, [cachedProfile]);
+
+  // Only initialize these hooks when we have a numeric user ID
   const {
     socialStats,
     isLoading: socialStatsLoading,
     error: socialStatsError,
     refreshSocialStats,
-  } = useSocialStats({
-    userId: effectiveUserId,
-  });
+  } = useSocialStats(
+    profileId ? { userId: profileId } : { userId: "me" }
+  );
 
-  // Posts and other related data
   const {
     totalPosts,
     isLoading: postsLoading,
     handleRefresh: refreshPosts,
-  } = useMyPosts({
-    userId: cachedProfile?.user_id || cachedProfile?.id,
-  });
+  } = useMyPosts(
+    profileId ? { userId: profileId.toString() } : {  }
+  );
 
   const {
     pinnedPost,
     isLoading: pinnedPostLoading,
     refetch: refreshPinnedPost,
-  } = usePinnedPost(cachedProfile?.user_id || cachedProfile?.id, false);
+  } = usePinnedPost(profileId ?? -1 , true);
 
   /**
    * Fetch user profile data from API
@@ -87,13 +90,10 @@ export function useProfileData({
 
         // Fetch fresh data
         let response;
-        if (isOwnProfile) {
+        if (isOwnProfile || userId === "me") {
           response = await api.fetchMyProfile();
         } else if (username) {
           response = await api.fetchUserProfile(username);
-        } else if (userId && userId !== "me") {
-          // Assuming you have a method to fetch by user ID
-          throw new Error("Fetching by user ID is not implemented");
         } else {
           throw new Error("Invalid user identifier");
         }
@@ -101,6 +101,14 @@ export function useProfileData({
         if (response) {
           // Save to cache
           await saveProfileToCache(response);
+          
+          // Update profileId state
+          if (response.id) {
+            setProfileId(Number(response.id));
+          } else if (response.id) {
+            setProfileId(Number(response.id));
+          }
+          
           return response;
         }
 
@@ -141,12 +149,15 @@ export function useProfileData({
     setError(null);
 
     try {
-      await Promise.all([
-        fetchUserData(true),
-        refreshSocialStats(),
-        refreshPosts?.(),
-        refreshPinnedPost?.(cachedProfile?.user_id as number),
-      ]);
+      // First refresh profile data to ensure we have a numeric ID
+      await fetchUserData(true);
+      
+      // Only refresh dependent data if we have a profile ID
+      if (profileId) {
+        if (refreshSocialStats) await refreshSocialStats();
+        if (refreshPosts) await refreshPosts();
+        if (refreshPinnedPost) await refreshPinnedPost(profileId);
+      }
     } catch (err) {
       setError((err as Error).message || "Failed to refresh data");
     } finally {
@@ -154,10 +165,10 @@ export function useProfileData({
     }
   }, [
     fetchUserData,
+    profileId,
     refreshSocialStats,
     refreshPosts,
     refreshPinnedPost,
-    cachedProfile?.user_id,
   ]);
 
   /**
@@ -178,7 +189,7 @@ export function useProfileData({
         await saveProfileToCache(updatedProfile);
 
         // Refresh social stats to get accurate counts
-        await refreshSocialStats();
+        if (refreshSocialStats) await refreshSocialStats();
       } catch (err) {
         console.error("Error updating follow status:", err);
         setError("Failed to update follow status");

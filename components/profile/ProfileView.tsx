@@ -3,7 +3,6 @@ import { useState, useCallback, useMemo, useEffect } from "react";
 import {
   ScrollView,
   TouchableOpacity,
-  Switch,
   RefreshControl,
   ActivityIndicator,
   Alert,
@@ -18,6 +17,7 @@ import GradientButton from "@/components/GradientButton";
 import { styles } from "@/components/profile/ProfileStyle";
 import PinnedPostItem from "@/components/profile/PinnedPostItem";
 import FollowButton from "@/components/FollowButton";
+import PrivacyToggle from "@/components/profile/PrivacyToggle";
 
 import { formatDate } from "@/utils/dateUtils";
 import * as api from "@/utils/api";
@@ -26,6 +26,7 @@ import { useSession } from "../SessionProvider";
 // Color palette based on #00c5e3
 const COLORS = {
   primary: "#00c5e3",
+  primaryLight: "#b3ebf5",
   secondary: "#34D399",
   accent: "#3B82F6",
   background: "#F9FAFB",
@@ -58,13 +59,11 @@ export default function ProfileView({
   onRefresh,
   onFollowStatusChange,
   dataLoading = false,
-  cacheInfo,
   scrollEventThrottle = 16,
   onScroll,
   contentContainerStyle,
 }: ProfileViewProps) {
   const router = useRouter();
-  const { user } = useSession();
   const [isLoading, setIsLoading] = useState(false);
   const [imageError, setImageError] = useState(false);
   const [isPrivate, setIsPrivate] = useState(profileData?.isPrivate || false);
@@ -79,7 +78,6 @@ export default function ProfileView({
 
   useEffect(() => {
     console.log("Profile data:", profileData);
-    console.log("Avatar from profile data:", profileData?.avatar);
     console.log("Using avatar URL:", avatarUrl);
   }, [profileData, avatarUrl]);
 
@@ -198,7 +196,7 @@ export default function ProfileView({
           <View style={styles.userInfo}>
             <View style={styles.nameContainer}>
               <Text style={styles.name}>{profileData?.username || "User"}</Text>
-              {profileData?.isVerify ? (
+              {profileData.isVerified ? (
                 <Ionicons
                   name="checkmark-circle"
                   size={18}
@@ -218,25 +216,13 @@ export default function ProfileView({
           </View>
 
           {/* Toggle Button for Profile Visibility */}
-          <View style={styles.toggleContainer}>
-            <Text style={styles.toggleLabel}>
-              {isPrivate ? "Private Profile" : "Public Profile"}
-            </Text>
-            {isOwnProfile ? (
-              <Switch
-                value={isPrivate}
-                onValueChange={handleToggleVisibility}
-                thumbColor={isPrivate ? COLORS.primary : COLORS.accent}
-                trackColor={{ false: COLORS.textLight, true: COLORS.primary }}
-              />
-            ) : (
-              <Text style={styles.toggleLabel}>
-                {profileData?.isPrivate
-                  ? "This account is private"
-                  : "This account is public"}
-              </Text>
-            )}
-          </View>
+          <PrivacyToggle 
+          isPrivate={profileData?.isPrivate || isPrivate}
+          isOwnProfile={isOwnProfile}
+          handleToggleVisibility={handleToggleVisibility}
+          COLORS={COLORS}
+          />
+      
 
           {/* Action Buttons Row */}
           <View style={styles.actionButtonsRow}>

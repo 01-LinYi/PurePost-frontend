@@ -15,7 +15,8 @@ export default function ProfileLayout() {
       <Stack.Screen
         name="followers"
         options={{
-          headerTitle: "Followers", 
+          headerTitle: "Followers",
+          headerShown: false,
         }}
       />
 
@@ -24,6 +25,7 @@ export default function ProfileLayout() {
         name="following"
         options={{
           headerTitle: "Following",
+          headerShown: false,
         }}
       />
       {/* Edit Profile page */}
