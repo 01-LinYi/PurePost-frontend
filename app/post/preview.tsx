@@ -34,46 +34,89 @@ export default function PostPreviewScreen() {
     const hasDisclaimer = params.hasDisclaimer === "true";
     const disclaimerText = decodeURIComponent(params.disclaimerText as string || "");
     const submitCallback = params.submitCallback as string;
+    
+    // Parse caption and tags
+    const caption = decodeURIComponent(params.caption as string || "");
+    const tags = params.tags ? JSON.parse(decodeURIComponent(params.tags as string)) : [];
   
+    // Create a mock post object for rendering with the same structure as expected by PostContent
+    const previewPost = {
+      content: postText,
+      image: mediaType === "image" ? mediaUri : null,
+      video: mediaType === "video" ? mediaUri : null,
+      disclaimer: hasDisclaimer ? disclaimerText : null,
+      caption: caption,
+      tags: tags,
+      user: user,
+    };
+
     // Function to go back to the create post screen
     const handleBackToEdit = () => {
       router.back();
     };
   
-    // Function to directly trigger the post submission
-    const handlePublishPost = async () => {
-      if (isSubmitting) return;
-      setIsSubmitting(true);
-      
-      try {
-        // Using the original submitCallback passed from the create post screen
-        if (submitCallback) {
-          // Return to the create post screen but with a flag to trigger submission
-          router.navigate({
-            pathname: "/post/create",
-            params: { triggerSubmit: "true" }
-          });
-        } else {
-          // Fallback if no callback was provided
-          Alert.alert(
-            "Note",
-            "Please return to the post editor to publish your post.",
-            [{ text: "OK", onPress: () => router.back() }]
-          );
-        }
-      } catch (error) {
-        console.error("Error during post submission:", error);
-        Alert.alert("Error", "Something went wrong. Please try again.");
-      } finally {
-        setIsSubmitting(false);
+    // Render appropriate media content based on available data
+    // EXACTLY matching the approach from PostContent.tsx
+    const renderMedia = () => {
+      if (previewPost.image) {
+        return (
+          <View style={styles.mediaContainer}>
+            <Image
+              source={{ uri: previewPost.image }}
+              style={styles.mediaImage}
+              resizeMode="cover"
+            />
+          </View>
+        );
+      } else if (previewPost.video) {
+        return (
+          <View style={styles.mediaContainer}>
+            {/* You could use a Video component here instead */}
+            <View style={styles.videoPlaceholder}>
+              <Ionicons name="videocam" size={40} color="#ffffff" />
+              <Text style={styles.videoText}>Video content</Text>
+            </View>
+          </View>
+        );
       }
+      return null;
     };
   
+    // Render caption (similar to PostContent.tsx)
+    const renderCaption = () => {
+      if (!previewPost.caption) return null;
+      
+      return (
+        <View style={styles.captionContainer}>
+          <Text style={styles.captionText}>{previewPost.caption}</Text>
+        </View>
+      );
+    };
+
+    // Render tags (similar to PostContent.tsx)
+    const renderTags = () => {
+      if (!previewPost.tags || previewPost.tags.length === 0) return null;
+      
+      return (
+        <View style={styles.tagsContainer}>
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false} 
+            contentContainerStyle={styles.tagsScrollContent}
+          >
+            {previewPost.tags.map((tag: string, index: number) => (
+              <View key={index} style={styles.tagChip}>
+                <Text style={styles.tagText}>#{tag}</Text>
+              </View>
+            ))}
+          </ScrollView>
+        </View>
+      );
+    };
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" />
-
 
       <ScrollView 
         style={styles.container}
@@ -134,28 +177,19 @@ export default function PostPreviewScreen() {
             </View>
           )}
 
+          {/* Caption (show above content) */}
+          {renderCaption()}
+
           {/* Post Content */}
           {postText && (
             <Text style={styles.postContent}>{postText}</Text>
           )}
 
           {/* Media Content */}
-          {mediaUri && (
-            <View style={styles.postImageContainer}>
-              <Image
-                source={{ uri: mediaUri }}
-                style={styles.postImage}
-                resizeMode="cover"
-              />
-              {mediaType === "video" && (
-                <View style={styles.videoIndicatorOverlay}>
-                  <View style={styles.videoIndicator}>
-                    <Ionicons name="play-circle" size={50} color="#FFFFFF" />
-                  </View>
-                </View>
-              )}
-            </View>
-          )}
+          {renderMedia()}
+
+          {/* Tags */}
+          {renderTags()}
 
           {/* Post Actions */}
           <View style={styles.postActions}>
@@ -190,7 +224,6 @@ export default function PostPreviewScreen() {
             <Ionicons name="create-outline" size={20} color="#00c5e3" />
             <Text style={styles.returnButtonText}>Finish Preview</Text>
           </TouchableOpacity>
-
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -323,36 +356,78 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 24,
     color: "#333",
-    marginBottom: 12,
+    marginBottom: 16,
   },
-  postImageContainer: {
+  // Media styles copied EXACTLY from PostContent.tsx
+  mediaContainer: {
+    marginBottom: 16,
     borderRadius: 12,
     overflow: "hidden",
-    marginBottom: 12,
-    position: "relative",
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.2,
+        shadowRadius: 2,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
   },
-  postImage: {
+  mediaImage: {
     width: "100%",
-    height: 240,
-    borderRadius: 12,
+    height: 300,
+    backgroundColor: "#f0f0f0",
   },
-  videoIndicatorOverlay: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: "rgba(0,0,0,0.2)",
+  videoPlaceholder: {
+    width: "100%",
+    height: 300,
+    backgroundColor: "#3a3a3a",
     justifyContent: "center",
     alignItems: "center",
   },
-  videoIndicator: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: "rgba(0,0,0,0.5)",
-    justifyContent: "center",
+  videoText: {
+    color: "#ffffff",
+    marginTop: 8,
+    fontSize: 16,
+  },
+  // Caption styles copied from PostContent.tsx
+  captionContainer: {
+    marginBottom: 12,
     alignItems: "center",
+    backgroundColor: "#e1f5fe",
+    borderRadius: 8,
+    padding: 12,
+    borderLeftWidth: 3,
+    borderLeftColor: "#00c5e3",
+  },
+  captionText: {
+    fontSize: 18,
+    fontWeight: "600",
+    fontStyle: "italic",
+    color: "#333333",
+    lineHeight: 24,
+  },
+  // Tags styles copied from PostContent.tsx
+  tagsContainer: {
+    marginBottom: 16,
+  },
+  tagsScrollContent: {
+    paddingBottom: 6,
+  },
+  tagChip: {
+    backgroundColor: "#e1f5fe",
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+    marginRight: 8,
+    marginBottom: 4,
+  },
+  tagText: {
+    fontSize: 14,
+    color: "#00c5e3",
+    fontWeight: "500",
   },
   postActions: {
     flexDirection: "row",

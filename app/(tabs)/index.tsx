@@ -214,7 +214,7 @@ export default function HomeScreen() {
       )}
 
       {/* Floating header that appears when scrolling */}
-      {renderFloatingHeader}
+      {/*renderFloatingHeader*/}
 
       {/* Loading overlay */}
       {isLoading && !isRefreshing && (

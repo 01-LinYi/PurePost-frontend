@@ -48,6 +48,8 @@ export const transformApiPostToPost = (apiPost: ApiPost): Post => {
     deepfake_status: apiPost.deepfake_status,
     status: apiPost.status,
     is_pinned: apiPost.pinned,
+    caption: apiPost.caption || null,
+    tags: apiPost.tags || [],
 
     // Calculate frontend-specific fields
     isAuthor: true, // For "My Posts" page, all posts are by the current user

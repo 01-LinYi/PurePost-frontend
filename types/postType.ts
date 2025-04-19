@@ -67,6 +67,8 @@ export interface Post {
   disclaimer: string | null;
   deepfake_status: DeepfakeStatus | null;
   status: PostStatus;
+  caption?: string | null;
+  tags?: string[]; 
   
   // Frontend-only fields
   isAuthor?: boolean;
@@ -91,6 +93,8 @@ export interface ApiPost {
   disclaimer: string | null;
   deepfake_status: DeepfakeStatus | null;
   status: PostStatus;
+  caption?: string;
+  tags?: string[]; 
   user: {
     id: number | string;
     username: string;
@@ -110,6 +114,8 @@ export interface PostCreate {
   visibility: "public" | "private" | "followers";
   status: "draft" | "published";
   disclaimer?: string;
+  caption?: string;
+  tags?: string[]; 
 }
 
 export interface SavedPost {
@@ -135,6 +141,8 @@ export interface PostRequest {
   media?: File;
   media_id?: string;
   disclaimer?: string;
+  caption?: string;
+  tags?: string[]; 
 }
 
 export interface FolderRequest {

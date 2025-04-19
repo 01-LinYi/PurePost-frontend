@@ -99,6 +99,16 @@ const CreatePost = () => {
                     name: draft.video.split('/').pop() || "video.mp4",
                   });
                 }
+
+                if (draft.caption) {
+                  setCaption(draft.caption);
+                  setShowCaptionAndTags(true); // Show caption section if there's a caption
+                }
+                
+                if (draft.tags && Array.isArray(draft.tags) && draft.tags.length > 0) {
+                  setTags(draft.tags);
+                  setShowCaptionAndTags(true); // Show tags section if there are tags
+                }
                 
                 setVisibility(draft.visibility);
                 setHasDisclaimer(!!draft.disclaimer);
@@ -151,7 +161,7 @@ const CreatePost = () => {
   // Toggle disclaimer
   const toggleDisclaimer = useCallback(() => {
     setHasDisclaimer(!hasDisclaimer);
-    if (!hasDisclaimer === false) {
+    if (hasDisclaimer) {
       setDisclaimerText("");
     }
   }, [hasDisclaimer]);
@@ -227,7 +237,7 @@ const CreatePost = () => {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [showCaptionAndTags]);
 
   const removeMedia = useCallback(() => {
     setMedia(null);
@@ -275,7 +285,7 @@ const CreatePost = () => {
       
       if (hasDisclaimer)
       {
-        formData.append("disclaimer", disclaimerText);
+        formData.append("disclaimer", disclaimerText.trim());
       }
 
       if (caption.trim())
@@ -337,7 +347,8 @@ const CreatePost = () => {
     } finally {
       setIsSaving(false);
     }
-  }, [postText, media, visibility, hasDisclaimer, disclaimerText, draftId]);
+  }, [postText, media, visibility, hasDisclaimer, disclaimerText,
+    caption, tags, tagInput, showCaptionAndTags, draftId]);
 
   // Add a tag
   const addTag = useCallback(() => {
@@ -409,6 +420,9 @@ const CreatePost = () => {
       else 
       {
         // Create form data object
+        console.log("hasDisclaimer:", hasDisclaimer);
+        console.log("disclaimerText:", disclaimerText);
+
         const formData = new FormData();
         formData.append("content", postText.trim());
         formData.append("visibility", visibility);
@@ -416,7 +430,7 @@ const CreatePost = () => {
 
         if (hasDisclaimer)
         {
-          formData.append("disclaimer", disclaimerText);
+          formData.append("disclaimer", disclaimerText.trim());
         }
 
         if (caption.trim())
@@ -475,6 +489,10 @@ const CreatePost = () => {
         setHasDisclaimer(false);
         setDisclaimerText("");
         setDraftId(null);
+        setCaption("");
+        setTags([]);
+        setTagInput("");
+        setShowCaptionAndTags(false);
       }
     } catch (error) {
       const errorMessage =
@@ -487,7 +505,8 @@ const CreatePost = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [postText, media, visibility]);
+  }, [postText, media, visibility, hasDisclaimer, disclaimerText,
+    caption, tags, tagInput, showCaptionAndTags, draftId]);
 
   // Added isSaving to disabled state checks
   const isPostDisabled = (!postText.trim() && !media) || isLoading || isSaving;
