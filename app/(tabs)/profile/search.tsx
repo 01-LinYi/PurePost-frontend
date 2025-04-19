@@ -36,8 +36,8 @@ export default function ProfileSearch() {
     }
   };
 
-  const handleProfilePress = (username: string) => {
-    router.push(`/user/${username}`);
+  const handleProfilePress = (username: string, id: number) => {
+    router.push(`/user/${username}?id=${id}`);
   };
 
   return (
@@ -56,7 +56,7 @@ export default function ProfileSearch() {
         renderItem={({ item }) => (
           <TouchableOpacity
             style={styles.resultItem}
-            onPress={() => handleProfilePress(item.username)}
+            onPress={() => handleProfilePress(item.username, item.id)}
           >
             <Text style={styles.resultText}>{item.username}</Text>
           </TouchableOpacity>
