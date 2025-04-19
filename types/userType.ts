@@ -7,4 +7,5 @@ export interface User {
   isPrivate: boolean;
   createdAt: string;
   updatedAt: string;
+  isAdmin?: boolean;
 }
