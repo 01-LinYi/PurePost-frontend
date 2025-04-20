@@ -1,7 +1,7 @@
 // components/post/MyPostItem.tsx - Individual post item for the My Posts screen
 
 import React, { useEffect } from "react";
-import { StyleSheet, TouchableOpacity, Image, Platform, Alert} from "react-native";
+import { StyleSheet, TouchableOpacity, Image, Platform, Alert, ScrollView, Pressable } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Text, View } from "@/components/Themed";
 import { useRouter } from "expo-router";
@@ -23,26 +23,26 @@ const MyPostItem: React.FC<MyPostItemProps> = ({
   onDelete,
   onNavigate,
 }) => {
-
     // Add debugging to check the post object
-        useEffect(() => {
-          console.log("Post object:", JSON.stringify(post, null, 2));
-          console.log("Post keys:", Object.keys(post));
-          console.log("Post status:", post.status);
-          console.log("Post visibility:", post.visibility);
-        }, [post]); 
+    useEffect(() => {
+      console.log("Post object:", JSON.stringify(post, null, 2));
+      console.log("Post keys:", Object.keys(post));
+      console.log("Post status:", post.status);
+      console.log("Post visibility:", post.visibility);
+    }, [post]); 
          
   // Extract the first line as title
   const lines = post.content.split("\n");
-  const title = lines[0] || "Untitled Post";
+  const title = post.caption || "";
   const router = useRouter();
 
-  // Create a preview of the remaining content
-  const contentPreview =
-    lines.length > 1
-      ? lines.slice(1).join(" ").substring(0, 100) +
-        (lines.slice(1).join(" ").length > 100 ? "..." : "")
-      : "No additional content";
+  // Use caption if available, otherwise use content preview
+  const hasCaption = !!post.caption;
+
+  // Create a preview of the content 
+  const contentPreview = post.content 
+    ? post.content.substring(0, 100) + (post.content.length > 100 ? "..." : "")
+    : "No content";
 
   // Get visibility icon and color
   const getVisibilityProps = (visibility: PostVisibility) => {
@@ -118,12 +118,32 @@ const MyPostItem: React.FC<MyPostItemProps> = ({
     );
   };
 
+  const renderTags = () => {
+    if (!post.tags || post.tags.length === 0) return null;
+    
+    return (
+      <ScrollView 
+        horizontal 
+        showsHorizontalScrollIndicator={false}
+        style={styles.tagsContainer}
+        contentContainerStyle={styles.tagsContentContainer}
+      >
+        {post.tags.map((tag, index) => (
+          <View key={index} style={styles.tagChip}>
+            <Text style={styles.tagText}>#{tag}</Text>
+          </View>
+        ))}
+      </ScrollView>
+    );
+  };
+
+  // Handle clicking on the post content area
+  const handleContentPress = () => {
+    onNavigate(post.id);
+  };
+
   return (
-    <TouchableOpacity
-      style={styles.postItem}
-      onPress={() => onNavigate(post.id)}
-      activeOpacity={0.7}
-    >
+    <View style={styles.postItem}>
       <View style={styles.postContent}>
         {/* Use our updated AuthorInfo component */}
         <View style={styles.authorInfoContainer}>
@@ -136,14 +156,24 @@ const MyPostItem: React.FC<MyPostItemProps> = ({
           />
         </View>
 
-        <View style={styles.titleRow}>
-          <Text style={styles.postTitle} numberOfLines={1}>
-            {title}
-          </Text>
+        {/* Display disclaimer if available */}
+        {post.disclaimer && (
+          <View style={styles.disclaimerContainer}>
+            <View style={styles.disclaimerIconContainer}>
+              <Ionicons name="warning-outline" size={18} color="#ffffff" />
+            </View>
+            <Text style={styles.disclaimerText}>{post.disclaimer}</Text>
+          </View>
+        )}
 
+        <Pressable onPress={handleContentPress}>
+          <View style={styles.titleRow}>
+            <Text style={styles.postTitle} numberOfLines={1}>
+              {title}
+            </Text>
 
-          <View style={styles.tagsContainer}>
-            {/* Draft tag - styled similarly to the visibility tag */}
+            <View style={styles.statusTagsContainer}>
+              {/* Draft tag - styled similarly to the visibility tag */}
               <View style={styles.statusTag}>
                 <Ionicons
                   name={statusProps.icon as any}
@@ -157,62 +187,58 @@ const MyPostItem: React.FC<MyPostItemProps> = ({
                 </Text>
               </View>
 
-            <View style={styles.visibilityTag}>
-              <Ionicons
-                name={visibilityProps.icon as any}
-                size={12}
-                color={visibilityProps.color}
+              <View style={styles.visibilityTag}>
+                <Ionicons
+                  name={visibilityProps.icon as any}
+                  size={12}
+                  color={visibilityProps.color}
+                />
+                <Text
+                  style={[styles.visibilityText, { color: visibilityProps.color }]}
+                >
+                  {visibilityProps.text}
+                </Text>
+              </View>
+            </View>
+          </View>
+
+          <View style={styles.postDetailsRow}>
+            {/* Display image if available */}
+            {post.image && (
+              <Image
+                source={{ uri: post.image }}
+                style={styles.mediaThumbnail}
+                resizeMode="cover"
               />
-              <Text
-                style={[styles.visibilityText, { color: visibilityProps.color }]}
-              >
-                {visibilityProps.text}
+            )}
+
+            {/* Display video thumbnail if available */}
+            {!post.image && post.video && (
+              <View style={styles.mediaThumbnail}>
+                <Ionicons
+                  name="videocam"
+                  size={30}
+                  color="#888"
+                  style={{ alignSelf: "center", marginTop: 25 }}
+                />
+              </View>
+            )}
+
+            <View
+              style={[
+                styles.postTextContent,
+                !post.image && !post.video && { flex: 1 },
+              ]}
+            >
+              <Text style={styles.postExcerpt} numberOfLines={2}>
+                {contentPreview}
               </Text>
             </View>
           </View>
-        </View>
+        </Pressable>
 
-        <View style={styles.postDetailsRow}>
-          {/* Display image if available */}
-          {post.image && (
-            <Image
-              source={{ uri: post.image }}
-              style={styles.mediaThumbnail}
-              resizeMode="cover"
-            />
-          )}
-
-          {/* Display video thumbnail if available */}
-          {!post.image && post.video && (
-            <View style={styles.mediaThumbnail}>
-              <Ionicons
-                name="videocam"
-                size={30}
-                color="#888"
-                style={{ alignSelf: "center", marginTop: 25 }}
-              />
-            </View>
-          )}
-
-          <View
-            style={[
-              styles.postTextContent,
-              !post.image && !post.video && { flex: 1 },
-            ]}
-          >
-            <Text style={styles.postExcerpt} numberOfLines={2}>
-              {contentPreview}
-            </Text>
-          </View>
-        </View>
-
-        {/* Display disclaimer if available */}
-        {post.disclaimer && (
-          <View style={styles.disclaimerContainer}>
-            <Ionicons name="alert-circle-outline" size={14} color="#FF9800" />
-            <Text style={styles.disclaimerText}>{post.disclaimer}</Text>
-          </View>
-        )}
+        {/* Display tags */}
+        {renderTags()}
 
         {/* Post stats */}
         <View style={styles.statsContainer}>
@@ -271,7 +297,7 @@ const MyPostItem: React.FC<MyPostItemProps> = ({
           </TouchableOpacity>
         </View>
       </View>
-    </TouchableOpacity>
+    </View>
   );
 };
 
@@ -308,7 +334,7 @@ const styles = StyleSheet.create({
     flex: 1,
     marginBottom: 8,
   },
-  tagsContainer: {
+  statusTagsContainer: {
     flexDirection: 'row',
     alignItems: 'center',
   },
@@ -359,15 +385,25 @@ const styles = StyleSheet.create({
   disclaimerContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#FFF8E1",
+    borderColor: "#00c5e3",
+    borderWidth: 1,
     paddingVertical: 6,
     paddingHorizontal: 10,
-    borderRadius: 6,
+    borderRadius: 8,
     marginBottom: 12,
+  },
+  disclaimerIconContainer: {
+    backgroundColor: "#00c5e3",
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 10,
   },
   disclaimerText: {
     fontSize: 12,
-    color: "#FF9800",
+    color: "#00c5e3",
     marginLeft: 6,
     flex: 1,
   },
@@ -410,6 +446,24 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 8,
+  },
+  tagsContainer: {
+    marginBottom: 12,
+  },
+  tagsContentContainer: {
+    paddingRight: 16,
+  },
+  tagChip: {
+    backgroundColor: "#e1f5fe",
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+    marginRight: 8,
+  },
+  tagText: {
+    fontSize: 12,
+    color: "#00c5e3",
+    fontWeight: "500",
   },
 });
 
