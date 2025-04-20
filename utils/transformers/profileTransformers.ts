@@ -4,7 +4,7 @@ import { User } from "@/types/userType";
 
 export const transformUserProfile = (data: ApiUserProfile): UserProfile => {
   return {
-    id: data.user_id,
+    id: data.id,
     username: data.username,
     email: data.email,
 
