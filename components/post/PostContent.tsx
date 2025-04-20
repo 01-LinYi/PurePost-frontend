@@ -1,5 +1,3 @@
-// components/post/PostContent.tsx - Component to display full post content and interactions
-
 import { View, StyleSheet, ScrollView, Platform, Image } from "react-native";
 import { Text } from "@/components/Themed";
 import { Post, Comment } from "@/types/postType";
@@ -15,6 +13,7 @@ interface PostContentProps {
   onEdit?: () => void;
   onShare: () => void;
   onSave: () => void;
+  ondeleteComment?: (commentId: number) => void;
   bottomPadding: number;
 }
 
@@ -28,6 +27,7 @@ const PostContent: React.FC<PostContentProps> = ({
   onEdit,
   onShare,
   onSave,
+  ondeleteComment,
   bottomPadding,
 }) => {
   // Check if current user is the author (for edit permissions)
@@ -83,7 +83,7 @@ const PostContent: React.FC<PostContentProps> = ({
         statusInfo = {
           color: "#34C759",
           icon: "checkmark-circle-outline",
-          text: "Content verified as authentic",
+          text: "Low probability of manipulation",
         };
         break;
       case "analyzing":
@@ -97,7 +97,7 @@ const PostContent: React.FC<PostContentProps> = ({
         statusInfo = {
           color: "#FF9500",
           icon: "alert-circle-outline",
-          text: "Content could not be analyzed for authenticity",
+          text: "Could not determine content authenticity",
         };
         break;
     }
@@ -115,6 +115,38 @@ const PostContent: React.FC<PostContentProps> = ({
         <Text style={[styles.statusText, { color: statusInfo.color }]}>
           {statusInfo.text}
         </Text>
+      </View>
+    );
+  };
+
+  // Render post caption if available
+  const renderCaption = () => {
+    if (!post.caption) return null;
+    
+    return (
+      <View style={styles.captionContainer}>
+        <Text style={styles.captionText}>{post.caption}</Text>
+      </View>
+    );
+  };
+
+  // Render tags if available
+  const renderTags = () => {
+    if (!post.tags || post.tags.length === 0) return null;
+    
+    return (
+      <View style={styles.tagsContainer}>
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false} 
+          contentContainerStyle={styles.tagsScrollContent}
+        >
+          {post.tags.map((tag, index) => (
+            <View key={index} style={styles.tagChip}>
+              <Text style={styles.tagText}>#{tag}</Text>
+            </View>
+          ))}
+        </ScrollView>
       </View>
     );
   };
@@ -154,11 +186,17 @@ const PostContent: React.FC<PostContentProps> = ({
       {/* Deepfake detection status */}
       {renderDeepfakeStatus()}
 
+      {/* Post caption - show above content if available */}
+      {renderCaption()}
+
       {/* Post content */}
       <Text style={styles.postText}>{post.content}</Text>
 
       {/* Media preview */}
       {renderMedia()}
+      
+      {/* Tags */}
+      {renderTags()}
 
       {/* Interaction bar */}
       <PostActions
@@ -179,7 +217,10 @@ const PostContent: React.FC<PostContentProps> = ({
         <Text style={styles.commentsTitle}>
           Comments ({post.comment_count})
         </Text>
-        <CommentsList comments={comments || []} />
+        <CommentsList 
+        comments={comments || []} 
+        onDeleteComment={ondeleteComment}
+        />
       </View>
     </ScrollView>
   );
@@ -246,8 +287,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     overflow: "hidden",
     borderWidth: 1,
-    borderColor: "#FF9800",
-    backgroundColor: "#FFF8E1",
+    borderColor: "#00c5e3",
   },
   disclaimerContent: {
     flexDirection: "row",
@@ -255,7 +295,7 @@ const styles = StyleSheet.create({
     padding: 12,
   },
   disclaimerIconContainer: {
-    backgroundColor: "#FF9800",
+    backgroundColor: "#00c5e3",
     width: 24,
     height: 24,
     borderRadius: 12,
@@ -267,7 +307,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 14,
     lineHeight: 20,
-    color: "#E65100",
+    color: "#00c5e3",
   },
   // Status indicator styles
   statusContainer: {
@@ -289,6 +329,41 @@ const styles = StyleSheet.create({
   statusText: {
     fontSize: 14,
     lineHeight: 20,
+    fontWeight: "500",
+  },
+  captionContainer: {
+    marginBottom: 12,
+    alignItems: "center",
+    backgroundColor: "#e1f5fe",
+    borderRadius: 8,
+    padding: 12,
+    borderLeftWidth: 3,
+    borderLeftColor: "#00c5e3",
+  },
+  captionText: {
+    fontSize: 18,
+    fontWeight: "600",
+    fontStyle: "italic",
+    color: "#333333",
+    lineHeight: 24,
+  },
+  tagsContainer: {
+    marginBottom: 16,
+  },
+  tagsScrollContent: {
+    paddingBottom: 6,
+  },
+  tagChip: {
+    backgroundColor: "#e1f5fe",
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+    marginRight: 8,
+    marginBottom: 4,
+  },
+  tagText: {
+    fontSize: 14,
+    color: "#00c5e3",
     fontWeight: "500",
   },
 });

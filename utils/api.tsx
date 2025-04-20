@@ -300,13 +300,27 @@ export const unpinPost = async (post_id: number): Promise<void> => {
 }
 
 export function addComment(id: string, text: string): Promise<any> {
-  throw new Error("Function not implemented.");
   try {
     return axiosInstance.post(`/content/posts/${id}/comment/`, {
       content: text,
     });
   } catch (error) {
     console.error("Error adding comment:", error);
+    throw error;
+  }
+}
+
+export function deleteComment(postId: string, commentId: string): Promise<any> {
+  try {
+    return axiosInstance.delete(`/content/posts/${postId}/delete_comment/`,
+      {
+        data: {
+          comment_id: commentId,
+        },
+      }
+    );
+  } catch (error) {
+    console.error("Error deleting comment:", error);
     throw error;
   }
 }

@@ -260,13 +260,6 @@ export default function TabLayout() {
           ),
           headerShown: false,
         }}
-        listeners={{
-          tabPress: (e) => {
-            // Prevent default action
-            e.preventDefault();
-            router.push("/post/create" as any);
-          },
-        }}
       />
 
       {/* Second half of tabs */}

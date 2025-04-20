@@ -237,6 +237,26 @@ const PostDetail = () => {
     setUiState((prev) => ({ ...prev, isSubmittingAction: false }));
   };
 
+  /**
+   * Delete a comment
+   */
+  const handleDeleteComment = async (commentId: number) => {
+    if (!post || isSubmittingAction) return;
+    setUiState((prev) => ({ ...prev, isSubmittingAction: true }));
+    const result = await performOptimisticUpdate({
+      updateUI: () => {},
+      apiCall: () => api.deleteComment(post.id,commentId.toString()),
+      rollbackUI: () => {},
+      errorMessagePrefix: "Failed to delete comment: ",
+    });
+    if (result) {
+      console.log(`Comment ${commentId} deleted successfully`);
+      // Reload post data to get updated comments
+      await loadPostData();
+    }
+    setUiState((prev) => ({ ...prev, isSubmittingAction: false }));
+  };
+
   // Render loading state
   if (isLoading) {
     return (
@@ -283,6 +303,7 @@ const PostDetail = () => {
         onEdit={handleEdit}
         onShare={handleShare}
         onSave={handleSave}
+        ondeleteComment={handleDeleteComment}
         bottomPadding={Math.max(20, insets.bottom) + 70}
       />
 
