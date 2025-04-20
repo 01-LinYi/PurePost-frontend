@@ -1,14 +1,12 @@
 import {
   StyleSheet,
   TouchableOpacity,
-  Image,
   TextInput,
   FlatList,
   SafeAreaView,
   StatusBar,
   Platform,
   RefreshControl,
-  Dimensions,
   ActivityIndicator,
   Alert,
 } from "react-native";
@@ -17,24 +15,18 @@ import { useRouter } from "expo-router";
 import { Text, View } from "@/components/Themed";
 import { Ionicons } from "@expo/vector-icons";
 import { useSession } from "@/components/SessionProvider";
-import { useStorageState } from "@/hooks/useStorageState";
 import { BlurView } from "expo-blur";
-import { Post } from "@/types/postType";
-import { useFeedPosts } from "@/hooks/useFeedPosts";
+import { SearchField, useFeedPosts } from "@/hooks/useFeedPosts";
 import FeedPostItem from "@/components/post/FeedPostItem";
 import FeedHeader from "@/components/post/FeedHeader";
-import SortOptions from "@/components/post/SortOptions";
 
 /**
  * Home Screen that displays the social feed with posts
  */
 export default function HomeScreen() {
-  const { user } = useSession();
-  const [userStorage, setUser] = useStorageState("user");
-  const [session, setSession] = useStorageState("session");
+  const { logOut } = useSession();
   const [searchQuery, setSearchQuery] = useState("");
   const [scrollPosition, setScrollPosition] = useState(0);
-  const windowWidth = Dimensions.get("window").width;
   const router = useRouter();
 
   // Use custom hook to handle posts data and operations, similar to useMyPosts hook
@@ -43,23 +35,12 @@ export default function HomeScreen() {
     isLoading,
     isRefreshing,
     error,
-    ordering,
+    handleSearch,
     handleRefresh,
-    handleSortChange,
     handleLike,
     handleDeepfakeDetection,
     loadData,
   } = useFeedPosts();
-
-  // Filter posts based on search query
-  const filteredPosts = useMemo(() => {
-    if (!searchQuery.trim()) return posts;
-    return posts.filter(
-      (post:any) =>
-        post.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        post.user.username.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-  }, [posts, searchQuery]);
 
   // Scroll handler for floating header
   const handleScroll = useCallback((event: any) => {
@@ -75,11 +56,14 @@ export default function HomeScreen() {
     router.push("/post/create");
   };
 
-  const handleLogOut = useCallback(() => {
-    setUser(null);
-    setSession(null);
-    router.push("/login");
-  }, [setUser, setSession]);
+  const handleLogOut = async () => {
+    const error = await logOut();
+    if (error) {
+      Alert.alert("Error logging out", error);
+      return;
+    }
+    router.replace("/login");
+  };
 
   // Error state renderer
   const renderError = () => (
@@ -153,26 +137,32 @@ export default function HomeScreen() {
         />
         <TextInput
           style={styles.searchInput}
-          placeholder="Search posts...(Not Implemented)"
+          placeholder="Search posts..."
           value={searchQuery}
           onChangeText={setSearchQuery}
+          onSubmitEditing={() => {
+            const trimmedQuery = searchQuery.trim();
+            if (trimmedQuery.startsWith("#")) {
+              handleSearch(SearchField.tag, searchQuery.substring(1));
+            } else if (trimmedQuery.startsWith("@")) {
+              handleSearch(SearchField.user, searchQuery.substring(1));
+            } else if (trimmedQuery.startsWith("!")) {
+              handleSearch(SearchField.caption, searchQuery.substring(1));
+            } else {
+              handleSearch(SearchField.content, searchQuery);
+            }
+          }}
           returnKeyType="search"
           clearButtonMode="while-editing"
         />
-        {searchQuery ? (
-          <TouchableOpacity onPress={() => setSearchQuery("")}>
-            <Ionicons name="close-circle" size={20} color="#8e8e93" />
-          </TouchableOpacity>
-        ) : null}
       </View>
-
 
       {/* Content area: error, posts list, or empty state */}
       {error ? (
         renderError()
       ) : (
         <FlatList
-          data={filteredPosts}
+          data={posts}
           renderItem={({ item }) => (
             <FeedPostItem
               post={item}
@@ -191,7 +181,7 @@ export default function HomeScreen() {
                   resolve(); // Resolve when done
                 });
               }}
-              onReport={(x,y) => {}}
+              onReport={(x, y) => { }}
               onDeepfakeDetection={handleDeepfakeDetection}
               onNavigate={navigateToPost}
             />

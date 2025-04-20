@@ -113,7 +113,6 @@ export const login = async (
       username: username,
       password: password,
     });
-
     if (response.status === 200) {
       return {
         user: transformUser(response.data.user),
