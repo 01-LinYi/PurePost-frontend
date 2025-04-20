@@ -62,7 +62,6 @@ const PostDetail = () => {
 
       const res = await api.fetchSinglePosts(id);
       const apiPost = res.data;
-      console.log("Post data:", apiPost);
 
       // Transform API response to our frontend Post model
       const transformedPost = transformApiPostToPost(apiPost);
@@ -84,7 +83,7 @@ const PostDetail = () => {
   // Load post when component mounts or ID changes
   useEffect(() => {
     loadPostData();
-  }, [loadPostData]);
+  }, [id, loadPostData]);
 
   /**
    * Handle like/unlike action
