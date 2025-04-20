@@ -29,9 +29,7 @@ import SortOptions from "@/components/post/SortOptions";
  * Home Screen that displays the social feed with posts
  */
 export default function HomeScreen() {
-  const { user } = useSession();
-  const [userStorage, setUser] = useStorageState("user");
-  const [session, setSession] = useStorageState("session");
+  const { user, logOut } = useSession();
   const [searchQuery, setSearchQuery] = useState("");
   const [scrollPosition, setScrollPosition] = useState(0);
   const windowWidth = Dimensions.get("window").width;
@@ -55,7 +53,7 @@ export default function HomeScreen() {
   const filteredPosts = useMemo(() => {
     if (!searchQuery.trim()) return posts;
     return posts.filter(
-      (post:any) =>
+      (post: any) =>
         post.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
         post.user.username.toLowerCase().includes(searchQuery.toLowerCase())
     );
@@ -75,11 +73,14 @@ export default function HomeScreen() {
     router.push("/post/create");
   };
 
-  const handleLogOut = useCallback(() => {
-    setUser(null);
-    setSession(null);
-    router.push("/login");
-  }, [setUser, setSession]);
+  const handleLogOut = async () => {
+    const error = await logOut();
+    if (error) {
+      Alert.alert("Error logging out", error);
+      return;
+    }
+    router.replace("/login");
+  };
 
   // Error state renderer
   const renderError = () => (
@@ -159,13 +160,7 @@ export default function HomeScreen() {
           returnKeyType="search"
           clearButtonMode="while-editing"
         />
-        {searchQuery ? (
-          <TouchableOpacity onPress={() => setSearchQuery("")}>
-            <Ionicons name="close-circle" size={20} color="#8e8e93" />
-          </TouchableOpacity>
-        ) : null}
       </View>
-
 
       {/* Content area: error, posts list, or empty state */}
       {error ? (
@@ -191,7 +186,7 @@ export default function HomeScreen() {
                   resolve(); // Resolve when done
                 });
               }}
-              onReport={(x,y) => {}}
+              onReport={(x, y) => { }}
               onDeepfakeDetection={handleDeepfakeDetection}
               onNavigate={navigateToPost}
             />

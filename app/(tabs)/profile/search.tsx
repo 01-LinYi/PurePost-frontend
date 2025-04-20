@@ -50,6 +50,7 @@ export default function ProfileSearch() {
         onChangeText={setSearchQuery}
         onSubmitEditing={handleSearch}
         returnKeyType="search"
+        clearButtonMode="while-editing"
       />
       <FlatList
         data={searchResults}

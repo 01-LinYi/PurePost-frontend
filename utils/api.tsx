@@ -40,12 +40,10 @@ export const login = async (
   password: string
 ): Promise<LoginResponse> => {
   try {
-    console.log("Login attempt with username:", username);
     const response = await axiosInstance.post("auth/login/", {
       username: username,
       password: password,
     });
-    console.log("Login response:", response);
     if (response.status === 200) {
       return {
         user: transformUser(response.data.user),
