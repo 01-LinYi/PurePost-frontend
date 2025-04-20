@@ -20,6 +20,15 @@ interface UseFeedPostsProps {
   initialPage?: number;
 }
 
+// Enum for search fields
+// Matches BE search_fields in content_moderation/views.py, class PostViewSet
+export enum SearchField {
+  content = "content",
+  caption = "caption",
+  tag = "tags",
+  user = "=user__username", // only exact match for foreign key join
+}
+
 /**
  * Custom hook to handle fetching, sorting, and managing feed posts
  */
@@ -42,7 +51,12 @@ export const useFeedPosts = ({
    * Fetch feed posts from the API
    */
   const fetchPosts = useCallback(
-    async (pageNum: number = 1, replace: boolean = true) => {
+    async (
+      pageNum: number = 1,
+      replace: boolean = true,
+      searchField: string | null = null,
+      searchQuery: string | null = null
+    ) => {
       try {
         setError(null);
         console.log(`Fetching feed posts, page ${pageNum}, limit ${limit}`);
@@ -52,6 +66,8 @@ export const useFeedPosts = ({
           page: pageNum,
           limit,
           ordering: getApiOrdering(ordering),
+          only: searchField,
+          search: searchQuery,
           ...filters,
         };
 
@@ -232,10 +248,10 @@ export const useFeedPosts = ({
             currentPosts.map((p) =>
               p.id === postId
                 ? {
-                    ...p,
-                    is_saved: newIsSaved,
-                    savedFolderId: newIsSaved ? folderId || null : null,
-                  }
+                  ...p,
+                  is_saved: newIsSaved,
+                  savedFolderId: newIsSaved ? folderId || null : null,
+                }
                 : p
             )
           );
@@ -243,27 +259,26 @@ export const useFeedPosts = ({
         apiCall: async () =>
           newIsSaved
             ? axiosInstance.post(`/content/posts/${postId}/save/`, {
-                folder_id: folderId,
-              })
+              folder_id: folderId,
+            })
             : axiosInstance.delete(`/content/posts/${postId}/save/`),
         rollbackUI: () => {
           setPosts((currentPosts) =>
             currentPosts.map((p) =>
               p.id === postId
                 ? {
-                    ...p,
-                    is_saved: !newIsSaved,
-                    savedFolderId: !newIsSaved
-                      ? post.savedFolderId || null
-                      : null,
-                  }
+                  ...p,
+                  is_saved: !newIsSaved,
+                  savedFolderId: !newIsSaved
+                    ? post.savedFolderId || null
+                    : null,
+                }
                 : p
             )
           );
         },
-        errorMessagePrefix: `Failed to ${
-          newIsSaved ? "save" : "unsave"
-        } post: `,
+        errorMessagePrefix: `Failed to ${newIsSaved ? "save" : "unsave"
+          } post: `,
       });
 
       return result;
@@ -316,6 +331,17 @@ export const useFeedPosts = ({
     //});
   }, []);
 
+  const handleSearch = useCallback(
+    (field: SearchField | null, query: string) => {
+      if (query.trim() === "") {
+        fetchPosts(1, true);
+        return;
+      }
+      fetchPosts(1, true, field, query);
+    },
+    [loadData]
+  );
+
   /**
    * Handle like/unlike action for a post
    */
@@ -334,10 +360,10 @@ export const useFeedPosts = ({
             currentPosts.map((p) =>
               p.id === postId
                 ? {
-                    ...p,
-                    is_liked: newIsLiked,
-                    like_count: p.like_count + (newIsLiked ? 1 : -1),
-                  }
+                  ...p,
+                  is_liked: newIsLiked,
+                  like_count: p.like_count + (newIsLiked ? 1 : -1),
+                }
                 : p
             )
           );
@@ -351,17 +377,16 @@ export const useFeedPosts = ({
             currentPosts.map((p) =>
               p.id === postId
                 ? {
-                    ...p,
-                    is_liked: !newIsLiked,
-                    like_count: p.like_count + (newIsLiked ? -1 : 1),
-                  }
+                  ...p,
+                  is_liked: !newIsLiked,
+                  like_count: p.like_count + (newIsLiked ? -1 : 1),
+                }
                 : p
             )
           );
         },
-        errorMessagePrefix: `Failed to ${
-          newIsLiked ? "like" : "unlike"
-        } post: `,
+        errorMessagePrefix: `Failed to ${newIsLiked ? "like" : "unlike"
+          } post: `,
       });
 
       return result;
@@ -393,9 +418,9 @@ export const useFeedPosts = ({
           currentPosts.map((p) =>
             p.id === postId
               ? {
-                  ...p,
-                  deepfake_status: "analyzing",
-                }
+                ...p,
+                deepfake_status: "analyzing",
+              }
               : p
           )
         );
@@ -483,9 +508,9 @@ export const useFeedPosts = ({
       currentPosts.map((p) =>
         p.id === postId
           ? {
-              ...p,
-              deepfake_status: status,
-            }
+            ...p,
+            deepfake_status: status,
+          }
           : p
       )
     );
@@ -499,8 +524,7 @@ export const useFeedPosts = ({
       case "completed":
         Alert.alert(
           "Analysis Completed",
-          `Your content has been analyzed. Result: ${
-            status === "flagged" ? "Potentially manipulated" : "Authentic"
+          `Your content has been analyzed. Result: ${status === "flagged" ? "Potentially manipulated" : "Authentic"
           }`
         );
         break;
@@ -555,6 +579,7 @@ export const useFeedPosts = ({
     hasMore,
     filters,
     getPostsCountByType,
+    handleSearch,
     handleRefresh,
     handleSortChange,
     loadMorePosts,
