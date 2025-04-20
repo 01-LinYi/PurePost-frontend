@@ -13,6 +13,7 @@ interface PostContentProps {
   onEdit?: () => void;
   onShare: () => void;
   onSave: () => void;
+  ondeleteComment?: (commentId: number) => void;
   bottomPadding: number;
 }
 
@@ -26,6 +27,7 @@ const PostContent: React.FC<PostContentProps> = ({
   onEdit,
   onShare,
   onSave,
+  ondeleteComment,
   bottomPadding,
 }) => {
   // Check if current user is the author (for edit permissions)
@@ -215,7 +217,10 @@ const PostContent: React.FC<PostContentProps> = ({
         <Text style={styles.commentsTitle}>
           Comments ({post.comment_count})
         </Text>
-        <CommentsList comments={comments || []} />
+        <CommentsList 
+        comments={comments || []} 
+        onDeleteComment={ondeleteComment}
+        />
       </View>
     </ScrollView>
   );
