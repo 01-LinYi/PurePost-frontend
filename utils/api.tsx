@@ -327,8 +327,11 @@ export const fetchHomeFeed = async (page: number = 1, limit: number = 10) => {
   return getApi(`/content/posts/?page=${page}&limit=${limit}`);
 };
 
-export const fetchSinglePosts = async (user_id: string, forceRefresh?:boolean) => {
-  const force = typeof(forceRefresh) === "boolean" ? forceRefresh : false;
+export const fetchSinglePosts = async (
+  user_id: string,
+  forceRefresh?: boolean
+) => {
+  const force = typeof forceRefresh === "boolean" ? forceRefresh : false;
   return getApi(
     `/content/posts/${user_id}/`,
     {}, // params
@@ -628,12 +631,9 @@ export const renameFolder = async (
   folderId: string,
   name: string
 ): Promise<SavedFolder> => {
-  const res = await axiosInstance.patch(
-    `/content/folders/${folderId}/`,
-    {
-      name: name,
-    }
-  );
+  const res = await axiosInstance.patch(`/content/folders/${folderId}/`, {
+    name: name,
+  });
   return res.data;
 };
 
@@ -662,9 +662,7 @@ export const fetchSavedPosts = async (
 };
 
 /** Fallback option when toggle failed */
-export const unSavePost = async (
-  postId: string,
-): Promise<void> => {
+export const unSavePost = async (postId: string): Promise<void> => {
   try {
     await axiosInstance.delete(`/content/saved-posts/by-post/`, {
       params: {
@@ -675,4 +673,28 @@ export const unSavePost = async (
     console.error("Error unsaving post:", error);
     throw error;
   }
-}
+};
+
+export const reportPost = async (
+  postId: string,
+  reason: string,
+  extraInfo?: string
+): Promise<void> => {
+  try {
+    if (extraInfo) {
+      await axiosInstance.post(`/content/report/`, {
+        post_id: postId,
+        reason: "other",
+        additional_info: extraInfo,
+      });
+    } else {
+      await axiosInstance.post(`/content/report/`, {
+        post_id: postId,
+        reason: reason,
+      });
+    }
+  } catch (error) {
+    console.error("Error reporting post:", error);
+    throw error;
+  }
+};

@@ -9,7 +9,7 @@ import {
   ActivityIndicator,
   Alert,
 } from "react-native";
-import { useState, useCallback} from "react";
+import { useState, useCallback } from "react";
 import { useRouter } from "expo-router";
 import { Text, View } from "@/components/Themed";
 import { Ionicons } from "@expo/vector-icons";
@@ -22,6 +22,8 @@ import { useFolders } from "@/hooks/useFolders";
 import { SavedFolder } from "@/types/folderType";
 import { unSavePost } from "@/utils/api";
 import useFolderModal from "@/hooks/useFolderModal";
+import ReportModal from "@/components/report/ReportModal";
+import useReportModal from "@/hooks/useReportModal";
 
 /**
  * Home Screen that displays the social feed with posts
@@ -31,6 +33,7 @@ export default function HomeScreen() {
   const { logOut } = useSession();
   const router = useRouter();
   const folderModal = useFolderModal();
+  const reportModal = useReportModal();
 
   // Use custom hook to handle posts data and operations, similar to useMyPosts hook
   const {
@@ -68,7 +71,7 @@ export default function HomeScreen() {
   const handleCreateFolder = async (name: string) => {
     try {
       await createFolder(name);
-      await handleRefresh();
+      handleRefresh();
     } catch (e) {
       folderModal.setError("Create failed, please try again");
       throw e;
@@ -86,6 +89,8 @@ export default function HomeScreen() {
     handleRefresh();
     folderModal.setLoading(false);
   };
+
+  const handleReportPost = (postId: string) => reportModal.openModal(postId, "post");
 
   // Navigation handlers
   const navigateToPost = (postId: string) => router.push(`/post/${postId}`);
@@ -196,7 +201,7 @@ export default function HomeScreen() {
                   resolve(); // Resolve when done
                 });
               }}
-              onReport={(x, y) => {}}
+              onReport={handleReportPost}
               onDeepfakeDetection={handleDeepfakeDetection}
               onNavigate={navigateToPost}
             />
@@ -233,6 +238,17 @@ export default function HomeScreen() {
         isCreating={isCreating}
         isCollecting={folderModal.loading}
         error={folderModal.errorMsg || error}
+      />
+      {/* Report modal */}
+      <ReportModal
+        visible={reportModal.modalVisible}
+        loading={reportModal.loading}
+        error={reportModal.errorMsg}
+        onClose={reportModal.closeModal}
+        onSubmit={({ reason, extraInfo }) =>
+          reportModal.report(reason, extraInfo)
+        }
+        targetType={reportModal.target?.type}
       />
     </SafeAreaView>
   );
