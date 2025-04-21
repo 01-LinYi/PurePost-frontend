@@ -2,12 +2,12 @@ import { Follow } from "@/types/followType";
 import { ApiPost, Post } from "@/types/postType";
 import { UserProfile } from "@/types/profileType";
 import { LoginResponse } from "@/types/authType";
+import { SavedFolder, ApiFolder } from "@/types/folderType";
 import axiosInstance from "@/utils/axiosInstance";
 import {
   transformUser,
   transformUserProfile,
 } from "@/utils/transformers/profileTransformers";
-import { transformApiPostToPost } from "@/utils/transformers/postsTransformers";
 import { isAxiosError } from "axios";
 import { CacheManager } from "@/utils/cache/cacheManager";
 
@@ -327,13 +327,15 @@ export const fetchHomeFeed = async (page: number = 1, limit: number = 10) => {
   return getApi(`/content/posts/?page=${page}&limit=${limit}`);
 };
 
-export const fetchSinglePosts = async (user_id: string) => {
+export const fetchSinglePosts = async (user_id: string, forceRefresh?:boolean) => {
+  const force = typeof(forceRefresh) === "boolean" ? forceRefresh : false;
   return getApi(
     `/content/posts/${user_id}/`,
     {}, // params
     {
       skipCache: false,
       cacheTtlMinutes: 5,
+      forceRefresh: force,
     }
   );
 };
@@ -595,3 +597,82 @@ export const fetchInteractionUsers = async (
 
   return res.data;
 };
+
+/**
+ * Save post API calls
+ */
+
+export const fetchSavedFolders = async (
+  forceRefresh: boolean = false
+): Promise<ApiFolder[]> => {
+  const res = await getApi(
+    `/content/folders/`,
+    {},
+    {
+      skipCache: false,
+      cacheTtlMinutes: 5,
+      forceRefresh: forceRefresh,
+    }
+  );
+  return res.data.results;
+};
+
+export const createFolder = async (name: string): Promise<SavedFolder> => {
+  const res = await axiosInstance.post(`/content/folders/`, {
+    name: name,
+  });
+  return res.data;
+};
+
+export const renameFolder = async (
+  folderId: string,
+  name: string
+): Promise<SavedFolder> => {
+  const res = await axiosInstance.patch(
+    `/content/folders/${folderId}/`,
+    {
+      name: name,
+    }
+  );
+  return res.data;
+};
+
+export const deleteFolder = async (folderId: string): Promise<void> => {
+  await axiosInstance.delete(`/content/folders/${folderId}/`);
+};
+
+export const fetchSavedPosts = async (
+  folderId: string,
+  forceRefresh: boolean = false
+): Promise<{ folder: ApiFolder; posts: any[] }> => {
+  const res = await getApi(
+    `/content/folders/${folderId}/posts/`,
+    {},
+    {
+      skipCache: false,
+      cacheTtlMinutes: 5,
+      forceRefresh: forceRefresh,
+    }
+  );
+  console.log("fetchSavedPosts", res.data);
+  return {
+    folder: res.data.folder,
+    posts: res.data.posts,
+  };
+};
+
+/** Fallback option when toggle failed */
+export const unSavePost = async (
+  postId: string,
+): Promise<void> => {
+  try {
+    await axiosInstance.delete(`/content/saved-posts/by-post/`, {
+      params: {
+        post_id: postId,
+      },
+    });
+  } catch (error) {
+    console.error("Error unsaving post:", error);
+    throw error;
+  }
+}

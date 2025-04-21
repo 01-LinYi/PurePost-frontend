@@ -19,14 +19,22 @@ import { BlurView } from "expo-blur";
 import { SearchField, useFeedPosts } from "@/hooks/useFeedPosts";
 import FeedPostItem from "@/components/post/FeedPostItem";
 import FeedHeader from "@/components/post/FeedHeader";
+import FolderSelectorModal from "@/components/folder/FolderSelectorModal";
+import { useFolders } from "@/hooks/useFolders";
+import { SavedFolder } from "@/types/folderType";
+import { unSavePost } from "@/utils/api";
 
 /**
  * Home Screen that displays the social feed with posts
  */
 export default function HomeScreen() {
-  const { logOut } = useSession();
   const [searchQuery, setSearchQuery] = useState("");
   const [scrollPosition, setScrollPosition] = useState(0);
+  const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
+  const [foldermodalVisible, setFolderModalVisible] = useState(false);
+  const [selectionError, setSelectorError] = useState<string | null>(null);
+  const [collecting, setCollecting] = useState(false);
+  const { logOut } = useSession();
   const router = useRouter();
 
   // Use custom hook to handle posts data and operations, similar to useMyPosts hook
@@ -42,10 +50,69 @@ export default function HomeScreen() {
     loadData,
   } = useFeedPosts();
 
+  // Use custom hook to handle folders data and operations
+  const {
+    folders,
+    isLoading: foldersLoading,
+    error: foldersError,
+    refresh: refreshFolders,
+    toggleSaveFolder,
+    createFolder,
+    isCreating,
+  } = useFolders({
+    forceRefresh: true,
+  });
+
   // Scroll handler for floating header
   const handleScroll = useCallback((event: any) => {
     setScrollPosition(event.nativeEvent.contentOffset.y);
   }, []);
+
+  const handleOpenSelector = (postId: string) => {
+    setSelectedPostId(postId);
+    setFolderModalVisible(true);
+  };
+
+  const handleSelectFolder = async (folder: SavedFolder) => {
+    if (!selectedPostId) return;
+    setCollecting(true);
+    setSelectorError(null);
+    try {
+      await toggleSaveFolder(selectedPostId, folder.id);
+      setFolderModalVisible(false);
+      // toast("Success")
+    } catch (e) {
+      setSelectorError("Save failed, please try again");
+    }
+    setCollecting(false);
+    setSelectedPostId(null);
+    handleRefresh();
+  };
+
+  const handleCreateFolder = async (name: string) => {
+    setSelectorError(null);
+    try {
+      await createFolder(name);
+      await refreshFolders();
+    } catch (e) {
+      setSelectorError("Create failed, please try again");
+      throw e;
+    }
+  };
+
+  const handleUnsave = async (postId: string) => {
+    setCollecting(true);
+    setSelectorError(null);
+    try {
+      await unSavePost(postId);
+      // toast("Success")
+    } catch (e) {
+      setSelectorError("Unsave failed, please try again");
+    }
+    setCollecting(false);
+    setSelectedPostId(null);
+    handleRefresh();
+  };
 
   // Navigation handlers
   const navigateToPost = (postId: string) => {
@@ -167,13 +234,7 @@ export default function HomeScreen() {
             <FeedPostItem
               post={item}
               onLike={handleLike}
-              onSave={(postId: string, folderId?: string) => {
-                return new Promise<boolean>((resolve) => {
-                  // Add your save logic here
-                  console.log(`Saving post ${postId} to folder ${folderId}`);
-                  resolve(true); // Resolve with true to indicate success
-                });
-              }}
+              onSave={item.is_saved ? handleUnsave : handleOpenSelector}
               onShare={(item) => {
                 return new Promise<void>((resolve) => {
                   // Add your share logic here
@@ -181,7 +242,7 @@ export default function HomeScreen() {
                   resolve(); // Resolve when done
                 });
               }}
-              onReport={(x, y) => { }}
+              onReport={(x, y) => {}}
               onDeepfakeDetection={handleDeepfakeDetection}
               onNavigate={navigateToPost}
             />
@@ -212,6 +273,17 @@ export default function HomeScreen() {
           <ActivityIndicator size="large" color="#00c5e3" />
         </View>
       )}
+      {/* Folder selector modal */}
+      <FolderSelectorModal
+        visible={foldermodalVisible}
+        folders={folders}
+        onSelect={handleSelectFolder}
+        onCreate={handleCreateFolder}
+        onClose={() => setFolderModalVisible(false)}
+        isCreating={isCreating}
+        isCollecting={collecting}
+        error={selectionError || foldersError}
+      />
     </SafeAreaView>
   );
 }

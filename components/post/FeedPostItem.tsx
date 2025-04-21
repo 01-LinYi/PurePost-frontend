@@ -20,7 +20,7 @@ type FeedPostItemProps = {
   onLike: (postId: string) => Promise<any>;
   onDeepfakeDetection: (postId: string) => Promise<boolean>;
   onNavigate: (postId: string) => void;
-  onSave: (postId: string, folderId?: string) => Promise<any>;
+  onSave: (postId: string) => void;
   onShare: (postId: string) => Promise<any>;
   onReport: (postId: string, reason: string) => void;
 };
