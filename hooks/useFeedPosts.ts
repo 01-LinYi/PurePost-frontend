@@ -370,7 +370,7 @@ export const useFeedPosts = ({
         fetchPosts(1, true);
         return;
       }
-      fetchPosts(1, true, false, field, query);
+      fetchPosts(1, true, true, field, query);
     },
     [loadData]
   );
