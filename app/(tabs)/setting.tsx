@@ -8,11 +8,31 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { Text, View } from "@/components/Themed";
 import { useSession } from "@/components/SessionProvider";
-import { useRouter } from "expo-router";
+import { useAppCache } from "@/components/CacheProvider";
+import useSecureProfileCache from "@/hooks/useProfileCache";
+import { useRouter, useFocusEffect } from "expo-router";
+import { formatBytes } from "@/utils/fileUtils";
+
 const SettingsScreen = () => {
   const [isDeleting, setIsDeleting] = useState(false);
+  const [cacheSize, setCacheSize] = useState<string>("0 B");
   const { user, logOut, deleteAccount } = useSession();
   const router = useRouter();
+  const { clearAllCache, getCacheStats } = useAppCache();
+  const { clearCache } = useSecureProfileCache();
+
+  const loadCacheSize = async () => {
+    try {
+      const stats = await getCacheStats();
+      setCacheSize(formatBytes(stats.totalSize));
+    } catch (error) {
+      console.error("Failed to load cache size:", error);
+    }
+  };
+
+  useFocusEffect(() => {
+    loadCacheSize();
+  });
 
   const handleLogout = () => {
     Alert.alert("Logout", "Are you sure you want to log out?", [
@@ -22,6 +42,8 @@ const SettingsScreen = () => {
         style: "destructive",
         onPress: () => {
           console.log("Logging out...");
+          clearAllCache(); // Clear app cache
+          clearCache(); // Clear secure profile cache
           logOut();
         },
       },
@@ -103,6 +125,29 @@ const SettingsScreen = () => {
     }
   };
 
+  const handleClearCache = () => {
+    if (cacheSize === "0 B") {
+      return;
+    }
+    Alert.alert("Clear Cache", "Are you sure you want to clear the cache?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Clear Cache",
+        style: "destructive",
+        onPress: () => {
+          // Clear cache logic here
+          console.log("Clearing cache: " + cacheSize);
+          clearAllCache(); // Clear app cache
+          clearCache(); // Clear secure profile cache
+          Alert.alert(
+            "Cache Cleared",
+            "The cache has been cleared successfully."
+          );
+        },
+      },
+    ]);
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
@@ -133,6 +178,13 @@ const SettingsScreen = () => {
               <Ionicons name="chevron-forward" size={20} color="#999" />
             </TouchableOpacity>
           )}
+          <TouchableOpacity style={styles.option} onPress={handleClearCache}>
+            <View style={styles.optionContent}>
+              <Ionicons name="trash-bin-outline" size={22} color="#333" />
+              <Text style={styles.optionText}>Clear Local Cache</Text>
+            </View>
+            <Text style={styles.cacheSizeText}>{cacheSize}</Text>
+          </TouchableOpacity>
 
           <TouchableOpacity
             style={[styles.option, styles.dangerOption]}
@@ -250,6 +302,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     width: "90%",
+    flex: 1,
   },
   optionText: {
     fontSize: 16,
@@ -286,6 +339,11 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     textAlign: "center",
   },
+  cacheSizeText: {
+    fontSize: 14,
+    color: '#888888',
+    fontWeight: '400',
+  }
   adminOption: {
     borderBottomWidth: 0,
   },

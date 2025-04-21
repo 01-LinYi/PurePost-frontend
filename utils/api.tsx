@@ -1,17 +1,40 @@
 import { Follow } from "@/types/followType";
 import { ApiPost, Post } from "@/types/postType";
 import { UserProfile } from "@/types/profileType";
-import axiosInstance from "@/utils/axiosInstance";
-import { transformUser, transformUserProfile } from "@/utils/transformers/profileTransformers";
-import { transformApiPostToPost } from "@/utils/transformers/postsTransformers";
-import axios from "axios";
 import { LoginResponse } from "@/types/authType";
+import { SavedFolder, ApiFolder } from "@/types/folderType";
+import axiosInstance from "@/utils/axiosInstance";
+import {
+  transformUser,
+  transformUserProfile,
+} from "@/utils/transformers/profileTransformers";
+import { isAxiosError } from "axios";
+import { CacheManager } from "@/utils/cache/cacheManager";
 
 export interface PaginationResponse<T> {
   prev: string | null;
   next: string | null;
   results: T[];
 }
+
+let getUserCacheKeyFn: (key: string) => string = (key) => `guest_${key}`;
+
+export const setUserCacheKeyGenerator = (fn: (key: string) => string) => {
+  getUserCacheKeyFn = fn;
+};
+
+export const getCacheKey = (url: string, params?: any): string => {
+  const queryString = params ? `_${JSON.stringify(params)}` : "";
+  return getUserCacheKeyFn(`api_cache_${url}${queryString}`);
+};
+
+export const clearApiCache = async (urlPattern?: string): Promise<void> => {
+  const prefix = urlPattern
+    ? getUserCacheKeyFn(`api_cache_${urlPattern}`)
+    : getUserCacheKeyFn("api_cache_");
+
+  await CacheManager.clearCache(prefix);
+};
 
 /**
  * Perform a GET request to the specified URL using axiosInstance.
@@ -25,9 +48,55 @@ export interface PaginationResponse<T> {
  *              'statusText': string
  * }
  */
-export const getApi = async (url: string) => {
+export const getApi = async (
+  url: string,
+  params: any = {},
+  options?: {
+    skipCache?: boolean;
+    cacheTtlMinutes?: number;
+    forceRefresh?: boolean;
+  }
+) => {
+  const {
+    skipCache = true,
+    cacheTtlMinutes = 5,
+    forceRefresh = false,
+  } = options || {};
+
   try {
-    const response = await axiosInstance.get(url);
+    const cacheKey = getCacheKey(url);
+
+    if (forceRefresh) {
+      await CacheManager.remove(cacheKey);
+      console.log("Cache cleared for URL:", url);
+    }
+
+    if (!forceRefresh && !skipCache) {
+      const cachedResponse = (await CacheManager.get(cacheKey)) as {
+        data: any;
+        headers?: Record<string, string>;
+      };
+
+      if (cachedResponse) {
+        cachedResponse.headers = {
+          ...cachedResponse.headers,
+          "x-from-cache": "true",
+        };
+        console.log("Cache hit for URL:", url);
+        return cachedResponse;
+      }
+    }
+
+    const response = await axiosInstance.get(url, {
+      params: params,
+    } as any);
+
+    if (!forceRefresh && !skipCache) {
+      const cacheKey = getCacheKey(url);
+      await CacheManager.set(cacheKey, response, cacheTtlMinutes);
+      console.log("Cache set for URL:", url);
+    }
+
     return response;
   } catch (error: any) {
     console.error("Error fetching data:", error);
@@ -44,7 +113,6 @@ export const login = async (
       username: username,
       password: password,
     });
-
     if (response.status === 200) {
       return {
         user: transformUser(response.data.user),
@@ -55,12 +123,16 @@ export const login = async (
       console.error("Login failed:", response);
     }
   } catch (error) {
-    if (axios.isAxiosError(error) && (error.response!.status === 401 || error.response!.status === 400)) {
+    if (
+      isAxiosError(error) &&
+      error.response &&
+      (error.response.status === 401 || error.response.status === 400)
+    ) {
       return {
         error: "Invalid username or password.",
         token: "",
         user: null,
-      }
+      };
     } else {
       console.error("Login error: ", error);
     }
@@ -68,9 +140,9 @@ export const login = async (
   return {
     error: "An error occurred while logging in.",
     token: "",
-    user: null
+    user: null,
   };
-}
+};
 
 export const logout = async (): Promise<string | null> => {
   try {
@@ -82,21 +154,22 @@ export const logout = async (): Promise<string | null> => {
       console.error("Logout failed:", response);
     }
   } catch (error) {
-    if (axios.isAxiosError(error) && error.response!.status === 401) {
+    if (isAxiosError(error) && error.response!.status === 401) {
       return "Unauthorized";
     } else {
       console.error("Logout error:", error);
     }
   }
   return "An error occurred while logging out.";
-}
+};
 
-export const deleteAccount = async (password: string): Promise<string | null> => {
+export const deleteAccount = async (
+  password: string
+): Promise<string | null> => {
   try {
-    const response = await axiosInstance.post(
-      "auth/delete-account/",
-      { password: password }
-    );
+    const response = await axiosInstance.post("auth/delete-account/", {
+      password: password,
+    });
 
     if (response.status === 200 || response.status === 204) {
       return null;
@@ -107,7 +180,7 @@ export const deleteAccount = async (password: string): Promise<string | null> =>
       );
     }
   } catch (error) {
-    if (axios.isAxiosError(error) && error.response) {
+    if (isAxiosError(error) && error.response) {
       if (error.response.status === 400) {
         return "Incorrect password";
       } else {
@@ -118,7 +191,7 @@ export const deleteAccount = async (password: string): Promise<string | null> =>
     }
   }
   return "An error occurred while deleting the account.";
-}
+};
 
 /**
  * Get the social stats of current user
@@ -129,7 +202,11 @@ export const deleteAccount = async (password: string): Promise<string | null> =>
         }
  */
 export const fetchMySocialStat = async () => {
-  return getApi(`/social/follow/status/`);
+  return getApi(
+    `/social/follow/status/`,
+    {},
+    { skipCache: false, cacheTtlMinutes: 1 }
+  );
 };
 
 /**
@@ -159,23 +236,41 @@ export const fetchUserProfile = async (username: string) => {
   return transformUserProfile(res.data);
 };
 
-
 export const fetchUserSocialStat = async (user_id: number) => {
-  return getApi(`/social/follow/status/${user_id}/`);
+  return getApi(
+    `/social/follow/status/${user_id}/`,
+    {},
+    {
+      skipCache: false,
+      cacheTtlMinutes: 1,
+    }
+  );
 };
 
 export const fetchPosts = async (userId: number) => {
   return getApi(`/content/posts/?user_id=${userId}`);
-}
+};
 
 /**
  * Get the list of posts pinned by the current user
  * @returns a list of Post
  */
-export const fetchPinnedPosts = async (userId: number, isPinned: boolean = false): Promise<ApiPost[]> => {
-  const res = await getApi(`/content/posts/?user_id=${userId}&is_pinned=${isPinned}`);
+export const fetchPinnedPosts = async (
+  userId: number,
+  isPinned: boolean = false,
+  forceFetch?: boolean
+): Promise<ApiPost[]> => {
+  const res = await getApi(
+    `/content/posts/?user_id=${userId}&is_pinned=${isPinned}`,
+    {},
+    {
+      skipCache: false,
+      cacheTtlMinutes: 5,
+      forceRefresh: forceFetch ?? false,
+    }
+  );
   return res.data.results;
-}
+};
 
 export const followUser = async (user_id: number) => {
   try {
@@ -232,9 +327,17 @@ export const fetchHomeFeed = async (page: number = 1, limit: number = 10) => {
   return getApi(`/content/posts/?page=${page}&limit=${limit}`);
 };
 
-
-export const fetchSinglePosts = async (user_id: string) => {
-  return getApi(`/content/posts/${user_id}/`);
+export const fetchSinglePosts = async (user_id: string, forceRefresh?:boolean) => {
+  const force = typeof(forceRefresh) === "boolean" ? forceRefresh : false;
+  return getApi(
+    `/content/posts/${user_id}/`,
+    {}, // params
+    {
+      skipCache: false,
+      cacheTtlMinutes: 5,
+      forceRefresh: force,
+    }
+  );
 };
 
 export const fetchPostComments = async (post_id: number) => {
@@ -280,7 +383,6 @@ export const toggleSavePost = async (
   }
 };
 
-
 export const pinPost = async (post_id: number): Promise<void> => {
   try {
     await axiosInstance.post(`/content/posts/${post_id}/pin/`);
@@ -288,7 +390,7 @@ export const pinPost = async (post_id: number): Promise<void> => {
     console.error("Error pinning post:", error);
     throw error;
   }
-}
+};
 
 export const unpinPost = async (post_id: number): Promise<void> => {
   try {
@@ -297,7 +399,7 @@ export const unpinPost = async (post_id: number): Promise<void> => {
     console.error("Error unpinning post:", error);
     throw error;
   }
-}
+};
 
 export function addComment(id: string, text: string): Promise<any> {
   try {
@@ -312,13 +414,11 @@ export function addComment(id: string, text: string): Promise<any> {
 
 export function deleteComment(postId: string, commentId: string): Promise<any> {
   try {
-    return axiosInstance.delete(`/content/posts/${postId}/delete_comment/`,
-      {
-        data: {
-          comment_id: commentId,
-        },
-      }
-    );
+    return axiosInstance.delete(`/content/posts/${postId}/delete_comment/`, {
+      data: {
+        comment_id: commentId,
+      },
+    });
   } catch (error) {
     console.error("Error deleting comment:", error);
     throw error;
@@ -337,14 +437,18 @@ export const forgetPassword = async (email: string): Promise<boolean> => {
     }
   }
   return true;
-}
+};
 
-export const resetPassword = async (email: string, password: string, code: string): Promise<string | null> => {
+export const resetPassword = async (
+  email: string,
+  password: string,
+  code: string
+): Promise<string | null> => {
   try {
     await axiosInstance.put(`/auth/forget/`, {
-      "email": email,
-      "new_password": password,
-      "code": code,
+      email: email,
+      new_password: password,
+      code: code,
     });
     return null;
   } catch (error: any) {
@@ -354,7 +458,7 @@ export const resetPassword = async (email: string, password: string, code: strin
     }
     return error.response.data.error;
   }
-}
+};
 
 export const sendVerificationEmail = async (): Promise<string | null> => {
   try {
@@ -367,13 +471,13 @@ export const sendVerificationEmail = async (): Promise<string | null> => {
     }
     return error.response.data.error;
   }
-}
+};
 
 export const verifyEmailCode = async (code: string): Promise<string | null> => {
   try {
     await axiosInstance.post("auth/verify/", {
-      "code": code
-    })
+      code: code,
+    });
     return null;
   } catch (error: any) {
     if (!error.response && error.response.status !== 400) {
@@ -382,9 +486,11 @@ export const verifyEmailCode = async (code: string): Promise<string | null> => {
     }
     return error.response.data.error;
   }
-}
+};
 
-export const updateProfileVisibility = async (value: boolean): Promise<boolean> => {
+export const updateProfileVisibility = async (
+  value: boolean
+): Promise<boolean> => {
   try {
     await axiosInstance.put(`auth/user-visibility/`, {
       isPrivate: value,
@@ -393,8 +499,8 @@ export const updateProfileVisibility = async (value: boolean): Promise<boolean> 
   } catch (error: any) {
     console.error("Error updating profile visibility:", error.response.data);
     return false;
-  }}
-
+  }
+};
 
 export function updatePost(id: string, data: any): Promise<any> {
   try {
@@ -434,7 +540,7 @@ export const fetchLikers = async (
     res = await getApi(`/content/posts/${post_id}/interactions/likes/`);
   }
   return res.data;
-}
+};
 
 export const fetchCommenters = async (
   post_id: number,
@@ -469,25 +575,104 @@ export const fetchSharers = async (
 /**
  * Fetch users who interacted with a post
  * @param type : 'likes', 'comments', 或 'shares'
- * @param post_id 
- * @param cursor 
+ * @param post_id
+ * @param cursor
  * @returns PaginationResponse<UserProfile>
  * @description This function fetches users who interacted with a post based on the interaction type (likes, comments, shares).
  * The function takes the interaction type, post ID, and an optional cursor for pagination.
  */
 export const fetchInteractionUsers = async (
-  type: 'likes' | 'comments' | 'shares',
+  type: "likes" | "comments" | "shares",
   post_id: number,
   cursor: string | null = null
 ): Promise<PaginationResponse<UserProfile>> => {
   let res = null;
   const endpoint = `/content/posts/${post_id}/interactions/${type}/`;
-  
+
   if (cursor) {
     res = await getApi(`${endpoint}?cursor=${cursor}`);
   } else {
     res = await getApi(endpoint);
   }
-  
+
   return res.data;
 };
+
+/**
+ * Save post API calls
+ */
+
+export const fetchSavedFolders = async (
+  forceRefresh: boolean = false
+): Promise<ApiFolder[]> => {
+  const res = await getApi(
+    `/content/folders/`,
+    {},
+    {
+      skipCache: false,
+      cacheTtlMinutes: 5,
+      forceRefresh: forceRefresh,
+    }
+  );
+  return res.data.results;
+};
+
+export const createFolder = async (name: string): Promise<SavedFolder> => {
+  const res = await axiosInstance.post(`/content/folders/`, {
+    name: name,
+  });
+  return res.data;
+};
+
+export const renameFolder = async (
+  folderId: string,
+  name: string
+): Promise<SavedFolder> => {
+  const res = await axiosInstance.patch(
+    `/content/folders/${folderId}/`,
+    {
+      name: name,
+    }
+  );
+  return res.data;
+};
+
+export const deleteFolder = async (folderId: string): Promise<void> => {
+  await axiosInstance.delete(`/content/folders/${folderId}/`);
+};
+
+export const fetchSavedPosts = async (
+  folderId: string,
+  forceRefresh: boolean = false
+): Promise<{ folder: ApiFolder; posts: any[] }> => {
+  const res = await getApi(
+    `/content/folders/${folderId}/posts/`,
+    {},
+    {
+      skipCache: false,
+      cacheTtlMinutes: 5,
+      forceRefresh: forceRefresh,
+    }
+  );
+  console.log("fetchSavedPosts", res.data);
+  return {
+    folder: res.data.folder,
+    posts: res.data.posts,
+  };
+};
+
+/** Fallback option when toggle failed */
+export const unSavePost = async (
+  postId: string,
+): Promise<void> => {
+  try {
+    await axiosInstance.delete(`/content/saved-posts/by-post/`, {
+      params: {
+        post_id: postId,
+      },
+    });
+  } catch (error) {
+    console.error("Error unsaving post:", error);
+    throw error;
+  }
+}

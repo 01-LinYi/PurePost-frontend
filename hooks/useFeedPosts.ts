@@ -1,5 +1,4 @@
-// hooks/useFeedPosts.ts - Custom hook for handling feed posts data and operations
-
+// hooks/useFeedPosts.ts - Optimized with caching system
 import { useState, useCallback, useEffect } from "react";
 import { Alert } from "react-native";
 import axiosInstance from "@/utils/axiosInstance";
@@ -14,14 +13,27 @@ import {
   transformApiPostToPost,
 } from "@/utils/transformers/postsTransformers";
 import { performOptimisticUpdate } from "@/utils/optimiticeUP";
+import { useAppCache } from "@/components/CacheProvider";
+import { CacheManager } from "@/utils/cache/cacheManager";
+import { getApi } from "@/utils/api";
 
 interface UseFeedPostsProps {
   limit?: number;
   initialPage?: number;
 }
 
+// Enum for search fields
+// Matches BE search_fields in content_moderation/views.py, class PostViewSet
+export enum SearchField {
+  content = "content",
+  caption = "caption",
+  tag = "tags",
+  user = "=user__username", // only exact match for foreign key join
+}
+
 /**
  * Custom hook to handle fetching, sorting, and managing feed posts
+ * with integrated caching and offline support
  */
 export const useFeedPosts = ({
   limit = 10,
@@ -38,11 +50,27 @@ export const useFeedPosts = ({
   const [ordering, setOrdering] = useState<string>("-createdAt");
   const [filters, setFilters] = useState<Record<string, any>>({});
 
+  // Get cache and network utilities
+  const { isOnline, getUserCacheKey } = useAppCache();
+
   /**
-   * Fetch feed posts from the API
+   * Fetch feed posts from the API with caching
+   * @async
+   * @param {number} pageNum - The page number to fetch
+   * @param {boolean} replace - Whether to replace existing posts
+   * @param {boolean} forceRefresh - Whether to force refresh the data
+   * @param {string | null} searchField - The field to search by
+   * @param {string | null} searchQuery - The search query
+   * @returns {Promise<Post[]>} - The fetched posts
    */
   const fetchPosts = useCallback(
-    async (pageNum: number = 1, replace: boolean = true) => {
+    async (
+      pageNum: number = 1,
+      replace: boolean = true,
+      forceRefresh: boolean = false,
+      searchField: string | null = null,
+      searchQuery: string | null = null
+    ) => {
       try {
         setError(null);
         console.log(`Fetching feed posts, page ${pageNum}, limit ${limit}`);
@@ -52,11 +80,20 @@ export const useFeedPosts = ({
           page: pageNum,
           limit,
           ordering: getApiOrdering(ordering),
+          only: searchField,
+          search: searchQuery,
           ...filters,
         };
+        console.log("Force refresh:", forceRefresh);
 
-        console.log("Making request to:", endpoint, "with params:", params);
-        const response = await axiosInstance.get(endpoint, { params });
+        console.log("Feed Page params:", params);
+
+        // Use cached API with options
+        const response = await getApi(endpoint, params, {
+          cacheTtlMinutes: 5, // 5 minute cache for feed
+          skipCache: false, // Always use cache unless refreshing
+          forceRefresh: forceRefresh, // Force refresh (skip) if refreshing
+        });
 
         let apiPosts: ApiPost[] = [];
         let count = 0;
@@ -77,6 +114,13 @@ export const useFeedPosts = ({
 
         const newPosts = apiPosts.map(transformApiPostToPost);
 
+        // Check if posts came from cache
+        const isFromCache = response.headers["x-from-cache"] === "true";
+        if (isFromCache && !isOnline) {
+          // Maybe show a subtle indicator that content is from cache
+          console.log("Displaying cached feed posts in offline mode");
+        }
+
         if (replace) {
           setPosts(newPosts);
         } else {
@@ -89,13 +133,21 @@ export const useFeedPosts = ({
         return newPosts;
       } catch (error) {
         console.error("Error fetching feed posts:", error);
-        const errorMessage =
-          (error as any)?.response?.data?.detail || "Failed to load feed posts";
-        setError(errorMessage);
-        throw new Error(errorMessage);
+
+        // If offline and no cached data, show specific message
+        if (!isOnline) {
+          setError("You're offline. Unable to load feed posts.");
+        } else {
+          const errorMessage =
+            (error as any)?.response?.data?.detail ||
+            "Failed to load feed posts";
+          setError(errorMessage);
+        }
+
+        throw new Error((error as Error).message || "Error fetching posts");
       }
     },
-    [ordering, limit, filters]
+    [ordering, limit, filters, isOnline, getUserCacheKey]
   );
 
   /**
@@ -132,12 +184,12 @@ export const useFeedPosts = ({
    * Load initial data with optional loading indicator
    */
   const loadData = useCallback(
-    async (showFullLoading = true) => {
+    async (showFullLoading = true, forceRefresh = false) => {
       try {
         if (showFullLoading) {
           setIsLoading(true);
         }
-        await fetchPosts(1, true);
+        await fetchPosts(1, true, forceRefresh);
       } catch (error) {
         console.error("Load data error:", error);
         setError((error as Error).message || "Failed to load data");
@@ -150,15 +202,15 @@ export const useFeedPosts = ({
   );
 
   /**
-   * Load more posts (pagination)
+   * Load more posts (pagination) with offline awareness
    */
   const loadMorePosts = useCallback(async () => {
-    if (isLoadingMore || !hasMore) return;
+    if (isLoadingMore || !hasMore || !isOnline) return;
 
     try {
       setIsLoadingMore(true);
       const nextPage = page + 1;
-      await fetchPosts(nextPage, false);
+      await fetchPosts(nextPage, false, true);
     } catch (error) {
       console.error("Load more error:", error);
       // Don't set the main error state to avoid disrupting the UI
@@ -166,7 +218,7 @@ export const useFeedPosts = ({
     } finally {
       setIsLoadingMore(false);
     }
-  }, [fetchPosts, page, isLoadingMore, hasMore]);
+  }, [fetchPosts, page, isLoadingMore, hasMore, isOnline]);
 
   /**
    * Initialize data when component mounts
@@ -180,7 +232,7 @@ export const useFeedPosts = ({
    */
   const handleRefresh = useCallback(() => {
     setIsRefreshing(true);
-    loadData(false);
+    loadData(false, true);
   }, [loadData]);
 
   /**
@@ -232,10 +284,10 @@ export const useFeedPosts = ({
             currentPosts.map((p) =>
               p.id === postId
                 ? {
-                    ...p,
-                    is_saved: newIsSaved,
-                    savedFolderId: newIsSaved ? folderId || null : null,
-                  }
+                  ...p,
+                  is_saved: newIsSaved,
+                  savedFolderId: newIsSaved ? folderId || null : null,
+                }
                 : p
             )
           );
@@ -243,27 +295,26 @@ export const useFeedPosts = ({
         apiCall: async () =>
           newIsSaved
             ? axiosInstance.post(`/content/posts/${postId}/save/`, {
-                folder_id: folderId,
-              })
+              folder_id: folderId,
+            })
             : axiosInstance.delete(`/content/posts/${postId}/save/`),
         rollbackUI: () => {
           setPosts((currentPosts) =>
             currentPosts.map((p) =>
               p.id === postId
                 ? {
-                    ...p,
-                    is_saved: !newIsSaved,
-                    savedFolderId: !newIsSaved
-                      ? post.savedFolderId || null
-                      : null,
-                  }
+                  ...p,
+                  is_saved: !newIsSaved,
+                  savedFolderId: !newIsSaved
+                    ? post.savedFolderId || null
+                    : null,
+                }
                 : p
             )
           );
         },
-        errorMessagePrefix: `Failed to ${
-          newIsSaved ? "save" : "unsave"
-        } post: `,
+        errorMessagePrefix: `Failed to ${newIsSaved ? "save" : "unsave"
+          } post: `,
       });
 
       return result;
@@ -271,9 +322,6 @@ export const useFeedPosts = ({
     [posts]
   );
 
-  /**
-   * Report a post
-   */
   const reportPost = useCallback((postId: string, reason: string) => {
     Alert.alert("Report Post", "Are you sure you want to report this post?", [
       { text: "Cancel", style: "cancel" },
@@ -316,8 +364,20 @@ export const useFeedPosts = ({
     //});
   }, []);
 
+  const handleSearch = useCallback(
+    (field: SearchField | null, query: string) => {
+      if (query.trim() === "") {
+        fetchPosts(1, true);
+        return;
+      }
+      fetchPosts(1, true, false, field, query);
+    },
+    [loadData]
+  );
+
+
   /**
-   * Handle like/unlike action for a post
+   * Handle like/unlike action for a post with offline support
    */
   const handleLike = useCallback(
     async (postId: string) => {
@@ -328,16 +388,36 @@ export const useFeedPosts = ({
       const post = posts[postIndex];
       const newIsLiked = !post.is_liked;
 
+      // If offline, queue the action for later
+      if (!isOnline) {
+        // Update UI immediately
+        setPosts((currentPosts) =>
+          currentPosts.map((p) =>
+            p.id === postId
+              ? {
+                  ...p,
+                  is_liked: newIsLiked,
+                  like_count: p.like_count + (newIsLiked ? 1 : -1),
+                  pendingSync: true, // Mark as pending sync
+                }
+              : p
+          )
+        );
+
+        return { success: true, offline: true };
+      }
+
+      // Online flow - use optimistic update as before
       const result = await performOptimisticUpdate({
         updateUI: () => {
           setPosts((currentPosts) =>
             currentPosts.map((p) =>
               p.id === postId
                 ? {
-                    ...p,
-                    is_liked: newIsLiked,
-                    like_count: p.like_count + (newIsLiked ? 1 : -1),
-                  }
+                  ...p,
+                  is_liked: newIsLiked,
+                  like_count: p.like_count + (newIsLiked ? 1 : -1),
+                }
                 : p
             )
           );
@@ -351,26 +431,25 @@ export const useFeedPosts = ({
             currentPosts.map((p) =>
               p.id === postId
                 ? {
-                    ...p,
-                    is_liked: !newIsLiked,
-                    like_count: p.like_count + (newIsLiked ? -1 : 1),
-                  }
+                  ...p,
+                  is_liked: !newIsLiked,
+                  like_count: p.like_count + (newIsLiked ? -1 : 1),
+                }
                 : p
             )
           );
         },
-        errorMessagePrefix: `Failed to ${
-          newIsLiked ? "like" : "unlike"
-        } post: `,
+        errorMessagePrefix: `Failed to ${newIsLiked ? "like" : "unlike"
+          } post: `,
       });
 
       return result;
     },
-    [posts]
+    [posts, isOnline]
   );
 
   /**
-   * Handle deepfake detection request for a post
+   * Handle deepfake detection request for a post with caching
    */
   const handleDeepfakeDetection = useCallback(
     async (postId: string) => {
@@ -393,12 +472,49 @@ export const useFeedPosts = ({
           currentPosts.map((p) =>
             p.id === postId
               ? {
-                  ...p,
-                  deepfake_status: "analyzing",
-                }
+                ...p,
+                deepfake_status: "analyzing",
+              }
               : p
           )
         );
+
+        // Generate cache key for this analysis
+        const analysisCacheKey = getUserCacheKey(`deepfake_analysis_${postId}`);
+
+        // Try to get result from cache first
+        const cachedAnalysis = (await CacheManager.get(analysisCacheKey)) as {
+          status: AnalysisStatus;
+          is_deepfake: boolean;
+          deepfake_score: number;
+        } | null;
+        if (cachedAnalysis) {
+          console.log("Using cached deepfake analysis result");
+          updatePostWithAnalysisResult(
+            postId,
+            cachedAnalysis.status,
+            cachedAnalysis.is_deepfake ? "flagged" : "not_flagged",
+            cachedAnalysis.deepfake_score
+          );
+          return true;
+        }
+
+        // If offline with no cache, show message
+        if (!isOnline) {
+          Alert.alert(
+            "Offline Mode",
+            "Deepfake detection requires an internet connection. Please try again when online."
+          );
+
+          // Reset the UI state
+          setPosts((currentPosts) =>
+            currentPosts.map((p) =>
+              p.id === postId ? { ...p, deepfake_status: "not_analyzed" } : p
+            )
+          );
+
+          return false;
+        }
 
         console.log(`Requesting deepfake detection for post ${postId}`);
 
@@ -409,6 +525,10 @@ export const useFeedPosts = ({
             `/deepfake/posts/${postId}/analysis/`
           );
           console.log("Existing analysis found");
+
+          // Cache the result (valid for 24 hours)
+          await CacheManager.set(analysisCacheKey, existingAnalysis.data, 1440);
+
           // Update post with the analysis result
           // {'status': 'completed',
           // 'is_deepfake': True,
@@ -435,6 +555,9 @@ export const useFeedPosts = ({
             const response = await axiosInstance.post(
               `/deepfake/posts/${postId}/analysis/`
             );
+
+            // Cache initial result
+            await CacheManager.set(analysisCacheKey, response.data, 1440);
 
             // Update post with the analysis status
             updatePostWithAnalysisResult(
@@ -466,7 +589,7 @@ export const useFeedPosts = ({
         return false;
       }
     },
-    [posts]
+    [posts, isOnline, getUserCacheKey]
   );
 
   /**
@@ -483,9 +606,9 @@ export const useFeedPosts = ({
       currentPosts.map((p) =>
         p.id === postId
           ? {
-              ...p,
-              deepfake_status: status,
-            }
+            ...p,
+            deepfake_status: status,
+          }
           : p
       )
     );
@@ -499,8 +622,7 @@ export const useFeedPosts = ({
       case "completed":
         Alert.alert(
           "Analysis Completed",
-          `Your content has been analyzed. Result: ${
-            status === "flagged" ? "Potentially manipulated" : "Authentic"
+          `Your content has been analyzed. Result: ${status === "flagged" ? "Potentially manipulated" : "Authentic"
           }`
         );
         break;
@@ -555,6 +677,7 @@ export const useFeedPosts = ({
     hasMore,
     filters,
     getPostsCountByType,
+    handleSearch,
     handleRefresh,
     handleSortChange,
     loadMorePosts,
@@ -567,5 +690,6 @@ export const useFeedPosts = ({
     handleSave,
     handleDeepfakeDetection,
     handleShare,
+    isOffline: !isOnline,
   };
 };

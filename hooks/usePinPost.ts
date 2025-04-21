@@ -8,6 +8,7 @@ interface UsePinnedPostResult {
   pinnedPost: Post | null;
   isLoading: boolean;
   error: Error | null;
+  fetchData: (userId?: number) => Promise<void>;
   refetch: (userId?: number) => Promise<void>;
 }
 
@@ -39,7 +40,7 @@ export const usePinnedPost = (
         setError(null);
 
         // Fetch pinned posts
-        const res = await fetchPinnedPosts(targetUserId, true);
+        const res = await fetchPinnedPosts(targetUserId, true, false);
         const posts = res.map((post: ApiPost) => transformApiPostToPost(post));
 
         // Set the first pinned post or null if none exists
@@ -64,11 +65,45 @@ export const usePinnedPost = (
     }
   }, [userId, initialFetch, fetchData]);
 
+  const refreshPinnedPost = useCallback(
+    async (id?: number) => {
+      // If userId is not provided and no override id is provided, return early
+      if ((!userId && userId == -1) && !id) {
+        return;
+      }
+      const targetUserId = id ?? userId;
+      try {
+        setisLoading(true);
+        setError(null);
+
+        // Fetch pinned posts
+        const res = await fetchPinnedPosts(targetUserId, true, true);
+        const posts = res.map((post: ApiPost) => transformApiPostToPost(post));
+
+        // Set the first pinned post or null if none exists
+        setPinnedPost(posts && posts.length > 0 ? posts[0] : null);
+      } catch (err) {
+        console.error("Failed to fetch pinned post:", err);
+
+        setError(
+          err instanceof Error ? err : new Error("Failed to fetch pinned post")
+        );
+        setPinnedPost(null);
+      }
+      finally {
+        setisLoading(false);
+      }
+    }
+    , [userId]
+  );
+
+
   // Return the pinned post, loading state, error, and refetch function
   return {
     pinnedPost,
     isLoading,
     error,
-    refetch: fetchData,
+    fetchData,
+    refetch: refreshPinnedPost,
   };
 };

@@ -10,16 +10,16 @@ import * as SplashScreen from "expo-splash-screen";
 import { useEffect } from "react";
 import "react-native-reanimated";
 
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { SessionProvider } from "@/components/SessionProvider";
+import { CacheProvider } from "@/components/CacheProvider";
 import { useColorScheme } from "@/hooks/useColorScheme";
 import { View } from "react-native";
 
 export {
   // Catch any errors thrown by the Layout component.
-  ErrorBoundary
+  ErrorBoundary,
 } from "expo-router";
 
 export const unstable_settings = {
@@ -55,7 +55,7 @@ export default function RootLayout() {
 }
 
 function RootLayoutNav() {
-  const insets = useSafeAreaInsets()
+  const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
 
   return (
@@ -67,13 +67,16 @@ function RootLayoutNav() {
         paddingTop: insets.top,
         paddingRight: insets.right,
         paddingBottom: insets.bottom,
-        paddingLeft: insets.left
+        paddingLeft: insets.left,
       }}
     >
       <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
         <SessionProvider>
-          {/* File-based routing: tsx files in this dir is added to stack */}
-          <Stack screenOptions={{ headerShown: false }} />
+          <CacheProvider>
+            {/* This is the main app stack */}
+            {/* File-based routing: tsx files in this dir is added to stack */}
+            <Stack screenOptions={{ headerShown: false }} />
+          </CacheProvider>
         </SessionProvider>
       </ThemeProvider>
     </View>

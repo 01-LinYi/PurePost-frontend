@@ -99,6 +99,7 @@ export function useProfileData({
         if (response) {
           // Save to cache
           await saveProfileToCache(response);
+          console.log(cacheInfo);
           
           // Update profileId state
           if (response.id) {

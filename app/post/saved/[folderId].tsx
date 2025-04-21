@@ -1,8 +1,7 @@
-import React, { useState, useEffect, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import {
   StyleSheet,
   Alert,
-  StatusBar,
   ActivityIndicator,
   TouchableOpacity,
   FlatList,
@@ -11,48 +10,27 @@ import {
   TextInput,
   RefreshControl,
 } from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useLocalSearchParams, useRouter } from "expo-router"
 import { Ionicons } from "@expo/vector-icons";
 import { Text, View } from "@/components/Themed";
 import ActionButton from "@/components/ActionButton";
-import axiosInstance from "@/utils/axiosInstance";
+import { useFolders } from "@/hooks/useFolders";
+import { Post } from "@/types/postType";
+import { SavedFolder } from "@/types/folderType";
 
-// Import existing types from postType.ts
-import { User, Post } from "@/types/postType";
-
-// Define additional types for saved folders
-export interface SavedFolder {
-  id: string;
-  name: string;
-  post_count: number;
-  created_at: string;
-}
-
-export interface SavedPost extends Post {
-  saved_at: string; // When the post was saved
-}
-
-// Create a component for saved post items
 const SavedPostItem = ({
   post,
   onPress,
 }: {
-  post: SavedPost;
+  post: Post & { saved_at?: string };
   onPress: () => void;
 }) => {
-  // Derive title from the first line of post content
   const title = post.content?.split("\n")[0] || "Post";
-  
-  // Create excerpt from post content
-  const excerpt = post.content && post.content.length > title.length 
-    ? post.content.substring(title.length, title.length + 100) 
-    : "No description";
-
-  // Get thumbnail from media if available
-  const thumbnail = post?.image || "https://picsum.photos/100";
-
-  // Format author's first letter for avatar if no image available
+  const excerpt =
+    post.content && post.content.length > title.length
+      ? post.content.substring(title.length, title.length + 100)
+      : "No description";
+  const thumbnail = post?.image || "https://via.placeholder.com/100";
   const authorInitial = post.user.username.charAt(0).toUpperCase();
 
   return (
@@ -62,14 +40,14 @@ const SavedPostItem = ({
       activeOpacity={0.7}
     >
       <Image source={{ uri: thumbnail }} style={styles.postThumbnail} />
-      <View style={[styles.postContent, { backgroundColor: "transparent" }]}>
+      <View style={styles.postContent}>
         <Text style={styles.postTitle} numberOfLines={2}>
           {title}
         </Text>
         <Text style={styles.postExcerpt} numberOfLines={2}>
           {excerpt}
         </Text>
-        <View style={[styles.postMeta, { backgroundColor: "transparent" }]}>
+        <View style={styles.postMeta}>
           {post.user.profile_picture ? (
             <Image
               source={{ uri: post.user.profile_picture }}
@@ -82,7 +60,7 @@ const SavedPostItem = ({
           )}
           <Text style={styles.authorName}>{post.user.username}</Text>
           <Text style={styles.postDate}>
-            {new Date(post.saved_at).toLocaleDateString()}
+            {post.saved_at ? new Date(post.saved_at).toLocaleDateString() : ""}
           </Text>
         </View>
       </View>
@@ -91,129 +69,78 @@ const SavedPostItem = ({
 };
 
 const SavedFolderDetail = () => {
-  const { folderId } = useLocalSearchParams();
-  const [folder, setFolder] = useState<SavedFolder | null>(null);
-  const [posts, setPosts] = useState<SavedPost[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [renameModalVisible, setRenameModalVisible] = useState(false);
-  const [newFolderName, setNewFolderName] = useState("");
-  const [error, setError] = useState<string | null>(null);
-
-  const insets = useSafeAreaInsets();
+  const { folderId } = useLocalSearchParams<{ folderId: string }>();
   const router = useRouter();
 
-  // Fetch folder details from API
-  const fetchFolderDetails = useCallback(async () => {
-    try {
-      const response = await axiosInstance.get(`/saved/folders/${folderId}`);
-      return response.data;
-    } catch (error) {
-      console.error("Error fetching folder details:", error);
-      const errorMessage = (error as any)?.response?.data?.message || "Failed to load folder details";
-      throw new Error(errorMessage);
-    }
-  }, [folderId]);
+  const {
+    renameFolder,
+    deleteFolder,
+    folderDetails,
+    isRenaming,
+    isDeleting,
+    isLoading,
+    error,
+  } = useFolders();
 
-  // Fetch saved posts in folder from API
-  const fetchSavedPosts = useCallback(async () => {
-    try {
-      const response = await axiosInstance.get(`/saved/folders/${folderId}/posts`);
-      return response.data.posts;
-    } catch (error) {
-      console.error("Error fetching saved posts:", error);
-      const errorMessage = (error as any)?.response?.data?.message || "Failed to load saved posts";
-      throw new Error(errorMessage);
-    }
-  }, [folderId]);
 
-  // Load folder data
-  const loadFolderData = useCallback(async (showFullLoading = true) => {
-    try {
-      if (showFullLoading) {
-        setIsLoading(true);
-        setError(null);
-      }
-      
-      const [folderData, postsData] = await Promise.all([
-        fetchFolderDetails(),
-        fetchSavedPosts()
-      ]);
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [folder, setFolder] = useState<SavedFolder | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [postsLoading, setPostsLoading] = useState(true);
 
-      setFolder(folderData);
-      setPosts(postsData);
-    } catch (error) {
-      setError((error as Error).message);
-      console.error("Folder loading error:", error);
+  const [renameModalVisible, setRenameModalVisible] = useState(false);
+  const [newFolderName, setNewFolderName] = useState("");
+
+  const loadPosts = useCallback(async (forceRefresh:boolean) => {
+    if (!folderId) return;
+    setPostsLoading(true);
+    try {
+      const data = await folderDetails(folderId, forceRefresh);
+      console.log("Fetched folder details:", data);
+      setFolder(data.folder);
+      setPosts(data.posts);
+    } catch (err) {
+      Alert.alert("Error", (err as Error).message);
     } finally {
-      setIsLoading(false);
+      setPostsLoading(false);
       setIsRefreshing(false);
     }
-  }, [fetchFolderDetails, fetchSavedPosts]);
+  }, [folderId]);
 
-  // Initial data load
   useEffect(() => {
-    loadFolderData();
-  }, [loadFolderData]);
+    console.log("Loading posts for folder:", folderId);
+    loadPosts(false);
+  }, [loadPosts]);
 
-  // Handle pull-to-refresh
   const handleRefresh = useCallback(() => {
     setIsRefreshing(true);
-    loadFolderData(false);
-  }, [loadFolderData]);
+    loadPosts(true);
+  }, [loadPosts]);
 
-  // Rename folder
   const handleRenameFolder = () => {
     if (!folder) return;
     setNewFolderName(folder.name);
     setRenameModalVisible(true);
   };
 
-  // Confirm rename folder
   const confirmRename = async () => {
     if (!folder || !newFolderName.trim()) return;
-
     try {
-      setIsLoading(true);
-      
-      // Send request to rename folder
-      await axiosInstance.put(`/saved/folders/${folderId}`, {
-        name: newFolderName.trim()
-      });
-
-      // Update the folder name in the state
-      setFolder({
-        ...folder,
-        name: newFolderName.trim(),
-      });
-
-      // Close the modal and reset the state
+      await renameFolder(folder.id, newFolderName.trim());
       setRenameModalVisible(false);
       setNewFolderName("");
-
-      // Display success message
+      handleRefresh();
       Alert.alert("Success", "Folder renamed successfully");
-    } catch (error) {
-      console.error("Error renaming folder:", error);
-      Alert.alert(
-        "Error",
-        (error as any)?.response?.data?.message || "Failed to rename folder"
-      );
-    } finally {
-      setIsLoading(false);
+    } catch (err) {
+      Alert.alert("Error", (err as Error).message || "Failed to rename folder");
     }
   };
 
-  // Navigate to post detail
-  const handlePostPress = (postId: string) => {
-    router.push(`/post/${postId}`);
-  };
-
-  // Delete folder
   const handleDeleteFolder = () => {
+    if (!folder) return;
     Alert.alert(
       "Delete Folder",
-      `Are you sure you want to delete "${folder?.name}"? All saved posts will be removed from this folder.`,
+      `All posts under this folder will be removed and cannot be undone.\n Are you sure you want to delete "${folder.name}"? `,
       [
         { text: "Cancel", style: "cancel" },
         {
@@ -221,25 +148,16 @@ const SavedFolderDetail = () => {
           style: "destructive",
           onPress: async () => {
             try {
-              setIsLoading(true);
-              
-              // Send request to delete folder
-              await axiosInstance.delete(`/saved/folders/${folderId}`);
-
-              // Navigate back after deletion
+              await deleteFolder(folder.id);
               router.replace("/post/saved");
-
-              // Show success message
               setTimeout(() => {
                 Alert.alert("Success", "Folder deleted successfully");
               }, 500);
-            } catch (error) {
-              console.error("Error deleting folder:", error);
+            } catch (err) {
               Alert.alert(
                 "Error",
-                (error as any)?.response?.data?.message || "Failed to delete folder"
+                (err as Error).message || "Failed to delete folder"
               );
-              setIsLoading(false);
             }
           },
         },
@@ -247,55 +165,13 @@ const SavedFolderDetail = () => {
     );
   };
 
-  // Remove post from folder
-  const handleRemovePost = (postId: string) => {
-    Alert.alert(
-      "Remove from Folder",
-      "Are you sure you want to remove this post from this folder?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Remove",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              setIsLoading(true);
-              
-              // Send request to remove post from folder
-              await axiosInstance.delete(`/saved/folders/${folderId}/posts/${postId}`);
-              
-              // Update the posts list
-              setPosts(posts.filter(post => post.id !== postId));
-              
-              // Update folder post count
-              if (folder) {
-                setFolder({
-                  ...folder,
-                  post_count: folder.post_count - 1
-                });
-              }
-              
-              setIsLoading(false);
-              
-              // Show success message
-              Alert.alert("Success", "Post removed from folder");
-            } catch (error) {
-              console.error("Error removing post:", error);
-              Alert.alert(
-                "Error",
-                (error as any)?.response?.data?.message || "Failed to remove post"
-              );
-              setIsLoading(false);
-            }
-          },
-        },
-      ]
-    );
+  const handlePostPress = (postId: string) => {
+    router.push(`/post/${postId}`);
   };
 
-  // Empty state component
+
   const renderEmptyState = () => (
-    <View style={[styles.emptyState, { backgroundColor: "transparent" }]}>
+    <View style={styles.emptyState}>
       <Ionicons name="document-text-outline" size={60} color="#aaa" />
       <Text style={styles.emptyText}>No posts in this folder yet</Text>
       <Text style={styles.emptySubText}>
@@ -304,8 +180,8 @@ const SavedFolderDetail = () => {
     </View>
   );
 
-  // Loading state
-  if (isLoading && !isRefreshing) {
+  // Loading
+  if (isLoading || postsLoading) {
     return (
       <View style={[styles.container, styles.centerContent]}>
         <ActivityIndicator size="large" color="#00c5e3" />
@@ -313,14 +189,17 @@ const SavedFolderDetail = () => {
     );
   }
 
-  // Error state
+  // Error
   if (error && !folder) {
     return (
       <View style={[styles.container, styles.centerContent]}>
         <Text style={styles.errorText}>{error}</Text>
         <ActionButton
           text="Try Again"
-          onPress={() => loadFolderData()}
+          onPress={() => {
+            handleRefresh();
+            loadPosts(true);
+          }}
           style={styles.tryAgainButton}
           textStyle={styles.tryAgainButtonText}
         />
@@ -334,48 +213,35 @@ const SavedFolderDetail = () => {
     );
   }
 
-  // Render main content
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-
-      <View
-        style={[
-          styles.header,
-          { paddingTop: insets.top + 10, backgroundColor: "transparent" },
-        ]}
-      >
+      <View style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => router.back()}
         >
           <Ionicons name="arrow-back" size={24} color="#333" />
         </TouchableOpacity>
-
-        <View
-          style={[styles.titleContainer, { backgroundColor: "transparent" }]}
-        >
-          <Text style={styles.title}>{folder?.name || "Loading..."}</Text>
+        <View style={styles.titleContainer}>
+          <Text style={styles.title}>{folder?.name || "Folder" }</Text>
           <Text style={styles.subtitle}>
-            {folder ? `${folder.post_count} posts` : ""}
+            {folder
+              ? `${folder.postCount ?? 0} posts`
+              : ""}
           </Text>
         </View>
-
-        <View
-          style={[styles.actionButtons, { backgroundColor: "transparent" }]}
-        >
+        <View style={styles.actionButtons}>
           <TouchableOpacity
             style={styles.actionButton}
             onPress={handleRenameFolder}
-            disabled={isLoading}
+            disabled={isRenaming}
           >
             <Ionicons name="pencil" size={22} color="#00c5e3" />
           </TouchableOpacity>
-
           <TouchableOpacity
             style={styles.actionButton}
             onPress={handleDeleteFolder}
-            disabled={isLoading}
+            disabled={isDeleting}
           >
             <Ionicons name="trash-outline" size={22} color="#FF6B6B" />
           </TouchableOpacity>
@@ -385,10 +251,7 @@ const SavedFolderDetail = () => {
       <FlatList
         data={posts}
         renderItem={({ item }) => (
-          <SavedPostItem 
-            post={item} 
-            onPress={() => handlePostPress(item.id)} 
-          />
+          <SavedPostItem post={item} onPress={() => handlePostPress(item.id)} />
         )}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.postList}
@@ -422,19 +285,22 @@ const SavedFolderDetail = () => {
               autoFocus
               maxLength={50}
             />
-            <View
-              style={[styles.modalButtons, { backgroundColor: "transparent" }]}
-            >
+            <View style={styles.modalButtons}>
               <TouchableOpacity
                 style={[styles.modalButton, styles.cancelButton]}
                 onPress={() => setRenameModalVisible(false)}
+                disabled={isRenaming}
               >
                 <Text style={styles.cancelButtonText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.modalButton, styles.confirmButton]}
                 onPress={confirmRename}
-                disabled={!newFolderName.trim() || newFolderName.trim() === folder?.name}
+                disabled={
+                  isRenaming ||
+                  !newFolderName.trim() ||
+                  newFolderName.trim() === folder?.name
+                }
               >
                 <Text style={styles.confirmButtonText}>Save</Text>
               </TouchableOpacity>
@@ -442,12 +308,6 @@ const SavedFolderDetail = () => {
           </View>
         </View>
       </Modal>
-      
-      {isLoading && (
-        <View style={styles.loadingOverlay}>
-          <ActivityIndicator size="large" color="#00c5e3" />
-        </View>
-      )}
     </View>
   );
 };
@@ -463,21 +323,22 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: "row",
+    justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 16,
-    paddingBottom: 16,
+    paddingHorizontal: 10,
+    paddingBottom: 10,
     borderBottomWidth: 1,
     borderBottomColor: "#f0f0f0",
   },
   backButton: {
-    padding: 8,
-    marginRight: 8,
+    padding: 5,
+    flexDirection: "row",
   },
   titleContainer: {
     flex: 1,
   },
   title: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: "bold",
     color: "#333",
   },
@@ -674,14 +535,14 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   loadingOverlay: {
-    position: 'absolute',
+    position: "absolute",
     left: 0,
     right: 0,
     top: 0,
     bottom: 0,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.7)',
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255, 255, 255, 0.7)",
   },
 });
 

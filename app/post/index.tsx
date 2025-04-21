@@ -6,7 +6,7 @@ import {
   FlatList,
   TouchableOpacity,
 } from "react-native";
-import { useRouter } from "expo-router";
+import { Redirect, useRouter } from "expo-router";
 
 // This is a development homepage for the post/ directory
 export default function PostsIndex() {
@@ -28,6 +28,8 @@ export default function PostsIndex() {
     // Uncomment to enable redirect
     router.push("/post/create");
   }, []);
+
+  return <Redirect href="/post/create" />;
 
   return (
     <View style={styles.container}>
