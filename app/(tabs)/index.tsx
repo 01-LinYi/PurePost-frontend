@@ -4,18 +4,16 @@ import {
   TextInput,
   FlatList,
   SafeAreaView,
-  StatusBar,
   Platform,
   RefreshControl,
   ActivityIndicator,
   Alert,
 } from "react-native";
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback} from "react";
 import { useRouter } from "expo-router";
 import { Text, View } from "@/components/Themed";
 import { Ionicons } from "@expo/vector-icons";
 import { useSession } from "@/components/SessionProvider";
-import { BlurView } from "expo-blur";
 import { SearchField, useFeedPosts } from "@/hooks/useFeedPosts";
 import FeedPostItem from "@/components/post/FeedPostItem";
 import FeedHeader from "@/components/post/FeedHeader";
@@ -23,19 +21,16 @@ import FolderSelectorModal from "@/components/folder/FolderSelectorModal";
 import { useFolders } from "@/hooks/useFolders";
 import { SavedFolder } from "@/types/folderType";
 import { unSavePost } from "@/utils/api";
+import useFolderModal from "@/hooks/useFolderModal";
 
 /**
  * Home Screen that displays the social feed with posts
  */
 export default function HomeScreen() {
   const [searchQuery, setSearchQuery] = useState("");
-  const [scrollPosition, setScrollPosition] = useState(0);
-  const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
-  const [foldermodalVisible, setFolderModalVisible] = useState(false);
-  const [selectionError, setSelectorError] = useState<string | null>(null);
-  const [collecting, setCollecting] = useState(false);
   const { logOut } = useSession();
   const router = useRouter();
+  const folderModal = useFolderModal();
 
   // Use custom hook to handle posts data and operations, similar to useMyPosts hook
   const {
@@ -51,77 +46,50 @@ export default function HomeScreen() {
   } = useFeedPosts();
 
   // Use custom hook to handle folders data and operations
-  const {
-    folders,
-    isLoading: foldersLoading,
-    error: foldersError,
-    refresh: refreshFolders,
-    toggleSaveFolder,
-    createFolder,
-    isCreating,
-  } = useFolders({
+  const { folders, toggleSaveFolder, createFolder, isCreating } = useFolders({
     forceRefresh: true,
   });
 
-  // Scroll handler for floating header
-  const handleScroll = useCallback((event: any) => {
-    setScrollPosition(event.nativeEvent.contentOffset.y);
-  }, []);
-
-  const handleOpenSelector = (postId: string) => {
-    setSelectedPostId(postId);
-    setFolderModalVisible(true);
-  };
-
+  const handleOpenSelector = (postId: string) => folderModal.openModal(postId);
   const handleSelectFolder = async (folder: SavedFolder) => {
-    if (!selectedPostId) return;
-    setCollecting(true);
-    setSelectorError(null);
+    if (!folderModal.selectedId) return;
+    folderModal.setLoading(true);
+    folderModal.setError(null);
     try {
-      await toggleSaveFolder(selectedPostId, folder.id);
-      setFolderModalVisible(false);
-      // toast("Success")
+      await toggleSaveFolder(folderModal.selectedId, folder.id);
+      folderModal.closeModal();
+      // Send notification here
     } catch (e) {
-      setSelectorError("Save failed, please try again");
+      folderModal.setError("Save failed, please try again");
     }
-    setCollecting(false);
-    setSelectedPostId(null);
-    handleRefresh();
+    folderModal.setLoading(false);
   };
 
   const handleCreateFolder = async (name: string) => {
-    setSelectorError(null);
     try {
       await createFolder(name);
-      await refreshFolders();
+      await handleRefresh();
     } catch (e) {
-      setSelectorError("Create failed, please try again");
+      folderModal.setError("Create failed, please try again");
       throw e;
     }
   };
 
   const handleUnsave = async (postId: string) => {
-    setCollecting(true);
-    setSelectorError(null);
+    folderModal.setLoading(true);
     try {
       await unSavePost(postId);
-      // toast("Success")
+      // send notification here
     } catch (e) {
-      setSelectorError("Unsave failed, please try again");
+      folderModal.setError("Unsave failed, please try again");
     }
-    setCollecting(false);
-    setSelectedPostId(null);
     handleRefresh();
+    folderModal.setLoading(false);
   };
 
   // Navigation handlers
-  const navigateToPost = (postId: string) => {
-    router.push(`/post/${postId}`);
-  };
-
-  const navigateToCreatePost = () => {
-    router.push("/post/create");
-  };
+  const navigateToPost = (postId: string) => router.push(`/post/${postId}`);
+  const navigateToCreatePost = () => router.push("/post/create");
 
   const handleLogOut = async () => {
     const error = await logOut();
@@ -141,22 +109,6 @@ export default function HomeScreen() {
       </TouchableOpacity>
     </View>
   );
-
-  // Floating header for better UX when scrolling
-  const renderFloatingHeader = useMemo(() => {
-    if (scrollPosition <= 10) return null;
-
-    return (
-      <BlurView intensity={80} style={styles.floatingHeader}>
-        <Text style={styles.floatingHeaderTitle}>Social Feed</Text>
-        <View style={styles.floatingHeaderRight}>
-          <TouchableOpacity style={styles.headerButton}>
-            <Ionicons name="notifications-outline" size={22} color="#00c5e3" />
-          </TouchableOpacity>
-        </View>
-      </BlurView>
-    );
-  }, [scrollPosition]);
 
   // Empty state component
   const EmptyStateComponent = useCallback(
@@ -189,10 +141,12 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" />
-
       {/* Header */}
-      <FeedHeader onLogOut={handleLogOut} onCreatePost={navigateToCreatePost} />
+      <FeedHeader
+        onLogOut={handleLogOut}
+        onCreatePost={navigateToCreatePost}
+        onNotifications={() => {}}
+      />
 
       {/* Search Bar */}
       <View style={styles.searchContainer}>
@@ -249,8 +203,7 @@ export default function HomeScreen() {
           )}
           keyExtractor={(item) => item.id.toString()}
           contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={false}
-          onScroll={handleScroll}
+          showsVerticalScrollIndicator={true}
           scrollEventThrottle={16}
           refreshControl={
             <RefreshControl
@@ -264,9 +217,6 @@ export default function HomeScreen() {
         />
       )}
 
-      {/* Floating header that appears when scrolling */}
-      {/*renderFloatingHeader*/}
-
       {/* Loading overlay */}
       {isLoading && !isRefreshing && (
         <View style={styles.loadingOverlay}>
@@ -275,14 +225,14 @@ export default function HomeScreen() {
       )}
       {/* Folder selector modal */}
       <FolderSelectorModal
-        visible={foldermodalVisible}
+        visible={folderModal.modalVisible}
         folders={folders}
         onSelect={handleSelectFolder}
         onCreate={handleCreateFolder}
-        onClose={() => setFolderModalVisible(false)}
+        onClose={folderModal.closeModal}
         isCreating={isCreating}
-        isCollecting={collecting}
-        error={selectionError || foldersError}
+        isCollecting={folderModal.loading}
+        error={folderModal.errorMsg || error}
       />
     </SafeAreaView>
   );
