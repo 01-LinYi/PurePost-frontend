@@ -1,18 +1,12 @@
 import { useCallback, useState, useEffect } from "react";
 import { ReportTargetType } from "@/types/reportType";
-import { reportPost } from "@/utils/api";
-import { useAppCache } from "@/components/CacheProvider";
-import { CacheManager } from "@/utils/cache/cacheManager";
-
-const REPORTED_IDS_KEY = "reportedIds";
-const CACHE_DURATION = 1000 * 60 * 10; // 10 minutes
+import { reportPost, fetchMyReports } from "@/utils/api";
 
 export default function useReport() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [reportedIds, setReportedIds] = useState<Set<number>>(new Set());
-  const cache = useAppCache();
 
   const submitReport = useCallback(
     async (
@@ -52,7 +46,7 @@ export default function useReport() {
         }
         await apiFn(targetId, reason, additionalInfo);
         setSuccess(true);
-        addReportedId(Number(targetId));
+        await updateReportedIds(true);
         if (onSuccess) {
           onSuccess();
         }
@@ -65,42 +59,44 @@ export default function useReport() {
     },
     []
   );
-  const cacheKey = cache.getUserCacheKey(REPORTED_IDS_KEY);
-
   useEffect(() => {
     const load = async () => {
-      const stored = await CacheManager.get<number[]>(cacheKey);
-      if (stored && Array.isArray(stored)) {
-        setReportedIds(new Set(stored));
-      }
-      setLoading(false);
+      await updateReportedIds(true);
     };
     load();
-  }, [cacheKey]);
-
-  const syncToCache = async (set: Set<number>) => {
-    const data = [...set];
-    const expiry = Date.now() + CACHE_DURATION;
-    await CacheManager.set(cacheKey, { data, expiry });
-  };
-
-  const addReportedId = async (id: number) => {
-    setReportedIds((prev) => {
-      if (prev.has(id)) return prev;
-      const updated = new Set(prev);
-      updated.add(id);
-      syncToCache(updated);
-      return updated;
-    });
-  };
-
-  const isReported = useCallback((targetId: string, type: ReportTargetType) => {
-    const id = Number(targetId);
-    if (type === "post" && reportedIds.has(id)) {
-      return true;
-    }
-    return false;
   }, []);
 
-  return { submitReport, loading, error, success, isReported };
+  const updateReportedIds = async (forceRefresh?: boolean) => {
+    const res = await fetchMyReports(forceRefresh);
+    if (res.status !== 200) {
+      setError("Failed to fetch reported posts");
+      return new Set<number>();
+    }
+    //console.log("Fetched reports :", res.data.results);
+    const ids = res.data.results.map((item: any) => item.post_id);
+    // console.log("Fetched reported IDs:", res.data.results.map((item:any) => item.post.id));
+    const newReportedIds = new Set<number>(ids);
+    setReportedIds(newReportedIds)
+    return newReportedIds;
+  };
+
+  const isReported = useCallback(
+    (targetId: string, type: ReportTargetType) => {
+      const id = Number(targetId);
+      if (type === "post" && reportedIds.has(id)) {
+        return true;
+      }
+      return false;
+    },
+    [reportedIds]
+  );
+
+  return {
+    submitReport,
+    loading,
+    error,
+    success,
+    updateReportedIds,
+    reportedIds,
+  };
 }

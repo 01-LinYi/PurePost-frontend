@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from "react";
 import {
-  Modal,
   TouchableOpacity,
   TextInput,
   ActivityIndicator,
   StyleSheet,
-  Alert,
 } from "react-native";
+import Modal from "react-native-modal";
 import { Text, View } from "@/components/Themed";
 import { ReportTargetType, ReasonItem } from "@/types/reportType";
 import { DEFAULT_REASONS_MAP } from "@/constants/DefaultReport";
@@ -68,12 +67,16 @@ export default function ReportModal({
 
   return (
     <Modal
-      visible={visible}
-      transparent
-      animationType="slide"
-      onRequestClose={onClose}
+      isVisible={visible}
+      onBackdropPress={onClose}
+      onSwipeComplete={onClose}
+      swipeDirection="down"
+      animationIn="slideInUp"
+      animationOut="slideOutDown"
+      backdropOpacity={0.5}
+      style={styles.modal}
+      useNativeDriver={true}
     >
-      <View style={styles.overlay}>
         <View style={styles.container}>
           <Text style={styles.title}>Report</Text>
           <Text style={styles.subtitle}>Please select a reason:</Text>
@@ -136,20 +139,17 @@ export default function ReportModal({
             </TouchableOpacity>
           </View>
         </View>
-      </View>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.4)",
-    justifyContent: "center",
-    alignItems: "center",
+  modal: {
+    justifyContent: 'flex-end',
+    margin: 0,
   },
   container: {
-    width: "85%",
+    width: "100%",
     backgroundColor: "#fff",
     borderRadius: 12,
     padding: 20,

@@ -56,7 +56,6 @@ export default function ProfileContainer({
         showBackButton={!isOwnProfile}
         isOwnProfile={isOwnProfile}
         scrollY={scrollY}
-        showBackButton={!isOwnProfile}
       />
 
       <ProfileView

@@ -709,3 +709,24 @@ export const reportPost = async (
     }
   }
 };
+
+export const fetchMyReports = async (
+  forceRefresh: boolean = false
+): Promise<any> => {
+  try {
+    const res = getApi(
+      `/content/reports/my_reports/`,
+      {},
+      {
+        skipCache: false,
+        cacheTtlMinutes: 5,
+        forceRefresh: forceRefresh,
+      }
+    );
+    return res;
+  } catch (error: any) {
+    if (error && isAxiosError(error)){
+      console.debug("Error fetching reports:", error.response?.data);
+    }
+  }
+};

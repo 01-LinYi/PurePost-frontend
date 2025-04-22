@@ -11,7 +11,7 @@ export default function useReportModal() {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const { submitReport, error } = useReport();
+  const { submitReport } = useReport();
 
   /**
    * Open modal for a given target id and type.
@@ -39,7 +39,7 @@ export default function useReportModal() {
    */
   const report = useCallback(
     async (reason: string, extraInfo?: string) => {
-      if (!target) return;
+      if (!target || loading) return;
       setLoading(true);
       setErrorMsg(null);
       try {
@@ -48,14 +48,17 @@ export default function useReportModal() {
             setErrorMsg("Report submitted successfully.");
           }
         );
-        closeModal();
+        setTimeout(() => {
+          closeModal();
+        }
+        , 100);
       } catch (e:any) {
         if (e instanceof Error) {
           setErrorMsg(e.message);
         }
-      }
-      setLoading(false);
-    },
+      } finally {
+        setLoading(false);
+      }},
     [target, submitReport, closeModal]
   );
 

@@ -55,7 +55,7 @@ export default function HomeScreen() {
 
   useEffect(() => {
     if (!reportModal.errorMsg) return;
-    if (reportModal.errorMsg === "Report submitted successfully.") {
+    if (reportModal.errorMsg === ("Report submitted successfully.")) {
       Alert.alert("Report Submitted!", "Thank you for your report", [
         {
           text: "OK",

@@ -17,6 +17,7 @@ import { useAppCache } from "@/components/CacheProvider";
 import { CacheManager } from "@/utils/cache/cacheManager";
 import useReport from "@/hooks/useReport";
 import { getApi } from "@/utils/api";
+import { all } from "axios";
 
 interface UseFeedPostsProps {
   limit?: number;
@@ -53,7 +54,7 @@ export const useFeedPosts = ({
 
   // Get cache and network utilities
   const { isOnline, getUserCacheKey } = useAppCache();
-  const { isReported } = useReport();
+  const { updateReportedIds} = useReport();
 
   /**
    * Fetch feed posts from the API with caching
@@ -87,8 +88,6 @@ export const useFeedPosts = ({
           ...filters,
         };
 
-        console.log("Feed Page params:", params);
-
         // Use cached API with options
         const response = await getApi(endpoint, params, {
           cacheTtlMinutes: 5, // 5 minute cache for feed
@@ -109,12 +108,14 @@ export const useFeedPosts = ({
           setHasMore(apiPosts.length === limit && count > pageNum * limit);
         }
 
-        // Can be improved here: filer the reported posts
-        const newPosts = apiPosts
-          .map(transformApiPostToPost)
-          .filter((post) => !isReported(post.id, "post"));
-
-        console.log("Drop post reported by current user");
+        // Can be improved here: filter the reported posts
+        const reportedIds = await updateReportedIds(forceRefresh);
+        console.log("Reported IDs:", reportedIds);
+        const allPosts = apiPosts.map(transformApiPostToPost);
+        console.log("Fetched posts:", allPosts.map((post) => post.id));
+        const newPosts = allPosts.filter(
+          (post) => !reportedIds.has(Number(post.id))
+        );
         console.log(
           `Found ${newPosts.length} feed posts out of ${count} total`
         );
