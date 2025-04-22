@@ -11,6 +11,7 @@ import {
   TouchableOpacity,
   Text as Text,
   Switch,
+  Modal,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { Ionicons } from "@expo/vector-icons";
@@ -21,6 +22,8 @@ import { formatUploadFileName } from "@/utils/formatUploadFileName";
 import MediaPreview from "@/components/MediaPreview";
 import ActionButton from "@/components/ActionButton";
 import { Media } from "@/types/postType";
+import DateTimePicker from '@react-native-community/datetimepicker';
+
 
 const getMediaType = (uri: string): string => {
   const uriLower = uri.toLowerCase();
@@ -58,6 +61,11 @@ const CreatePost = () => {
   const [tagInput, setTagInput] = useState<string>("");
   const [tags, setTags] = useState<string[]>([]);
   const [showCaptionAndTags, setShowCaptionAndTags] = useState<boolean>(false);
+  const [isScheduled, setIsScheduled] = useState<boolean>(false);
+  const [scheduledDate, setScheduledDate] = useState<Date>(new Date());
+  const [showDatePicker, setShowDatePicker] = useState<boolean>(false);
+  const [showTimePicker, setShowTimePicker] = useState<boolean>(false);
+  const [showScheduleModal, setShowScheduleModal] = useState<boolean>(false);
 
   useEffect(() => {
     const checkForDraft = async () => {
@@ -389,6 +397,56 @@ const CreatePost = () => {
     setTags(tags.filter(tag => tag !== tagToRemove));
   }, [tags]);
 
+
+  // For the scheduling toggle:
+  const toggleScheduled = useCallback(() => {
+    setIsScheduled(!isScheduled);
+    
+    // If enabling scheduling, set a default time (30 minutes from now)
+    if (!isScheduled) {
+      const defaultScheduleTime = new Date();
+      defaultScheduleTime.setMinutes(defaultScheduleTime.getMinutes() + 30);
+      setScheduledDate(defaultScheduleTime);
+    }
+  }, [isScheduled]);
+
+  // A single handler for all date/time changes:
+  const handleDateTimeChange = useCallback((event: any, selectedDateTime?: Date) => {
+    // Hide the picker
+    if (Platform.OS === 'android') {
+      setShowDatePicker(false);
+      setShowTimePicker(false);
+    }
+    
+    if (selectedDateTime) {
+      setScheduledDate(selectedDateTime);
+    }
+  }, []);
+
+  // A single function to open the date/time selector:
+  const openDateTimePicker = useCallback((mode: 'date' | 'time') => {
+    if (Platform.OS === 'android') {
+      // On Android, we need to show one at a time
+      if (mode === 'date') {
+        setShowDatePicker(true);
+        setShowTimePicker(false);
+      } else {
+        setShowDatePicker(false);
+        setShowTimePicker(true);
+      }
+    } else {
+      // On iOS, we can manage this in the modal
+      setShowScheduleModal(true);
+      if (mode === 'date') {
+        setShowDatePicker(true);
+        setShowTimePicker(false);
+      } else {
+        setShowDatePicker(false);
+        setShowTimePicker(true);
+      }
+    }
+  }, []);
+
   const handlePost = useCallback(async () => {
     if (!postText.trim() && !media) {
       Alert.alert(
@@ -398,15 +456,57 @@ const CreatePost = () => {
       return;
     }
 
+    // Validate scheduled date is in the future if scheduling
+    if (isScheduled) {
+      const now = new Date();
+      if (scheduledDate <= now) {
+        Alert.alert(
+          "Invalid Schedule Time",
+          "Please schedule your post for a future date and time."
+        );
+        return;
+      }
+      
+      // Ensure it's at least 10 minutes in the future
+      const minScheduleTime = new Date();
+      minScheduleTime.setMinutes(minScheduleTime.getMinutes() + 10);
+      
+      if (scheduledDate < minScheduleTime) {
+        Alert.alert(
+          "Schedule Too Soon",
+          "Please schedule your post at least 10 minutes in the future."
+        );
+        return;
+      }
+    }
+
     try {
       setIsLoading(true);
 
       // ADDED: Check if we're publishing a draft
     if (draftId)
     {
-        const response = await axiosInstance.post(`/content/posts/${draftId}/publish/`);
+        // Different endpoint based on whether scheduling or publishing immediately
+        const endpoint = isScheduled 
+        ? `/content/posts/${draftId}/schedule/` 
+        : `/content/posts/${draftId}/publish/`;
         
-        Alert.alert("Success", "Your post has been published!", [
+        const data = isScheduled ? { scheduled_for: scheduledDate.toISOString() } : {};
+        
+        const response = await axiosInstance.post(endpoint, data);
+        
+        const successMessage = isScheduled 
+          ? `Your post has been scheduled for ${scheduledDate.toLocaleString(undefined, { 
+            month: 'short', 
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit' 
+          })}!` 
+          : "Your post has been published!";
+        
+        // const response = await axiosInstance.post(`/content/posts/${draftId}/publish/`);
+        
+        Alert.alert("Success", successMessage, [
           {
             text: "View Post",
             onPress: () => router.push(`/post/${response.data.id}`),
@@ -442,6 +542,12 @@ const CreatePost = () => {
         {
           formData.append("tags", JSON.stringify(tags));
         }
+
+        // Include scheduled date if scheduling is enabled
+        if (isScheduled)
+        {
+          formData.append("scheduled_for", scheduledDate.toISOString());
+        }
       
 
         if (media) {
@@ -472,7 +578,16 @@ const CreatePost = () => {
         });
         console.log("Post created:", response.data);
 
-        Alert.alert("Success", "Your post has been published!", [
+        const successMessage = isScheduled 
+        ? `Your post has been scheduled for ${scheduledDate.toLocaleString(undefined, { 
+          month: 'short', 
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit' 
+        })}!` 
+        : "Your post has been published!";
+
+        Alert.alert("Success", successMessage, [
             {
             text: "View Post",
             onPress: () => router.push(`/post/${response.data.id}`),
@@ -493,6 +608,7 @@ const CreatePost = () => {
         setTags([]);
         setTagInput("");
         setShowCaptionAndTags(false);
+        setIsScheduled(false);
       }
     } catch (error) {
       const errorMessage =
@@ -506,7 +622,8 @@ const CreatePost = () => {
       setIsLoading(false);
     }
   }, [postText, media, visibility, hasDisclaimer, disclaimerText,
-    caption, tags, tagInput, showCaptionAndTags, draftId]);
+    caption, tags, tagInput, showCaptionAndTags, draftId,
+    isScheduled, scheduledDate]);
 
   // Added isSaving to disabled state checks
   const isPostDisabled = (!postText.trim() && !media) || isLoading || isSaving;
@@ -675,6 +792,43 @@ const CreatePost = () => {
           </View>
         )}
 
+        {/* Schedule Toggle */}
+        <View style={styles.scheduleToggleContainer}>
+          <View style={styles.scheduleToggleRow}>
+            <View style={styles.scheduleLabelContainer}>
+              <Ionicons name="calendar-outline" size={20} color="#00c5e3" />
+              <Text style={styles.scheduleLabel}>Schedule Post</Text>
+            </View>
+            <Switch
+              value={isScheduled}
+              onValueChange={toggleScheduled}
+              trackColor={{ false: "#e0e0e0", true: "#00c5e3" }}
+              thumbColor={isScheduled ? "#00c5e3" : "#f4f3f4"}
+              ios_backgroundColor="#f9f9f9"
+            />
+          </View>
+          
+          {/* Schedule Information (only shown when scheduling is enabled) */}
+          {isScheduled && (
+            <TouchableOpacity 
+              style={styles.scheduleDateButton}
+              onPress={() => setShowScheduleModal(true)}
+            >
+              <Ionicons name="time-outline" size={18} color="#666666" />
+              <Text style={styles.scheduleDateText}>
+                {scheduledDate.toLocaleString(undefined, { 
+                  month: 'short', 
+                  day: 'numeric',
+                  year: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit'
+                })}
+              </Text>
+              <Ionicons name="chevron-forward-outline" size={18} color="#666666" />
+            </TouchableOpacity>
+          )}
+        </View>
+
         <View style={styles.visibilityContainer}>
           <TouchableOpacity
             style={styles.visibilityButton}
@@ -762,6 +916,122 @@ const CreatePost = () => {
             Supported formats: JPG, JPEG, PNG, GIF, MP4, MOV, AVI, WMV
           </Text>
         </View>
+
+        {/* Schedule Date/Time Modal - simplifies the iOS vs Android approach */}
+        <Modal
+          visible={showScheduleModal}
+          transparent={true}
+          animationType="slide"
+          onRequestClose={() => setShowScheduleModal(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Schedule Post</Text>
+                <TouchableOpacity onPress={() => setShowScheduleModal(false)}>
+                  <Ionicons name="close-outline" size={24} color="#333" />
+                </TouchableOpacity>
+              </View>
+              
+              {/* Date and Time Info */}
+              <View style={styles.scheduleSummary}>
+                <Text style={styles.scheduleSummaryText}>
+                  Your post will be published on:
+                </Text>
+                <Text style={styles.scheduleDateDisplay}>
+                  {scheduledDate.toLocaleDateString(undefined, {
+                    weekday: 'long',
+                    month: 'long', 
+                    day: 'numeric',
+                    year: 'numeric'
+                  })}
+                </Text>
+                <Text style={styles.scheduleTimeDisplay}>
+                  {scheduledDate.toLocaleTimeString(undefined, {
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })}
+                </Text>
+              </View>
+              
+              {/* Date/Time Picker Buttons */}
+              <View style={styles.pickerButtonsRow}>
+                <TouchableOpacity 
+                  style={styles.pickerButton}
+                  onPress={() => openDateTimePicker('date')}
+                >
+                  <Ionicons name="calendar-outline" size={20} color="#00c5e3" />
+                  <Text style={styles.pickerButtonText}>Change Date</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity 
+                  style={styles.pickerButton}
+                  onPress={() => openDateTimePicker('time')}
+                >
+                  <Ionicons name="time-outline" size={20} color="#00c5e3" />
+                  <Text style={styles.pickerButtonText}>Change Time</Text>
+                </TouchableOpacity>
+              </View>
+              
+              {/* The actual pickers - rendering depends on platform and state */}
+              {(Platform.OS === 'ios') && (
+                <>
+                  {showDatePicker && (
+                    <DateTimePicker
+                      value={scheduledDate}
+                      mode="date"
+                      display="spinner"
+                      onChange={handleDateTimeChange}
+                      minimumDate={new Date()}
+                    />
+                  )}
+                  
+                  {showTimePicker && (
+                    <DateTimePicker
+                      value={scheduledDate}
+                      mode="time"
+                      display="spinner"
+                      onChange={handleDateTimeChange}
+                      minuteInterval={5}
+                    />
+                  )}
+                </>
+              )}
+              
+              <TouchableOpacity 
+                style={styles.confirmScheduleButton}
+                onPress={() => {
+                  setShowScheduleModal(false);
+                  setShowDatePicker(false);
+                  setShowTimePicker(false);
+                }}
+              >
+                <Text style={styles.confirmScheduleButtonText}>Confirm Schedule</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+
+        {/* We still need Android pickers outside the modal since they show as dialogs */}
+        {(Platform.OS === 'android') && showDatePicker && (
+          <DateTimePicker
+            value={scheduledDate}
+            mode="date"
+            display="default"
+            onChange={handleDateTimeChange}
+            minimumDate={new Date()}
+          />
+        )}
+
+        {(Platform.OS === 'android') && showTimePicker && (
+          <DateTimePicker
+            value={scheduledDate}
+            mode="time"
+            display="default"
+            onChange={handleDateTimeChange}
+            minuteInterval={5}
+          />
+        )}
 
         {/* Back to Tabs Button */}
         <TouchableOpacity
@@ -1079,6 +1349,204 @@ const styles = StyleSheet.create({
     marginLeft: 8,
     fontSize: 16,
     fontWeight: "600",
+  },
+  // Schedule Toggle Styles
+  scheduleToggleContainer: {
+    marginBottom: 12,
+    backgroundColor: "#f9f9f9",
+    borderRadius: 8,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: "#00c5e3",
+  },
+  scheduleToggleRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: "#f9f9f9",
+  },
+  scheduleLabelContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#f9f9f9",
+  },
+  scheduleLabel: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#00c5e3",
+    backgroundColor: "#f9f9f9",
+    marginLeft: 8,
+  },
+  scheduleDateButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
+    marginTop: 12,
+    padding: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#e0e0e0",
+  },
+  scheduleDateText: {
+    flex: 1,
+    fontSize: 14,
+    color: "#333333",
+    marginLeft: 8,
+  },
+
+  scheduleSummary: {
+    alignItems: 'center',
+    marginBottom: 20,
+    padding: 15,
+    backgroundColor: '#f0f8fa',
+    borderRadius: 8,
+    borderLeftWidth: 3,
+    borderLeftColor: '#00c5e3',
+  },
+  scheduleSummaryText: {
+    fontSize: 14,
+    color: '#666666',
+    marginBottom: 6,
+  },
+  scheduleDateDisplay: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333333',
+    marginBottom: 4,
+  },
+  scheduleTimeDisplay: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333333',
+  },
+
+  pickerButtonsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+  },
+  pickerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#f0f8fa',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#00c5e3',
+    flex: 0.48,
+  },
+  pickerButtonText: {
+    fontSize: 14,
+    color: '#00c5e3',
+    fontWeight: '500',
+    marginLeft: 6,
+  },
+
+  // Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 20,
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: -2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 10,
+      },
+      android: {
+        elevation: 10,
+      },
+    }),
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333333',
+  },
+
+  // iOS-specific date picker styles
+  iosPickerContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+  },
+  datePickerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f0f8fa',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    flex: 0.48,
+  },
+  datePickerButtonText: {
+    fontSize: 14,
+    color: '#333333',
+    marginLeft: 8,
+  },
+
+  // Android-specific date picker styles
+  androidPickerInfo: {
+    marginBottom: 20,
+  },
+  androidPickerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  androidPickerText: {
+    fontSize: 16,
+    color: '#333333',
+    marginLeft: 10,
+  },
+  androidButtonsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+  },
+  androidPickerButton: {
+    backgroundColor: '#f0f8fa',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#00c5e3',
+    flex: 0.48,
+    alignItems: 'center',
+  },
+  androidPickerButtonText: {
+    fontSize: 14,
+    color: '#00c5e3',
+    fontWeight: '500',
+  },
+  confirmScheduleButton: {
+    backgroundColor: '#00c5e3',
+    paddingVertical: 12,
+    borderRadius: 24,
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  confirmScheduleButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+    fontSize: 16,
   },
 });
 
