@@ -61,6 +61,7 @@ export default function HomeScreen() {
           text: "OK",
           onPress: () => {
             reportModal.closeModal();
+            handleRefresh();
           },
         },
       ]);

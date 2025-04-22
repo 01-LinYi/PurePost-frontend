@@ -15,6 +15,7 @@ import {
 import { performOptimisticUpdate } from "@/utils/optimiticeUP";
 import { useAppCache } from "@/components/CacheProvider";
 import { CacheManager } from "@/utils/cache/cacheManager";
+import useReport from "@/hooks/useReport";
 import { getApi } from "@/utils/api";
 
 interface UseFeedPostsProps {
@@ -52,6 +53,7 @@ export const useFeedPosts = ({
 
   // Get cache and network utilities
   const { isOnline, getUserCacheKey } = useAppCache();
+  const { isReported } = useReport();
 
   /**
    * Fetch feed posts from the API with caching
@@ -84,7 +86,6 @@ export const useFeedPosts = ({
           search: searchQuery,
           ...filters,
         };
-        console.log("Force refresh:", forceRefresh);
 
         console.log("Feed Page params:", params);
 
@@ -108,12 +109,16 @@ export const useFeedPosts = ({
           setHasMore(apiPosts.length === limit && count > pageNum * limit);
         }
 
+        // Can be improved here: filer the reported posts
+        const newPosts = apiPosts
+          .map(transformApiPostToPost)
+          .filter((post) => !isReported(post.id, "post"));
+
+        console.log("Drop post reported by current user");
         console.log(
-          `Found ${apiPosts.length} feed posts out of ${count} total`
+          `Found ${newPosts.length} feed posts out of ${count} total`
         );
-
-        const newPosts = apiPosts.map(transformApiPostToPost);
-
+        count = newPosts.length;
         // Check if posts came from cache
         const isFromCache = response.headers["x-from-cache"] === "true";
         if (isFromCache && !isOnline) {
@@ -284,10 +289,10 @@ export const useFeedPosts = ({
             currentPosts.map((p) =>
               p.id === postId
                 ? {
-                  ...p,
-                  is_saved: newIsSaved,
-                  savedFolderId: newIsSaved ? folderId || null : null,
-                }
+                    ...p,
+                    is_saved: newIsSaved,
+                    savedFolderId: newIsSaved ? folderId || null : null,
+                  }
                 : p
             )
           );
@@ -295,26 +300,27 @@ export const useFeedPosts = ({
         apiCall: async () =>
           newIsSaved
             ? axiosInstance.post(`/content/posts/${postId}/save/`, {
-              folder_id: folderId,
-            })
+                folder_id: folderId,
+              })
             : axiosInstance.delete(`/content/posts/${postId}/save/`),
         rollbackUI: () => {
           setPosts((currentPosts) =>
             currentPosts.map((p) =>
               p.id === postId
                 ? {
-                  ...p,
-                  is_saved: !newIsSaved,
-                  savedFolderId: !newIsSaved
-                    ? post.savedFolderId || null
-                    : null,
-                }
+                    ...p,
+                    is_saved: !newIsSaved,
+                    savedFolderId: !newIsSaved
+                      ? post.savedFolderId || null
+                      : null,
+                  }
                 : p
             )
           );
         },
-        errorMessagePrefix: `Failed to ${newIsSaved ? "save" : "unsave"
-          } post: `,
+        errorMessagePrefix: `Failed to ${
+          newIsSaved ? "save" : "unsave"
+        } post: `,
       });
 
       return result;
@@ -375,7 +381,6 @@ export const useFeedPosts = ({
     [loadData]
   );
 
-
   /**
    * Handle like/unlike action for a post with offline support
    */
@@ -414,10 +419,10 @@ export const useFeedPosts = ({
             currentPosts.map((p) =>
               p.id === postId
                 ? {
-                  ...p,
-                  is_liked: newIsLiked,
-                  like_count: p.like_count + (newIsLiked ? 1 : -1),
-                }
+                    ...p,
+                    is_liked: newIsLiked,
+                    like_count: p.like_count + (newIsLiked ? 1 : -1),
+                  }
                 : p
             )
           );
@@ -431,16 +436,17 @@ export const useFeedPosts = ({
             currentPosts.map((p) =>
               p.id === postId
                 ? {
-                  ...p,
-                  is_liked: !newIsLiked,
-                  like_count: p.like_count + (newIsLiked ? -1 : 1),
-                }
+                    ...p,
+                    is_liked: !newIsLiked,
+                    like_count: p.like_count + (newIsLiked ? -1 : 1),
+                  }
                 : p
             )
           );
         },
-        errorMessagePrefix: `Failed to ${newIsLiked ? "like" : "unlike"
-          } post: `,
+        errorMessagePrefix: `Failed to ${
+          newIsLiked ? "like" : "unlike"
+        } post: `,
       });
 
       return result;
@@ -472,9 +478,9 @@ export const useFeedPosts = ({
           currentPosts.map((p) =>
             p.id === postId
               ? {
-                ...p,
-                deepfake_status: "analyzing",
-              }
+                  ...p,
+                  deepfake_status: "analyzing",
+                }
               : p
           )
         );
@@ -606,9 +612,9 @@ export const useFeedPosts = ({
       currentPosts.map((p) =>
         p.id === postId
           ? {
-            ...p,
-            deepfake_status: status,
-          }
+              ...p,
+              deepfake_status: status,
+            }
           : p
       )
     );
@@ -622,7 +628,8 @@ export const useFeedPosts = ({
       case "completed":
         Alert.alert(
           "Analysis Completed",
-          `Your content has been analyzed. Result: ${status === "flagged" ? "Potentially manipulated" : "Authentic"
+          `Your content has been analyzed. Result: ${
+            status === "flagged" ? "Potentially manipulated" : "Authentic"
           }`
         );
         break;

@@ -43,13 +43,12 @@ export default function useReportModal() {
       setLoading(true);
       setErrorMsg(null);
       try {
-        await submitReport(target.id, reason, target.type, extraInfo);
+        await submitReport(target.id, reason, target.type, extraInfo,
+          () => {
+            setErrorMsg("Report submitted successfully.");
+          }
+        );
         closeModal();
-        if (error) {
-          setErrorMsg(error);
-        } else {
-          setErrorMsg("Report submitted successfully.");
-        }
       } catch (e:any) {
         if (e instanceof Error) {
           setErrorMsg(e.message);
