@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import {
-  Modal,
   TextInput,
   TouchableOpacity,
   FlatList,
@@ -9,6 +8,7 @@ import {
   Platform,
   ActivityIndicator,
 } from "react-native";
+import Modal from "react-native-modal";
 import { SavedFolder } from "@/types/folderType";
 import { Text, View } from "@/components/Themed";
 import { Ionicons } from "@expo/vector-icons";
@@ -61,10 +61,15 @@ export default function FolderSelectorModal({
 
   return (
     <Modal
-      visible={visible}
-      animationType="slide"
-      transparent
-      onRequestClose={onClose}
+      isVisible={visible}
+      onBackdropPress={onClose}
+      onSwipeComplete={onClose}
+      swipeDirection="down"
+      animationIn="slideInUp"
+      animationOut="slideOutDown"
+      backdropOpacity={0.5}
+      style={styles.modal}
+      useNativeDriver={true}
     >
       <KeyboardAvoidingView
         style={styles.modalOverlay}
@@ -174,9 +179,12 @@ export default function FolderSelectorModal({
 }
 
 const styles = StyleSheet.create({
+  modal: {
+    justifyContent: 'flex-end',
+    margin: 0,
+  },
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.35)",
     justifyContent: "flex-end",
   },
   modalContainer: {

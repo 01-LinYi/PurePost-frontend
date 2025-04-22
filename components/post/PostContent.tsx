@@ -42,7 +42,7 @@ const PostContent: React.FC<PostContentProps> = ({
           <Image
             source={{ uri: post.image }}
             style={styles.mediaImage}
-            resizeMode="cover"
+            contentFit="cover"
           />
         </View>
       );

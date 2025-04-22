@@ -22,7 +22,7 @@ type FeedPostItemProps = {
   onNavigate: (postId: string) => void;
   onSave: (postId: string) => void;
   onShare: (postId: string) => Promise<any>;
-  onReport: (postId: string, reason: string) => void;
+  onReport: (postId: string) => void;
 };
 
 // Cache control for images
@@ -69,7 +69,7 @@ export default function FeedPostItem({
       },
       {
         text: "Report Post",
-        onPress: () => promptReportReason(),
+        onPress: () => onReport(post.id),
       },
       {
         text: "Cancel",
@@ -78,27 +78,6 @@ export default function FeedPostItem({
     ]);
   };
 
-  // Prompt user for report reason
-  const promptReportReason = () => {
-    Alert.alert("Report Post", "Why are you reporting this post?", [
-      {
-        text: "Inappropriate Content",
-        onPress: () => onReport(post.id, "inappropriate_content"),
-      },
-      {
-        text: "Misinformation",
-        onPress: () => onReport(post.id, "misinformation"),
-      },
-      {
-        text: "Spam",
-        onPress: () => onReport(post.id, "spam"),
-      },
-      {
-        text: "Cancel",
-        style: "cancel",
-      },
-    ]);
-  };
 
   // Render deepfake detection section
   const renderDeepfakeSection = () => {

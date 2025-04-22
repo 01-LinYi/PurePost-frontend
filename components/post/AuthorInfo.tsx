@@ -70,7 +70,7 @@ const AuthorInfo: React.FC<AuthorInfoProps> = ({
         <Image
           source={{ uri: user.profile_picture }}
           style={styles.avatar}
-          defaultSource={{uri: "https://picsum.photos/200"}}
+          placeholder={{uri: "https://picsum.photos/200"}}
         />
       ) : (
         <View style={styles.avatarFallback}>
