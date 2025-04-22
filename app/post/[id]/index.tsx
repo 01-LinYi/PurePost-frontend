@@ -101,6 +101,34 @@ const PostDetail = () => {
     loadPostData(false);
   }, [id, loadPostData]);
 
+  useEffect(() => {
+    if (!reportModal.errorMsg) return;
+    if (reportModal.errorMsg === "Report submitted successfully.") {
+      Alert.alert("Report Submitted!", "Removing this post from Feed...", [
+        {
+          text: "OK and Leave",
+          onPress: () => {
+            reportModal.closeModal();
+            router.back();
+          },
+          style: "destructive"
+        },
+        {
+          text: "Cancel",
+          onPress: () => {
+            reportModal.closeModal();
+          },
+        },
+      ]);
+      return;
+    }
+    Alert.alert("Report Failed!", reportModal.errorMsg || "Please try again", [
+      {
+        text: "OK",
+      },
+    ]);
+  }, [reportModal.errorMsg]);
+
   const handleRefresh = async () => {
     setUiState((prev) => ({ ...prev, isLoading: true }));
     try {
@@ -298,6 +326,24 @@ const PostDetail = () => {
     setUiState((prev) => ({ ...prev, isSubmittingAction: false }));
   };
 
+  /**
+   * Handle option [ report, ... ]
+   */
+  const handleOption = () => {
+    Alert.alert("Post Options", "Choose an action", [
+          {
+            text: "Report Post",
+            onPress: () => {
+              reportModal.openModal(id as string, "post");
+            },
+          },
+          {
+            text: "Cancel",
+            style: "cancel",
+          },
+    ]);
+  }
+
   // Render loading state
   if (isLoading) {
     return (
@@ -330,10 +376,7 @@ const PostDetail = () => {
         onBack={() => router.back()}
         rightIcon={{
           name: "ellipsis-horizontal",
-          label: "More",
-          onPress: () => {
-            // Handle more options here
-          },
+          onPress: handleOption,
         }}
       />
       {/* Post content component */}
