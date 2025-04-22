@@ -5,6 +5,7 @@ import {
   TextInput,
   ActivityIndicator,
   StyleSheet,
+  Alert,
 } from "react-native";
 import { Text, View } from "@/components/Themed";
 import { ReportTargetType, ReasonItem } from "@/types/reportType";

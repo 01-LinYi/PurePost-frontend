@@ -8,7 +8,7 @@ import {
   transformUser,
   transformUserProfile,
 } from "@/utils/transformers/profileTransformers";
-import { isAxiosError } from "axios";
+import { AxiosError, isAxiosError } from "axios";
 import { CacheManager } from "@/utils/cache/cacheManager";
 
 export interface PaginationResponse<T> {
@@ -682,19 +682,30 @@ export const reportPost = async (
 ): Promise<void> => {
   try {
     if (extraInfo) {
-      await axiosInstance.post(`/content/report/`, {
+      await axiosInstance.post(`/content/reports/`, {
         post_id: postId,
         reason: "other",
         additional_info: extraInfo,
       });
     } else {
-      await axiosInstance.post(`/content/report/`, {
+      await axiosInstance.post(`/content/reports/`, {
         post_id: postId,
         reason: reason,
       });
     }
-  } catch (error) {
-    console.error("Error reporting post:", error);
-    throw error;
+  } catch (error: any) {
+    if (isAxiosError(error) && error.response) {
+      let errorMessage = "";
+      if (error.response.data.non_field_errors) {
+        errorMessage = error.response.data.non_field_errors;
+      } else if (error.response.data.detail) {
+        errorMessage = error.response.data.detail;
+      } else {
+        errorMessage = "An unknown error occurred.";
+      }
+      throw new Error(errorMessage);
+    } else {
+      throw error.response;
+    }
   }
 };

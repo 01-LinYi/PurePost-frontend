@@ -9,7 +9,7 @@ import {
   ActivityIndicator,
   Alert,
 } from "react-native";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "expo-router";
 import { Text, View } from "@/components/Themed";
 import { Ionicons } from "@expo/vector-icons";
@@ -53,6 +53,26 @@ export default function HomeScreen() {
     forceRefresh: true,
   });
 
+  useEffect(() => {
+    if (!reportModal.errorMsg) return;
+    if (reportModal.errorMsg === "Report submitted successfully.") {
+      Alert.alert("Report Submitted!", "Thank you for your report", [
+        {
+          text: "OK",
+          onPress: () => {
+            reportModal.closeModal();
+          },
+        },
+      ]);
+      return;
+    }
+    Alert.alert("Report Failed!", reportModal.errorMsg || "Please try again", [
+      {
+        text: "OK",
+      },
+    ]);
+  }, [reportModal.errorMsg]);
+
   const handleOpenSelector = (postId: string) => folderModal.openModal(postId);
   const handleSelectFolder = async (folder: SavedFolder) => {
     if (!folderModal.selectedId) return;
@@ -90,7 +110,8 @@ export default function HomeScreen() {
     folderModal.setLoading(false);
   };
 
-  const handleReportPost = (postId: string) => reportModal.openModal(postId, "post");
+  const handleReportPost = (postId: string) =>
+    reportModal.openModal(postId, "post");
 
   // Navigation handlers
   const navigateToPost = (postId: string) => router.push(`/post/${postId}`);

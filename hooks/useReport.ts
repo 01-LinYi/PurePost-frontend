@@ -18,11 +18,7 @@ export default function useReport() {
       setLoading(true);
       setError(null);
       setSuccess(false);
-      let payload: any = {
-        target_id: targetId,
-        target_type: type,
-        reason,
-      };
+      let additionalInfo = "";
       if (reason === "other") {
         if (!extraInfo || !extraInfo.trim()) {
           throw new Error("Please enter a reason for your report.");
@@ -30,7 +26,7 @@ export default function useReport() {
         if (extraInfo.length > 200) {
           throw new Error("Your reason is too long.");
         }
-        payload.extra_info = extraInfo.trim();
+        additionalInfo= extraInfo.trim();
       }
       try {
         let apiFn;
@@ -47,11 +43,12 @@ export default function useReport() {
           default:
             throw new Error("Unsupported report type");
         }
-        await apiFn(payload.targetId, payload.reason, payload.extraInfo);
+        await apiFn(targetId, reason, additionalInfo);
         setSuccess(true);
         if (onSuccess) onSuccess();
       } catch (err: any) {
         setError(err.message || "Report failed");
+        throw new Error(err.message || "Report failed");
       } finally {
         setLoading(false);
       }

@@ -11,7 +11,7 @@ export default function useReportModal() {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const { submitReport } = useReport();
+  const { submitReport, error } = useReport();
 
   /**
    * Open modal for a given target id and type.
@@ -45,8 +45,15 @@ export default function useReportModal() {
       try {
         await submitReport(target.id, reason, target.type, extraInfo);
         closeModal();
-      } catch (e) {
-        setErrorMsg("Report failed, please try again.");
+        if (error) {
+          setErrorMsg(error);
+        } else {
+          setErrorMsg("Report submitted successfully.");
+        }
+      } catch (e:any) {
+        if (e instanceof Error) {
+          setErrorMsg(e.message);
+        }
       }
       setLoading(false);
     },
