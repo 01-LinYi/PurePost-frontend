@@ -69,6 +69,7 @@ const PostDetail = () => {
         Alert.alert("Error", "Invalid post ID");
         return;
       }
+      if (!uiState.isLoading) return;
 
       try {
         setUiState((prev) => ({ ...prev, isLoading: true }));
@@ -93,7 +94,7 @@ const PostDetail = () => {
         setUiState((prev) => ({ ...prev, isLoading: false }));
       }
     },
-    [id]
+    [id, uiState.isLoading]
   );
 
   // Load post when component mounts or ID changes

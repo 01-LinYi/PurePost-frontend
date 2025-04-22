@@ -331,14 +331,13 @@ export const fetchSinglePosts = async (
   user_id: string,
   forceRefresh?: boolean
 ) => {
-  const force = typeof forceRefresh === "boolean" ? forceRefresh : false;
   return getApi(
     `/content/posts/${user_id}/`,
     {}, // params
     {
       skipCache: false,
       cacheTtlMinutes: 5,
-      forceRefresh: force,
+      forceRefresh: forceRefresh,
     }
   );
 };
