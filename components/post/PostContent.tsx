@@ -1,5 +1,6 @@
-import { View, StyleSheet, ScrollView, Platform, Image } from "react-native";
-import { Text } from "@/components/Themed";
+import { StyleSheet, ScrollView, Platform } from "react-native";
+import { Text, View } from "@/components/Themed";
+import { Image } from '@/components/CachedImage';
 import { Post, Comment } from "@/types/postType";
 import AuthorInfo from "./AuthorInfo";
 import PostActions from "./PostActions";
@@ -13,6 +14,7 @@ interface PostContentProps {
   onEdit?: () => void;
   onShare: () => void;
   onSave: () => void;
+  ondeleteComment?: (commentId: number) => void;
   bottomPadding: number;
 }
 
@@ -26,6 +28,7 @@ const PostContent: React.FC<PostContentProps> = ({
   onEdit,
   onShare,
   onSave,
+  ondeleteComment,
   bottomPadding,
 }) => {
   // Check if current user is the author (for edit permissions)
@@ -215,7 +218,10 @@ const PostContent: React.FC<PostContentProps> = ({
         <Text style={styles.commentsTitle}>
           Comments ({post.comment_count})
         </Text>
-        <CommentsList comments={comments || []} />
+        <CommentsList 
+        comments={comments || []} 
+        onDeleteComment={ondeleteComment}
+        />
       </View>
     </ScrollView>
   );

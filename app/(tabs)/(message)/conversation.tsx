@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import {
   FlatList,
   TouchableOpacity,
-  Image,
   Alert,
   TextInput,
   Modal,
@@ -13,6 +12,7 @@ import {
 import { router } from "expo-router";
 import axiosInstance from "@/utils/axiosInstance";
 import { View, Text } from "@/components/Themed";
+import { Image } from '@/components/CachedImage';
 import { API_URL } from "@/constants/Api";
 import axios from "axios";
 import { Ionicons } from "@expo/vector-icons";

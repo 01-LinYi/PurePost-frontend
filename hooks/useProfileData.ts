@@ -36,9 +36,7 @@ export function useProfileData({
 
   // Extract numeric user ID from cached profile and update state
   useEffect(() => {
-    if (cachedProfile?.user_id) {
-      setProfileId(Number(cachedProfile.user_id));
-    } else if (cachedProfile?.id) {
+    if (cachedProfile?.id) {
       setProfileId(Number(cachedProfile.id));
     }
   }, [cachedProfile]);
@@ -101,6 +99,7 @@ export function useProfileData({
         if (response) {
           // Save to cache
           await saveProfileToCache(response);
+          console.log(cacheInfo);
           
           // Update profileId state
           if (response.id) {

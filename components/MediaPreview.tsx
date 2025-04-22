@@ -3,7 +3,7 @@ import { View } from "./Themed";
 import { TouchableOpacity, StyleSheet, Platform, ActivityIndicator } from "react-native";
 import Video from "react-native-video";
 import { Ionicons } from "@expo/vector-icons";
-import { Image } from "expo-image";
+import { Image } from '@/components/CachedImage';
 import { Media } from "@/types/postType";
 
 interface MediaPreviewProps {

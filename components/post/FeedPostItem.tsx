@@ -20,7 +20,7 @@ type FeedPostItemProps = {
   onLike: (postId: string) => Promise<any>;
   onDeepfakeDetection: (postId: string) => Promise<boolean>;
   onNavigate: (postId: string) => void;
-  onSave: (postId: string, folderId?: string) => Promise<any>;
+  onSave: (postId: string) => void;
   onShare: (postId: string) => Promise<any>;
   onReport: (postId: string, reason: string) => void;
 };
@@ -240,12 +240,12 @@ export default function FeedPostItem({
         <View style={styles.userInfo}>
           <TouchableOpacity
             style={styles.userAvatarContainer}
-            onPress={() => router.push(`/user/${post.user.username}`)}
+            onPress={() => router.push(`/user/${post.user.username}?id=${post.user.id}`)}
           >
             {renderAvatar()}
           </TouchableOpacity>
           <TouchableOpacity
-            onPress={() => router.push(`/user/${post.user.username}`)}
+            onPress={() => router.push(`/user/${post.user.username}?id=${post.user.id}`)}
           >
             <View>
               <Text style={styles.username}>{getUsername()}</Text>

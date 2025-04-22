@@ -1,41 +1,36 @@
 import {
   StyleSheet,
   TouchableOpacity,
-  Image,
   TextInput,
   FlatList,
   SafeAreaView,
-  StatusBar,
   Platform,
   RefreshControl,
-  Dimensions,
   ActivityIndicator,
   Alert,
 } from "react-native";
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback} from "react";
 import { useRouter } from "expo-router";
 import { Text, View } from "@/components/Themed";
 import { Ionicons } from "@expo/vector-icons";
 import { useSession } from "@/components/SessionProvider";
-import { useStorageState } from "@/hooks/useStorageState";
-import { BlurView } from "expo-blur";
-import { Post } from "@/types/postType";
-import { useFeedPosts } from "@/hooks/useFeedPosts";
+import { SearchField, useFeedPosts } from "@/hooks/useFeedPosts";
 import FeedPostItem from "@/components/post/FeedPostItem";
 import FeedHeader from "@/components/post/FeedHeader";
-import SortOptions from "@/components/post/SortOptions";
+import FolderSelectorModal from "@/components/folder/FolderSelectorModal";
+import { useFolders } from "@/hooks/useFolders";
+import { SavedFolder } from "@/types/folderType";
+import { unSavePost } from "@/utils/api";
+import useFolderModal from "@/hooks/useFolderModal";
 
 /**
  * Home Screen that displays the social feed with posts
  */
 export default function HomeScreen() {
-  const { user } = useSession();
-  const [userStorage, setUser] = useStorageState("user");
-  const [session, setSession] = useStorageState("session");
   const [searchQuery, setSearchQuery] = useState("");
-  const [scrollPosition, setScrollPosition] = useState(0);
-  const windowWidth = Dimensions.get("window").width;
+  const { logOut } = useSession();
   const router = useRouter();
+  const folderModal = useFolderModal();
 
   // Use custom hook to handle posts data and operations, similar to useMyPosts hook
   const {
@@ -43,43 +38,67 @@ export default function HomeScreen() {
     isLoading,
     isRefreshing,
     error,
-    ordering,
+    handleSearch,
     handleRefresh,
-    handleSortChange,
     handleLike,
     handleDeepfakeDetection,
     loadData,
   } = useFeedPosts();
 
-  // Filter posts based on search query
-  const filteredPosts = useMemo(() => {
-    if (!searchQuery.trim()) return posts;
-    return posts.filter(
-      (post:any) =>
-        post.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        post.user.username.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-  }, [posts, searchQuery]);
+  // Use custom hook to handle folders data and operations
+  const { folders, toggleSaveFolder, createFolder, isCreating } = useFolders({
+    forceRefresh: true,
+  });
 
-  // Scroll handler for floating header
-  const handleScroll = useCallback((event: any) => {
-    setScrollPosition(event.nativeEvent.contentOffset.y);
-  }, []);
+  const handleOpenSelector = (postId: string) => folderModal.openModal(postId);
+  const handleSelectFolder = async (folder: SavedFolder) => {
+    if (!folderModal.selectedId) return;
+    folderModal.setLoading(true);
+    folderModal.setError(null);
+    try {
+      await toggleSaveFolder(folderModal.selectedId, folder.id);
+      folderModal.closeModal();
+      // Send notification here
+    } catch (e) {
+      folderModal.setError("Save failed, please try again");
+    }
+    folderModal.setLoading(false);
+  };
+
+  const handleCreateFolder = async (name: string) => {
+    try {
+      await createFolder(name);
+      await handleRefresh();
+    } catch (e) {
+      folderModal.setError("Create failed, please try again");
+      throw e;
+    }
+  };
+
+  const handleUnsave = async (postId: string) => {
+    folderModal.setLoading(true);
+    try {
+      await unSavePost(postId);
+      // send notification here
+    } catch (e) {
+      folderModal.setError("Unsave failed, please try again");
+    }
+    handleRefresh();
+    folderModal.setLoading(false);
+  };
 
   // Navigation handlers
-  const navigateToPost = (postId: string) => {
-    router.push(`/post/${postId}`);
-  };
+  const navigateToPost = (postId: string) => router.push(`/post/${postId}`);
+  const navigateToCreatePost = () => router.push("/post/create");
 
-  const navigateToCreatePost = () => {
-    router.push("/post/create");
+  const handleLogOut = async () => {
+    const error = await logOut();
+    if (error) {
+      Alert.alert("Error logging out", error);
+      return;
+    }
+    router.replace("/login");
   };
-
-  const handleLogOut = useCallback(() => {
-    setUser(null);
-    setSession(null);
-    router.push("/login");
-  }, [setUser, setSession]);
 
   // Error state renderer
   const renderError = () => (
@@ -90,22 +109,6 @@ export default function HomeScreen() {
       </TouchableOpacity>
     </View>
   );
-
-  // Floating header for better UX when scrolling
-  const renderFloatingHeader = useMemo(() => {
-    if (scrollPosition <= 10) return null;
-
-    return (
-      <BlurView intensity={80} style={styles.floatingHeader}>
-        <Text style={styles.floatingHeaderTitle}>Social Feed</Text>
-        <View style={styles.floatingHeaderRight}>
-          <TouchableOpacity style={styles.headerButton}>
-            <Ionicons name="notifications-outline" size={22} color="#00c5e3" />
-          </TouchableOpacity>
-        </View>
-      </BlurView>
-    );
-  }, [scrollPosition]);
 
   // Empty state component
   const EmptyStateComponent = useCallback(
@@ -138,10 +141,12 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" />
-
       {/* Header */}
-      <FeedHeader onLogOut={handleLogOut} onCreatePost={navigateToCreatePost} />
+      <FeedHeader
+        onLogOut={handleLogOut}
+        onCreatePost={navigateToCreatePost}
+        onNotifications={() => {}}
+      />
 
       {/* Search Bar */}
       <View style={styles.searchContainer}>
@@ -153,37 +158,37 @@ export default function HomeScreen() {
         />
         <TextInput
           style={styles.searchInput}
-          placeholder="Search posts...(Not Implemented)"
+          placeholder="Search posts..."
           value={searchQuery}
           onChangeText={setSearchQuery}
+          onSubmitEditing={() => {
+            const trimmedQuery = searchQuery.trim();
+            if (trimmedQuery.startsWith("#")) {
+              handleSearch(SearchField.tag, searchQuery.substring(1));
+            } else if (trimmedQuery.startsWith("@")) {
+              handleSearch(SearchField.user, searchQuery.substring(1));
+            } else if (trimmedQuery.startsWith("!")) {
+              handleSearch(SearchField.caption, searchQuery.substring(1));
+            } else {
+              handleSearch(SearchField.content, searchQuery);
+            }
+          }}
           returnKeyType="search"
           clearButtonMode="while-editing"
         />
-        {searchQuery ? (
-          <TouchableOpacity onPress={() => setSearchQuery("")}>
-            <Ionicons name="close-circle" size={20} color="#8e8e93" />
-          </TouchableOpacity>
-        ) : null}
       </View>
-
 
       {/* Content area: error, posts list, or empty state */}
       {error ? (
         renderError()
       ) : (
         <FlatList
-          data={filteredPosts}
+          data={posts}
           renderItem={({ item }) => (
             <FeedPostItem
               post={item}
               onLike={handleLike}
-              onSave={(postId: string, folderId?: string) => {
-                return new Promise<boolean>((resolve) => {
-                  // Add your save logic here
-                  console.log(`Saving post ${postId} to folder ${folderId}`);
-                  resolve(true); // Resolve with true to indicate success
-                });
-              }}
+              onSave={item.is_saved ? handleUnsave : handleOpenSelector}
               onShare={(item) => {
                 return new Promise<void>((resolve) => {
                   // Add your share logic here
@@ -191,15 +196,14 @@ export default function HomeScreen() {
                   resolve(); // Resolve when done
                 });
               }}
-              onReport={(x,y) => {}}
+              onReport={(x, y) => {}}
               onDeepfakeDetection={handleDeepfakeDetection}
               onNavigate={navigateToPost}
             />
           )}
           keyExtractor={(item) => item.id.toString()}
           contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={false}
-          onScroll={handleScroll}
+          showsVerticalScrollIndicator={true}
           scrollEventThrottle={16}
           refreshControl={
             <RefreshControl
@@ -213,15 +217,23 @@ export default function HomeScreen() {
         />
       )}
 
-      {/* Floating header that appears when scrolling */}
-      {/*renderFloatingHeader*/}
-
       {/* Loading overlay */}
       {isLoading && !isRefreshing && (
         <View style={styles.loadingOverlay}>
           <ActivityIndicator size="large" color="#00c5e3" />
         </View>
       )}
+      {/* Folder selector modal */}
+      <FolderSelectorModal
+        visible={folderModal.modalVisible}
+        folders={folders}
+        onSelect={handleSelectFolder}
+        onCreate={handleCreateFolder}
+        onClose={folderModal.closeModal}
+        isCreating={isCreating}
+        isCollecting={folderModal.loading}
+        error={folderModal.errorMsg || error}
+      />
     </SafeAreaView>
   );
 }

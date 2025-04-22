@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import {
   StyleSheet,
   ScrollView,
@@ -16,8 +16,9 @@ import AvatarPicker from "@/components/AvatarPicker";
 import axiosInstance from "@/utils/axiosInstance";
 import { formatUploadFileName } from "@/utils/formatUploadFileName";
 import { Media } from "@/types/postType";
-import { formatDate } from "@/utils/dateUtils"; // Use the previously created date formatting utility
-import useProfileCache from "@/hooks/useProfileCache"; // Use the previously created cache hook
+import { formatDate, parseDateString } from "@/utils/dateUtils";
+import useProfileCache from "@/hooks/useProfileCache"; 
+import { useProfileData } from "@/hooks/useProfileData";
 
 // Color palette based on #00c5e3
 const COLORS = {
@@ -38,217 +39,183 @@ export default function EditProfileScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
 
-  // Use the cache hook to get user profile data
-  const {
-    profileData: cachedProfile,
-    cacheStatus,
-    saveProfileToCache,
-  } = useProfileCache();
-
-  // Try to get profile data from route parameters
   const routeProfileData = params.profileData
     ? JSON.parse(params.profileData as string)
     : null;
 
-  // Mark whether data is being loaded
+  const { profileData: cachedProfile, saveProfileToCache } = useProfileCache();
+
   const [isDataLoading, setIsDataLoading] = useState(true);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Form state
-  const [avatar, setAvatar] = useState("");
-  const [avatarFile, setAvatarFile] = useState<Media | null>(null);
-  const [email, setEmail] = useState("");
-  const [username, setUsername] = useState("");
-  const [bio, setBio] = useState("");
-  const [location, setLocation] = useState("");
-  const [birthday, setBirthday] = useState("");
-  const [website, setWebsite] = useState("");
+  const [formData, setFormData] = useState({
+    avatar: "",
+    avatarFile: null as Media | null,
+    email: "",
+    username: "",
+    bio: "",
+    location: "",
+    birthday: "",
+    website: "",
+  });
 
-  // Load initial data
+  const [originalData, setOriginalData] = useState<any>(null);
+
   useEffect(() => {
     loadInitialData();
   }, []);
 
-  /**
-   * Load initial profile data, prioritizing data passed through the route,
-   * then cached data, and finally attempting to fetch from the API
-   */
   const loadInitialData = async () => {
     setIsDataLoading(true);
 
     try {
       let profileData = null;
 
-      // Prioritize data passed through route parameters
+      // priority: route params > cache > API
       if (routeProfileData) {
         console.log("Using profile data from route params");
         profileData = routeProfileData;
-      }
-      // Secondly, use cached data
-      else if (cachedProfile) {
+      } else if (cachedProfile) {
         console.log("Using cached profile data");
         profileData = cachedProfile;
-      }
-      // If neither, fetch from API
-      else {
+      } else {
         console.log("Fetching profile data from API");
-        const response = await axiosInstance.get("/users/my-profile/");
-        if (response.data) {
-          profileData = response.data;
-          // Update cache
-          saveProfileToCache(profileData);
-        }
+        profileData = useProfileData({
+          userId: "me",
+          isOwnProfile: true,
+        }).profileData;
       }
 
-      // If data is successfully retrieved, fill the form
       if (profileData) {
         fillFormWithProfileData(profileData);
+        setOriginalData(profileData);
       } else {
-        Alert.alert(
-          "Data Error",
-          "Could not load your profile data. Please try again later."
-        );
+        Alert.alert("数据错误", "无法加载您的个人资料数据。请稍后再试。");
       }
     } catch (error) {
       console.error("Error loading profile data:", error);
-      Alert.alert(
-        "Error",
-        "Failed to load your profile data. Please try again."
-      );
+      Alert.alert("错误", "加载个人资料数据失败。请再试一次。");
     } finally {
       setIsDataLoading(false);
     }
   };
 
-  /**
-   * Fill the form with the retrieved profile data
-   */
-  const fillFormWithProfileData = (data:any) => {
-    // Set avatar
-    if (data.avatar) {
-      setAvatar(data.avatar);
-    }
-
-    // Set other fields
-    setEmail(data.email || "");
-    setUsername(data.username ? `@${data.username.replace(/^@/, "")}` : "");
-    setBio(data.bio || "");
-    setLocation(data.location || "");
-    setWebsite(data.website || "");
-
-    // Handle birthday field (may have different field names)
-    const birthdayVal = data.date_of_birth || data.birthday || "";
-    setBirthday(birthdayVal ? formatDate(birthdayVal) : "");
+  const fillFormWithProfileData = (data: any) => {
+    setFormData({
+      avatar: data.avatar || "",
+      avatarFile: null,
+      email: data.email || "",
+      username: data.username ? `@${data.username.replace(/^@/, "")}` : "",
+      bio: data.bio || "",
+      location: data.location || "",
+      website: data.website || "",
+      birthday:
+        data.date_of_birth || data.birthday
+          ? formatDate(data.date_of_birth || data.birthday)
+          : "",
+    });
   };
 
-  // Handle avatar change
+  const handleChange = (field: string, value: any) => {
+    setFormData((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
   const handleAvatarChange = (uri: string, file: any) => {
-    setAvatar(uri);
-    setAvatarFile(file);
+    handleChange("avatar", uri);
+    handleChange("avatarFile", file);
   };
 
-  // Check if the form has changed
-  const hasFormChanged = (originalData: any) => {
+  const hasFormChanged = () => {
     if (!originalData) return true;
 
-    // Check if text fields have changed
-    if (bio !== (originalData.bio || "")) return true;
-    if (location !== (originalData.location || "")) return true;
-    if (website !== (originalData.website || "")) return true;
+    // Check if the form data has changed compared to the original data
+    if (formData.bio !== (originalData.bio || "")) return true;
+    if (formData.location !== (originalData.location || "")) return true;
+    if (formData.website !== (originalData.website || "")) return true;
 
-    // Check birthday field
+    // Check if the birthday has changed
     const originalBirthday =
       originalData.date_of_birth || originalData.birthday || "";
     const formattedOriginalBirthday = originalBirthday
       ? formatDate(originalBirthday)
       : "";
-    if (birthday !== formattedOriginalBirthday) return true;
+    if (formData.birthday !== formattedOriginalBirthday) return true;
 
-    // Check if there is a new avatar file
-    if (avatarFile) return true;
+    // Check if the avatar has changed
+    if (formData.avatarFile) return true;
 
     return false;
   };
 
-  // Save changes
+  // Prepare form data for submission
+  const prepareFormData = () => {
+    const apiFormData = new FormData();
+
+    // Handle avatar file
+    if (formData.avatarFile) {
+      const originalFileName =
+        formData.avatarFile.name ||
+        `avatar.${formData.avatarFile.image?.split(".").pop() ?? "png"}`;
+      const uniqueFileName = formatUploadFileName("avatar", originalFileName);
+
+      const formattedFile = {
+        uri: formData.avatarFile.uri,
+        type: formData.avatarFile.type || "image/png",
+        name: uniqueFileName,
+      };
+
+      apiFormData.append("avatar", formattedFile as any);
+    }
+
+    // Only add changed fields to reduce request payload
+    if (!originalData || formData.bio !== (originalData.bio || "")) {
+      apiFormData.append("bio", formData.bio);
+    }
+
+    if (!originalData || formData.location !== (originalData.location || "")) {
+      apiFormData.append("location", formData.location);
+    }
+
+    if (!originalData || formData.website !== (originalData.website || "")) {
+      apiFormData.append("website", formData.website);
+    }
+
+    // Handle birthday field
+    const originalBirthday =
+      originalData?.date_of_birth || originalData?.birthday || "";
+    const formattedOriginalBirthday = originalBirthday
+      ? formatDate(originalBirthday)
+      : "";
+
+    if (!originalData || formData.birthday !== formattedOriginalBirthday) {
+      // Parse and format the date
+      const formattedBirthday = parseDateString(formData.birthday);
+      apiFormData.append("date_of_birth", formattedBirthday);
+    }
+
+    return apiFormData;
+  };
+
+
   const handleSave = async () => {
-    // Check if there are changes to avoid unnecessary API requests
-    if (!hasFormChanged(routeProfileData || cachedProfile)) {
-      Alert.alert(
-        "No Changes",
-        "You haven't made any changes to your profile."
-      );
+    if (!hasFormChanged()) {
+      Alert.alert("No Changes", "No changes detected to save.");
       return;
     }
 
-    setIsLoading(true);
+    setIsSubmitting(true);
 
     try {
-      // Prepare form data
-      const formData = new FormData();
 
-      // Format avatar file
-      if (avatarFile) {
-        // Get original file name or create a default file name
-        const originalFileName =
-          avatarFile.name ||
-          `avatar.${avatarFile.image?.split(".").pop() ?? "png"}`;
+      const apiFormData = prepareFormData();
 
-        // Generate unique file name
-        const uniqueFileName = formatUploadFileName("avatar", originalFileName);
-
-        // Format file object
-        const formattedFile = {
-          uri: avatarFile.uri,
-          type: avatarFile.type || "image/png",
-          name: uniqueFileName,
-        };
-
-        formData.append("avatar", formattedFile as any);
-      }
-
-      // Only add changed fields to reduce request payload
-      const originalData = routeProfileData || cachedProfile;
-
-
-      if (!originalData || bio !== (originalData.bio || "")) {
-        formData.append("bio", bio);
-      }
-
-      if (!originalData || location !== (originalData.location || "")) {
-        formData.append("location", location);
-      }
-
-      if (!originalData || website !== (originalData.website || "")) {
-        formData.append("website", website);
-      }
-
-      // Handle birthday field
-      const originalBirthday =
-        originalData?.date_of_birth || originalData?.birthday || "";
-      const formattedOriginalBirthday = originalBirthday
-        ? formatDate(originalBirthday)
-        : "";
-
-      if (!originalData || birthday !== formattedOriginalBirthday) {
-        // Convert formatted date back to the format expected by the API
-        try {
-          // Try to convert readable date back to ISO format
-          const date = new Date(birthday);
-          if (!isNaN(date.getTime())) {
-            formData.append("birthday", date.toISOString().split("T")[0]);
-          } else {
-            formData.append("birthday", birthday);
-          }
-        } catch (e) {
-          formData.append("birthday", birthday);
-        }
-      }
-
-      // Send API request
+      // Send
       const response = await axiosInstance.patch(
         "users/update-profile/",
-        formData,
+        apiFormData,
         {
           headers: {
             "Content-Type": "multipart/form-data",
@@ -256,32 +223,26 @@ export default function EditProfileScreen() {
         }
       );
 
-      // Update cache
+      // update local cache
       if (response.data) {
         await saveProfileToCache(response.data);
       }
 
-      Alert.alert(
-        "Profile Updated",
-        "Your profile has been updated successfully!"
-      );
+      Alert.alert("Success", "Profile updated successfully.");
 
       router.back();
     } catch (error) {
       console.error("Error updating profile:", error);
-      Alert.alert(
-        "Update Failed",
-        "There was a problem updating your profile. Please try again."
-      );
+      Alert.alert("Error", "Failed to update profile. Please try again.");
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
   };
 
   // Cancel changes
   const handleCancel = () => {
     // Only show confirmation dialog if there are changes
-    if (hasFormChanged(routeProfileData || cachedProfile)) {
+    if (hasFormChanged()) {
       Alert.alert(
         "Discard Changes",
         "Are you sure you want to discard your changes?",
@@ -323,7 +284,7 @@ export default function EditProfileScreen() {
         {/* Profile Image Section */}
         <View style={styles.profileCard}>
           <AvatarPicker
-            currentAvatar={avatar}
+            currentAvatar={formData.avatar}
             onAvatarChange={handleAvatarChange}
             size={100}
           />
@@ -335,7 +296,7 @@ export default function EditProfileScreen() {
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Username</Text>
             <View style={styles.readOnlyInput}>
-              <Text style={styles.readOnlyText}>{username}</Text>
+              <Text style={styles.readOnlyText}>{formData.username}</Text>
               <Ionicons name="lock-closed" size={16} color={COLORS.textLight} />
             </View>
             <Text style={styles.helperText}>Username cannot be changed</Text>
@@ -345,20 +306,19 @@ export default function EditProfileScreen() {
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Email</Text>
             <View style={styles.readOnlyInput}>
-              <Text style={styles.readOnlyText}>{email}</Text>
+              <Text style={styles.readOnlyText}>{formData.email}</Text>
               <Ionicons name="lock-closed" size={16} color={COLORS.textLight} />
             </View>
             <Text style={styles.helperText}>Email cannot be changed</Text>
           </View>
-
 
           {/* Bio Input */}
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Bio</Text>
             <TextInput
               style={[styles.input, styles.textArea]}
-              value={bio}
-              onChangeText={setBio}
+              value={formData.bio}
+              onChangeText={(text) => handleChange("bio", text)}
               placeholder="Tell people about yourself"
               placeholderTextColor={COLORS.textLight}
               multiline
@@ -372,8 +332,8 @@ export default function EditProfileScreen() {
             <Text style={styles.label}>Location</Text>
             <TextInput
               style={styles.input}
-              value={location}
-              onChangeText={setLocation}
+              value={formData.location}
+              onChangeText={(text) => handleChange("location", text)}
               placeholder="Your location"
               placeholderTextColor={COLORS.textLight}
             />
@@ -384,8 +344,8 @@ export default function EditProfileScreen() {
             <Text style={styles.label}>Website</Text>
             <TextInput
               style={styles.input}
-              value={website}
-              onChangeText={setWebsite}
+              value={formData.website}
+              onChangeText={(text) => handleChange("website", text)}
               placeholder="Your website"
               placeholderTextColor={COLORS.textLight}
               keyboardType="url"
@@ -397,8 +357,8 @@ export default function EditProfileScreen() {
             <Text style={styles.label}>Birthday</Text>
             <TextInput
               style={styles.input}
-              value={birthday}
-              onChangeText={setBirthday}
+              value={formData.birthday}
+              onChangeText={(text) => handleChange("birthday", text)}
               placeholder="Your birthday"
               placeholderTextColor={COLORS.textLight}
             />
@@ -417,7 +377,7 @@ export default function EditProfileScreen() {
           <GradientButton
             text="Save Changes"
             onPress={handleSave}
-            loading={isLoading}
+            loading={isSubmitting}
             gradientColors={[COLORS.primary, COLORS.accent]}
             style={styles.saveButton}
             borderRadius={8}

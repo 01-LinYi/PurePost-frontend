@@ -23,7 +23,7 @@ export interface UserProfile extends User {
 
 // snake_cased API format
 export interface ApiUserProfile {
-  user_id: number;
+  id: number;
   username: string;
   email: string;
   is_verified: boolean;

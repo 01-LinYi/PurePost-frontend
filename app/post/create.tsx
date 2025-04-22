@@ -1,27 +1,26 @@
 import React, { useState, useCallback, useEffect } from "react";
-import { View } from "@/components/Themed";
+import { Text, View } from "@/components/Themed";
 import {
   TextInput,
   StyleSheet,
   Alert,
-  StatusBar,
   ScrollView,
   Platform,
   KeyboardAvoidingView,
   TouchableOpacity,
-  Text as Text,
   Switch,
   Modal,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { router, useNavigation } from "expo-router";
+import { useRouter, useNavigation } from "expo-router";
 import axiosInstance from "@/utils/axiosInstance";
 import { formatUploadFileName } from "@/utils/formatUploadFileName";
 import MediaPreview from "@/components/MediaPreview";
 import ActionButton from "@/components/ActionButton";
 import { Media } from "@/types/postType";
+import CompactHeader from "@/components/CompactHeader";
 import DateTimePicker from '@react-native-community/datetimepicker';
 
 
@@ -44,7 +43,6 @@ const validateTag = (tag: string): boolean => {
   return /^[a-zA-Z0-9 _-]{1,30}$/.test(tag);
 };
 
-
 const CreatePost = () => {
   const [postText, setPostText] = useState<string>("");
   const [media, setMedia] = useState<Media | null>(null);
@@ -61,18 +59,13 @@ const CreatePost = () => {
   const [tagInput, setTagInput] = useState<string>("");
   const [tags, setTags] = useState<string[]>([]);
   const [showCaptionAndTags, setShowCaptionAndTags] = useState<boolean>(false);
-  const [isScheduled, setIsScheduled] = useState<boolean>(false);
-  const [scheduledDate, setScheduledDate] = useState<Date>(new Date());
-  const [showDatePicker, setShowDatePicker] = useState<boolean>(false);
-  const [showTimePicker, setShowTimePicker] = useState<boolean>(false);
-  const [showScheduleModal, setShowScheduleModal] = useState<boolean>(false);
 
   useEffect(() => {
     const checkForDraft = async () => {
       try {
         const response = await axiosInstance.get("/content/posts/draft/");
         const draft = response.data;
-        
+
         Alert.alert(
           "Draft Found",
           "Would you like to continue with your saved draft?",
@@ -87,24 +80,24 @@ const CreatePost = () => {
                 } catch (error) {
                   console.error("Error discarding draft:", error);
                 }
-              }
+              },
             },
             {
               text: "Load Draft",
               onPress: () => {
                 setPostText(draft.content || "");
-                
+
                 if (draft.image) {
                   setMedia({
                     image: draft.image,
                     type: "image",
-                    name: draft.image.split('/').pop() || "image.jpg",
+                    name: draft.image.split("/").pop() || "image.jpg",
                   });
                 } else if (draft.video) {
                   setMedia({
                     video: draft.video,
-                    type: "video", 
-                    name: draft.video.split('/').pop() || "video.mp4",
+                    type: "video",
+                    name: draft.video.split("/").pop() || "video.mp4",
                   });
                 }
 
@@ -112,18 +105,22 @@ const CreatePost = () => {
                   setCaption(draft.caption);
                   setShowCaptionAndTags(true); // Show caption section if there's a caption
                 }
-                
-                if (draft.tags && Array.isArray(draft.tags) && draft.tags.length > 0) {
+
+                if (
+                  draft.tags &&
+                  Array.isArray(draft.tags) &&
+                  draft.tags.length > 0
+                ) {
                   setTags(draft.tags);
                   setShowCaptionAndTags(true); // Show tags section if there are tags
                 }
-                
+
                 setVisibility(draft.visibility);
                 setHasDisclaimer(!!draft.disclaimer);
                 setDisclaimerText(draft.disclaimer || "");
                 setDraftId(draft.id);
-              }
-            }
+              },
+            },
           ]
         );
       } catch (error) {
@@ -133,10 +130,9 @@ const CreatePost = () => {
         }
       }
     };
-    
+
     checkForDraft();
   }, []);
-
 
   useEffect(() => {
     const hasContent = postText.trim().length > 0 || media !== null;
@@ -279,53 +275,63 @@ const CreatePost = () => {
         disclaimerText: encodeURIComponent(disclaimerText || ""),
       },
     });
-  }, [postText, media, visibility, hasDisclaimer, disclaimerText, caption, tags]);
+  }, [
+    postText,
+    media,
+    visibility,
+    hasDisclaimer,
+    disclaimerText,
+    caption,
+    tags,
+  ]);
 
   const handleSaveDraft = useCallback(async () => {
     try {
       setIsSaving(true);
-      
+
       // Create form data object
       const formData = new FormData();
       formData.append("content", postText);
       formData.append("visibility", visibility);
       formData.append("status", "draft");
-      
-      if (hasDisclaimer)
-      {
+
+      if (hasDisclaimer) {
         formData.append("disclaimer", disclaimerText.trim());
       }
 
-      if (caption.trim())
-      {
+      if (caption.trim()) {
         formData.append("caption", caption.trim());
       }
-      
-      if (tags.length > 0)
-      {
+
+      if (tags.length > 0) {
         formData.append("tags", JSON.stringify(tags));
       }
-  
+
       if (media) {
         const fileType = media.type === "video" ? "video" : "image";
-        
+
         // @ts-ignore - RN FormData type issue
         formData.append(fileType, {
-          uri: Platform.OS === "android" 
-            ? (media.type === "video" ? media.video : media.image)
-            : (media.type === "video" ? media.video?.replace("file://", "") : media.image?.replace("file://", "")),
+          uri:
+            Platform.OS === "android"
+              ? media.type === "video"
+                ? media.video
+                : media.image
+              : media.type === "video"
+              ? media.video?.replace("file://", "")
+              : media.image?.replace("file://", ""),
           name: media.name,
           type: media.type === "video" ? "video/mp4" : "image/jpeg",
         });
       }
-  
+
       // Either update or create a draft
-      const endpoint = draftId 
-        ? `/content/posts/${draftId}/update-draft/` 
+      const endpoint = draftId
+        ? `/content/posts/${draftId}/update-draft/`
         : "/content/posts/save-draft/";
-      
+
       const method = draftId ? "patch" : "post";
-      
+
       const response = await axiosInstance({
         method,
         url: endpoint,
@@ -334,68 +340,74 @@ const CreatePost = () => {
           "Content-Type": "multipart/form-data",
         },
       });
-      
+
       setDraftId(response.data.id);
       setHasUnsavedChanges(false);
-      
-      Alert.alert(
-        "Draft Saved",
-        "Your post has been saved as a draft.",
-        [{ text: "OK" }]
-      );
-      
+
+      Alert.alert("Draft Saved", "Your post has been saved as a draft.", [
+        { text: "OK" },
+      ]);
     } catch (error) {
       const errorMessage =
         (error as any)?.response?.data?.detail ||
         (error as Error).message ||
         "Unknown error occurred";
-        
+
       Alert.alert("Error", `Failed to save draft: ${errorMessage}`);
       console.error("Draft saving error:", error);
     } finally {
       setIsSaving(false);
     }
-  }, [postText, media, visibility, hasDisclaimer, disclaimerText,
-    caption, tags, tagInput, showCaptionAndTags, draftId]);
+  }, [
+    postText,
+    media,
+    visibility,
+    hasDisclaimer,
+    disclaimerText,
+    caption,
+    tags,
+    tagInput,
+    showCaptionAndTags,
+    draftId,
+  ]);
 
   // Add a tag
   const addTag = useCallback(() => {
     const trimmedTag = tagInput.trim();
-    
-    if (!trimmedTag)
-    {
+
+    if (!trimmedTag) {
       return;
     }
-    
-    if (!validateTag(trimmedTag))
-    {
+
+    if (!validateTag(trimmedTag)) {
       Alert.alert(
-        "Invalid Tag", 
+        "Invalid Tag",
         "Tags can only contain letters, numbers, spaces, underscores, and hyphens, and must be 1-30 characters long."
       );
       return;
     }
-    
-    if (tags.includes(trimmedTag))
-    {
+
+    if (tags.includes(trimmedTag)) {
       Alert.alert("Duplicate Tag", "This tag has already been added.");
       return;
     }
-    
-    if (tags.length >= 10)
-    {
+
+    if (tags.length >= 10) {
       Alert.alert("Tag Limit", "You can add a maximum of 10 tags.");
       return;
     }
-    
+
     setTags([...tags, trimmedTag]);
     setTagInput("");
   }, [tagInput, tags]);
 
   // Remove a tag
-  const removeTag = useCallback((tagToRemove: string) => {
-    setTags(tags.filter(tag => tag !== tagToRemove));
-  }, [tags]);
+  const removeTag = useCallback(
+    (tagToRemove: string) => {
+      setTags(tags.filter((tag) => tag !== tagToRemove));
+    },
+    [tags]
+  );
 
 
   // For the scheduling toggle:
@@ -486,27 +498,9 @@ const CreatePost = () => {
       // ADDED: Check if we're publishing a draft
     if (draftId)
     {
-        // Different endpoint based on whether scheduling or publishing immediately
-        const endpoint = isScheduled 
-        ? `/content/posts/${draftId}/schedule/` 
-        : `/content/posts/${draftId}/publish/`;
+        const response = await axiosInstance.post(`/content/posts/${draftId}/publish/`);
         
-        const data = isScheduled ? { scheduled_for: scheduledDate.toISOString() } : {};
-        
-        const response = await axiosInstance.post(endpoint, data);
-        
-        const successMessage = isScheduled 
-          ? `Your post has been scheduled for ${scheduledDate.toLocaleString(undefined, { 
-            month: 'short', 
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit' 
-          })}!` 
-          : "Your post has been published!";
-        
-        // const response = await axiosInstance.post(`/content/posts/${draftId}/publish/`);
-        
-        Alert.alert("Success", successMessage, [
+        Alert.alert("Success", "Your post has been published!", [
           {
             text: "View Post",
             onPress: () => router.push(`/post/${response.data.id}`),
@@ -516,9 +510,7 @@ const CreatePost = () => {
             onPress: () => router.push("/(tabs)"),
           },
         ]);
-      } 
-      else 
-      {
+      } else {
         // Create form data object
         console.log("hasDisclaimer:", hasDisclaimer);
         console.log("disclaimerText:", disclaimerText);
@@ -528,74 +520,56 @@ const CreatePost = () => {
         formData.append("visibility", visibility);
         formData.append("status", "published");
 
-        if (hasDisclaimer)
-        {
+        if (hasDisclaimer) {
           formData.append("disclaimer", disclaimerText.trim());
         }
 
-        if (caption.trim())
-        {
+        if (caption.trim()) {
           formData.append("caption", caption.trim());
         }
-        
-        if (tags.length > 0)
-        {
-          formData.append("tags", JSON.stringify(tags));
-        }
 
-        // Include scheduled date if scheduling is enabled
-        if (isScheduled)
-        {
-          formData.append("scheduled_for", scheduledDate.toISOString());
+        if (tags.length > 0) {
+          formData.append("tags", JSON.stringify(tags));
         }
       
 
         if (media) {
-            const uriParts =
+          const uriParts =
             media.type === "video"
-                ? media.video?.split("/") || []
-                : media.image?.split("/") || [];
+              ? media.video?.split("/") || []
+              : media.image?.split("/") || [];
 
-            const fileName = uriParts[uriParts.length - 1];
-            const fileType = media.type === "video" ? "video" : "image";
+          const fileName = uriParts[uriParts.length - 1];
+          const fileType = media.type === "video" ? "video" : "image";
 
-            // @ts-ignore - RN FormData type issue
-            formData.append(fileType, {
+          // @ts-ignore - RN FormData type issue
+          formData.append(fileType, {
             uri:
-                Platform.OS === "android"
+              Platform.OS === "android"
                 ? media.image
                 : media.image?.replace("file://", "") ?? "",
             name: media.name || fileName,
             type: media.type === "video" ? "video/mp4" : "image/jpeg", // Simplified for example
-            });
+          });
         }
 
         // Submit post with media if present
         const response = await axiosInstance.post("/content/posts/", formData, {
-            headers: {
+          headers: {
             "Content-Type": "multipart/form-data",
-            },
+          },
         });
         console.log("Post created:", response.data);
 
-        const successMessage = isScheduled 
-        ? `Your post has been scheduled for ${scheduledDate.toLocaleString(undefined, { 
-          month: 'short', 
-          day: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit' 
-        })}!` 
-        : "Your post has been published!";
-
-        Alert.alert("Success", successMessage, [
+        Alert.alert("Success", "Your post has been published!", [
             {
             text: "View Post",
             onPress: () => router.push(`/post/${response.data.id}`),
-            },
-            {
+          },
+          {
             text: "Go Home",
             onPress: () => router.push("/(tabs)"),
-            },
+          },
         ]);
 
         setPostText("");
@@ -622,26 +596,38 @@ const CreatePost = () => {
       setIsLoading(false);
     }
   }, [postText, media, visibility, hasDisclaimer, disclaimerText,
-    caption, tags, tagInput, showCaptionAndTags, draftId,
-    isScheduled, scheduledDate]);
+    caption, tags, tagInput, showCaptionAndTags, draftId]);
 
+  const handleLeave = () => {
+    if (hasUnsavedChanges) {
+      Alert.alert(
+        "Discard changes?",
+        "You have unsaved changes! Are you sure you want to discard them?",
+        [
+          { text: "Don't leave", style: "cancel" },
+          {
+            text: "Discard",
+            onPress: () => router.dismissTo("/(tabs)"),
+            style: "destructive",
+          },
+        ]
+      );
+    } else {
+      router.dismissTo("/(tabs)");
+    }
+  };
   // Added isSaving to disabled state checks
   const isPostDisabled = (!postText.trim() && !media) || isLoading || isSaving;
-  const isPreviewDisabled = (!postText.trim() && !media) || isLoading || isSaving;
+  const isPreviewDisabled =
+    (!postText.trim() && !media) || isLoading || isSaving;
   const isSaveDisabled = (!postText.trim() && !media) || isLoading || isSaving;
 
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
       keyboardVerticalOffset={Platform.OS === "ios" ? 64 : 0}
     >
-      <StatusBar
-        barStyle="dark-content"
-        backgroundColor="#FFFFFF"
-        translucent={false}
-      />
-
+      <CompactHeader title="Create Post" onBack={handleLeave} />
       <ScrollView
         style={styles.scrollContainer}
         contentContainerStyle={[
@@ -674,13 +660,19 @@ const CreatePost = () => {
           onPress={toggleCaptionAndTags}
         >
           <View style={styles.captionToggleContent}>
-            <Ionicons 
-              name={showCaptionAndTags ? "chevron-up-outline" : "chevron-down-outline"} 
-              size={20} 
-              color="#00c5e3" 
+            <Ionicons
+              name={
+                showCaptionAndTags
+                  ? "chevron-up-outline"
+                  : "chevron-down-outline"
+              }
+              size={20}
+              color="#00c5e3"
             />
             <Text style={styles.captionToggleText}>
-              {showCaptionAndTags ? "Hide Caption & Tags" : "Add Caption & Tags"}
+              {showCaptionAndTags
+                ? "Hide Caption & Tags"
+                : "Add Caption & Tags"}
             </Text>
           </View>
         </TouchableOpacity>
@@ -703,7 +695,7 @@ const CreatePost = () => {
               />
               <Text style={styles.charCount}>{caption.length}/100</Text>
             </View>
-            
+
             {/* Tags Input */}
             <View style={styles.tagsContainer}>
               <Text style={styles.sectionLabel}>Tags</Text>
@@ -719,15 +711,19 @@ const CreatePost = () => {
                   onSubmitEditing={addTag}
                   autoCapitalize="none"
                 />
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.addTagButton}
                   onPress={addTag}
                   disabled={!tagInput.trim()}
                 >
-                  <Ionicons name="add-circle-outline" size={24} color="#00c5e3" />
+                  <Ionicons
+                    name="add-circle-outline"
+                    size={24}
+                    color="#00c5e3"
+                  />
                 </TouchableOpacity>
               </View>
-              
+
               {/* Tags Display */}
               {tags.length > 0 && (
                 <View style={styles.tagsWrap}>
@@ -738,13 +734,17 @@ const CreatePost = () => {
                         onPress={() => removeTag(tag)}
                         style={styles.removeTagButton}
                       >
-                        <Ionicons name="close-circle" size={16} color="#666666" />
+                        <Ionicons
+                          name="close-circle"
+                          size={16}
+                          color="#666666"
+                        />
                       </TouchableOpacity>
                     </View>
                   ))}
                 </View>
               )}
-              
+
               {tags.length > 0 && (
                 <Text style={styles.tagCountText}>
                   {tags.length}/10 tags added
@@ -753,7 +753,6 @@ const CreatePost = () => {
             </View>
           </View>
         )}
-
 
         {/* Disclaimer Toggle */}
         <View style={styles.disclaimerToggleContainer}>
@@ -866,7 +865,6 @@ const CreatePost = () => {
         </View>
 
         <View style={styles.actionBar}>
-
           {/* Preview Button */}
           <ActionButton
             icon={<Ionicons name="eye-outline" size={20} color="#FFFFFF" />}
@@ -874,27 +872,31 @@ const CreatePost = () => {
             onPress={handlePreview}
             disabled={isPreviewDisabled}
             style={[
-                styles.previewButton,
-                isPreviewDisabled && styles.previewButtonDisabled,
-              ]}
+              styles.previewButton,
+              isPreviewDisabled && styles.previewButtonDisabled,
+            ]}
             textStyle={styles.previewButtonText}
           />
 
           <ActionButton
-            icon={<Ionicons name="document-outline" size={20} color="#FFFFFF" />}
+            icon={
+              <Ionicons name="document-outline" size={20} color="#FFFFFF" />
+            }
             text="Save Draft"
             onPress={handleSaveDraft}
             disabled={isSaveDisabled}
             loading={isSaving}
             style={[
-            styles.saveDraftButton,
-            isSaveDisabled && styles.saveDraftButtonDisabled,
+              styles.saveDraftButton,
+              isSaveDisabled && styles.saveDraftButtonDisabled,
             ]}
             textStyle={styles.saveDraftButtonText}
           />
 
           <ActionButton
-            icon={<Ionicons name="paper-plane-outline" size={20} color="#FFFFFF" />}
+            icon={
+              <Ionicons name="paper-plane-outline" size={20} color="#FFFFFF" />
+            }
             text="Post"
             onPress={handlePost}
             disabled={isPostDisabled}
@@ -913,7 +915,7 @@ const CreatePost = () => {
             File limits: Images (5MB max), Videos (50MB max)
           </Text>
           <Text style={styles.limitText}>
-            Supported formats: JPG, JPEG, PNG, GIF, MP4, MOV, AVI, WMV
+            Supported formats: JPG, JPEG, PNG, MP4, MOV, AVI, WMV
           </Text>
         </View>
 
@@ -1033,13 +1035,13 @@ const CreatePost = () => {
           />
         )}
 
-        {/* Back to Tabs Button */}
+        {/*Resource & Tips Button */}
         <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => router.push("/(tabs)")}
+          style={styles.goToResourcesButton}
+          onPress={() => router.push("/resourceTips")}
         >
-          <Ionicons name="arrow-back-outline" size={20} color="#FFFFFF" />
-          <Text style={styles.backButtonText}>Back to Tabs</Text>
+          <Ionicons name="bulb-outline" size={20} color="#FFFFFF" />
+          <Text style={styles.goToResourcesButtonText}>Resource & Tips</Text>
         </TouchableOpacity>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -1335,20 +1337,27 @@ const styles = StyleSheet.create({
     color: "#666666",
     marginBottom: 4,
   },
-  backButton: {
+  goToResourcesButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    marginTop: 24,
+    marginTop: 32,
     backgroundColor: "#00c5e3",
-    paddingVertical: 12,
-    borderRadius: 24,
+    paddingVertical: 13,
+    paddingHorizontal: 24,
+    borderRadius: 30,
+    shadowColor: "#00c5e3",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.18,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  backButtonText: {
-    color: "#FFFFFF",
+  goToResourcesButtonText: {
+    color: "#fff",
     marginLeft: 8,
-    fontSize: 16,
-    fontWeight: "600",
+    fontSize: 17,
+    fontWeight: "bold",
+    letterSpacing: 0.2,
   },
   // Schedule Toggle Styles
   scheduleToggleContainer: {

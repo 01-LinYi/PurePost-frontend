@@ -8,6 +8,7 @@ import { Ionicons } from "@expo/vector-icons";
 type FeedHeaderProps = {
   onLogOut: () => void;
   onCreatePost: () => void;
+  onNotifications: () => void;
 };
 
 /**
@@ -16,6 +17,7 @@ type FeedHeaderProps = {
 export default function FeedHeader({
   onLogOut,
   onCreatePost,
+  onNotifications,
 }: FeedHeaderProps) {
   return (
     <View style={styles.header}>
@@ -28,7 +30,7 @@ export default function FeedHeader({
         </TouchableOpacity>
 
         {/* Notifications button */}
-        <TouchableOpacity style={styles.headerButton}>
+        <TouchableOpacity style={styles.headerButton} onPress={onNotifications}>
           <Ionicons name="notifications-outline" size={24} color="#00c5e3" />
         </TouchableOpacity>
 

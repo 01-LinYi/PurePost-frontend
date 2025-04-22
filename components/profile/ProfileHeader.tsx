@@ -26,7 +26,7 @@ const { width } = Dimensions.get("window");
 
 const BASE_HEADER_HEIGHT = 64;
 const MIN_HEADER_HEIGHT = 48;
-const SCROLL_THRESHOLD = 55;  
+const SCROLL_THRESHOLD = 55;
 
 interface AnimatedProfileHeaderProps {
   title: string;
@@ -48,7 +48,7 @@ export default function AnimatedProfileHeader({
   scrollY,
 }: AnimatedProfileHeaderProps) {
   const router = useRouter();
-  
+
   const safeAreaTopHeight = 3;
 
   const [headerHeight, setHeaderHeight] = useState(BASE_HEADER_HEIGHT);
@@ -59,12 +59,12 @@ export default function AnimatedProfileHeader({
   const headerScaleAnim = useRef(new Animated.Value(1.03)).current;
   const buttonSlideAnim = useRef(new Animated.Value(10)).current;
   const waveAnim = useRef(new Animated.Value(0)).current;
-  
+
 
   useEffect(() => {
     if (scrollY) {
       const listener = scrollY.addListener(({ value }) => {
- 
+
         const newHeight = Math.max(
           MIN_HEADER_HEIGHT,
           BASE_HEADER_HEIGHT - (value * 0.4)
@@ -77,34 +77,34 @@ export default function AnimatedProfileHeader({
       };
     }
   }, [scrollY]);
-  
+
 
   const headerOpacity = scrollY
     ? scrollY.interpolate({
-        inputRange: [0, SCROLL_THRESHOLD],
-        outputRange: [1, 0.95],
-        extrapolate: "clamp",
-      })
+      inputRange: [0, SCROLL_THRESHOLD],
+      outputRange: [1, 0.95],
+      extrapolate: "clamp",
+    })
     : 1;
 
   const titleScale = scrollY
     ? scrollY.interpolate({
-        inputRange: [0, SCROLL_THRESHOLD],
-        outputRange: [1, 0.92],
-        extrapolate: "clamp",
-      })
+      inputRange: [0, SCROLL_THRESHOLD],
+      outputRange: [1, 0.92],
+      extrapolate: "clamp",
+    })
     : 1;
-    
 
-  const waveTransform = scrollY 
+
+  const waveTransform = scrollY
     ? Animated.multiply(
-        waveAnim,
-        scrollY.interpolate({
-          inputRange: [0, SCROLL_THRESHOLD/2],
-          outputRange: [1, 0],
-          extrapolate: 'clamp'
-        })
-      )
+      waveAnim,
+      scrollY.interpolate({
+        inputRange: [0, SCROLL_THRESHOLD / 2],
+        outputRange: [1, 0],
+        extrapolate: 'clamp'
+      })
+    )
     : waveAnim;
 
 
@@ -118,7 +118,7 @@ export default function AnimatedProfileHeader({
         tension: 50,
         useNativeDriver: true,
       }),
-      
+
 
       Animated.timing(fadeAnim, {
         toValue: 1,
@@ -126,7 +126,7 @@ export default function AnimatedProfileHeader({
         delay: 100,
         useNativeDriver: true,
       }),
-      
+
 
       Animated.spring(titleSlideAnim, {
         toValue: 0,
@@ -135,7 +135,7 @@ export default function AnimatedProfileHeader({
         delay: 100,
         useNativeDriver: true,
       }),
-      
+
       Animated.spring(buttonSlideAnim, {
         toValue: 0,
         friction: 7,
@@ -143,7 +143,7 @@ export default function AnimatedProfileHeader({
         delay: 150,
         useNativeDriver: true,
       }),
-      
+
 
       Animated.spring(waveAnim, {
         toValue: 1,
@@ -252,18 +252,20 @@ export default function AnimatedProfileHeader({
                 },
               ]}
             >
-              <TouchableOpacity
-                style={styles.actionButton}
-                onPress={() => router.push("/profile/search")}
-                hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
-                activeOpacity={0.7}
-              >
-                <Ionicons
-                  name="search"
-                  size={22}
-                  color={COLORS.primary}
-                />
-              </TouchableOpacity>
+              {isOwnProfile && (
+                <TouchableOpacity
+                  style={styles.actionButton}
+                  onPress={() => router.push("/profile/search")}
+                  hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons
+                    name="search"
+                    size={22}
+                    color={COLORS.primary}
+                  />
+                </TouchableOpacity>
+              )}
               {isOwnProfile ? (
                 <TouchableOpacity
                   style={styles.actionButton}
@@ -374,7 +376,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 12,
-    height: 48, 
+    height: 48,
     position: "relative",
   },
   headerTitle: {
@@ -400,14 +402,14 @@ const styles = StyleSheet.create({
   },
   actionButton: {
     marginLeft: 16,
-    padding: 6, 
+    padding: 6,
   },
 });
 
 
 const waveStyles = StyleSheet.create({
   container: {
-    height: 20, 
+    height: 20,
     width: "100%",
     position: "absolute",
     bottom: -2,
