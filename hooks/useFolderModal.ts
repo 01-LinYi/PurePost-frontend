@@ -29,12 +29,11 @@ export default function useFolderModal() {
     setErrorMsg(null);
   }, []);
 
-  // 设置错误信息
   const setError = useCallback((msg: string | null) => {
     setErrorMsg(msg);
   }, []);
 
-  // 设置loading状态
+
   const setLoadingState = useCallback((state:boolean) => {
     setLoading(state);
   }, []);

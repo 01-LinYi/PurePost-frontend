@@ -10,7 +10,6 @@ import NetInfo from "@react-native-community/netinfo";
 import { CacheManager } from "@/utils/cache/cacheManager";
 import { clearApiCache, setUserCacheKeyGenerator } from "@/utils/api";
 import { useSession } from "@/components/SessionProvider";
-import { get } from "react-native/Libraries/TurboModule/TurboModuleRegistry";
 
 interface CacheContextType {
   isOnline: boolean;
