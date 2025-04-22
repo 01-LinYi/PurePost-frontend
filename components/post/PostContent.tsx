@@ -1,5 +1,6 @@
-import { View, StyleSheet, ScrollView, Platform, Image } from "react-native";
-import { Text } from "@/components/Themed";
+import { StyleSheet, ScrollView, Platform } from "react-native";
+import { Text, View } from "@/components/Themed";
+import { Image } from '@/components/CachedImage';
 import { Post, Comment } from "@/types/postType";
 import AuthorInfo from "./AuthorInfo";
 import PostActions from "./PostActions";
