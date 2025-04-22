@@ -2,7 +2,6 @@
 import React, { useEffect, useCallback } from "react";
 import {
   TouchableOpacity,
-  Image,
   ActivityIndicator,
   Platform,
   Animated,
@@ -12,6 +11,7 @@ import {
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 import { Text, View } from "@/components/Themed";
+import { Image } from "@/components/CachedImage";
 import useInteractList, {
   ListedUser,
   InteractType,

@@ -5,7 +5,6 @@ import {
   ActivityIndicator,
   TouchableOpacity,
   FlatList,
-  Image,
   Modal,
   TextInput,
   RefreshControl,
@@ -13,6 +12,7 @@ import {
 import { useLocalSearchParams, useRouter } from "expo-router"
 import { Ionicons } from "@expo/vector-icons";
 import { Text, View } from "@/components/Themed";
+import { Image } from '@/components/CachedImage';
 import ActionButton from "@/components/ActionButton";
 import { useFolders } from "@/hooks/useFolders";
 import { Post } from "@/types/postType";

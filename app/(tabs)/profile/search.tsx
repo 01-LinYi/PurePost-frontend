@@ -7,9 +7,9 @@ import {
   Text,
   StyleSheet,
   Alert,
-  Image,
 } from "react-native";
 import { useRouter } from "expo-router";
+import { Image } from '@/components/CachedImage';
 import * as api from "@/utils/api";
 import { UserProfile } from "@/types/profileType";
 
