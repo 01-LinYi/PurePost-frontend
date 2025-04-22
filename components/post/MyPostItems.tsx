@@ -1,9 +1,17 @@
 // components/post/MyPostItem.tsx - Individual post item for the My Posts screen
 
 import React, { useEffect } from "react";
-import { StyleSheet, TouchableOpacity, Image, Platform, Alert, ScrollView, Pressable } from "react-native";
+import {
+  StyleSheet,
+  TouchableOpacity,
+  Platform,
+  Alert,
+  ScrollView,
+  Pressable,
+} from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Text, View } from "@/components/Themed";
+import { Image } from '@/components/CachedImage';
 import { useRouter } from "expo-router";
 import { Post, PostVisibility, PostStatus } from "@/types/postType";
 import AuthorInfo from "@/components/post/AuthorInfo";
@@ -23,14 +31,14 @@ const MyPostItem: React.FC<MyPostItemProps> = ({
   onDelete,
   onNavigate,
 }) => {
-    // Add debugging to check the post object
-    useEffect(() => {
-      console.log("Post object:", JSON.stringify(post, null, 2));
-      console.log("Post keys:", Object.keys(post));
-      console.log("Post status:", post.status);
-      console.log("Post visibility:", post.visibility);
-    }, [post]); 
-         
+  // Add debugging to check the post object
+  useEffect(() => {
+    console.log("Post object:", JSON.stringify(post, null, 2));
+    console.log("Post keys:", Object.keys(post));
+    console.log("Post status:", post.status);
+    console.log("Post visibility:", post.visibility);
+  }, [post]);
+
   // Extract the first line as title
   const lines = post.content.split("\n");
   const title = post.caption || "";
@@ -39,8 +47,8 @@ const MyPostItem: React.FC<MyPostItemProps> = ({
   // Use caption if available, otherwise use content preview
   const hasCaption = !!post.caption;
 
-  // Create a preview of the content 
-  const contentPreview = post.content 
+  // Create a preview of the content
+  const contentPreview = post.content
     ? post.content.substring(0, 100) + (post.content.length > 100 ? "..." : "")
     : "No content";
 
@@ -67,10 +75,14 @@ const MyPostItem: React.FC<MyPostItemProps> = ({
   };
 
   const getStatusProps = (isStatus: PostStatus) => {
-    if(isStatus==="draft")
-        return { icon: "document-text-outline", color: "#FF6B6B", text: "Draft" };
+    if (isStatus === "draft")
+      return { icon: "document-text-outline", color: "#FF6B6B", text: "Draft" };
     else
-        return { icon: "checkmark-circle-outline", color: "#00c5e3", text: "Published" };   
+      return {
+        icon: "checkmark-circle-outline",
+        color: "#00c5e3",
+        text: "Published",
+      };
   };
 
   const visibilityProps = getVisibilityProps(post.visibility);
@@ -83,20 +95,24 @@ const MyPostItem: React.FC<MyPostItemProps> = ({
     // Handle pin/unpin action
     if (post.is_pinned) {
       // Unpin the post
-      api.unpinPost(Number(postId)).then(() => {
-        // Update the post state or refetch posts
-      }
-      ).catch((error) => {
-        console.error("Error unpinning post:", error);
-      });
+      api
+        .unpinPost(Number(postId))
+        .then(() => {
+          // Update the post state or refetch posts
+        })
+        .catch((error) => {
+          console.error("Error unpinning post:", error);
+        });
     } else {
       // Pin the post
-      api.pinPost(Number(postId)).then(() => {
-        // Update the post state or refetch posts
-      }
-      ).catch((error) => {
-        console.error("Error pinning post:", error);
-      });
+      api
+        .pinPost(Number(postId))
+        .then(() => {
+          // Update the post state or refetch posts
+        })
+        .catch((error) => {
+          console.error("Error pinning post:", error);
+        });
     }
     Alert.alert(
       post.is_pinned ? "Unpinned" : "Pinned",
@@ -104,26 +120,24 @@ const MyPostItem: React.FC<MyPostItemProps> = ({
         ? "The post has been unpinned."
         : "The post has been pinned to your profile.",
       [
-        { 
-          text: post.is_pinned ? "OK" : "View Profile", 
-          onPress: post.is_pinned 
-            ? () => {} 
-            : () => router.replace('/profile')
+        {
+          text: post.is_pinned ? "OK" : "View Profile",
+          onPress: post.is_pinned ? () => {} : () => router.replace("/profile"),
         },
         {
-          text: "Stay here", 
+          text: "Stay here",
           style: "cancel",
-        }
+        },
       ]
     );
   };
 
   const renderTags = () => {
     if (!post.tags || post.tags.length === 0) return null;
-    
+
     return (
-      <ScrollView 
-        horizontal 
+      <ScrollView
+        horizontal
         showsHorizontalScrollIndicator={false}
         style={styles.tagsContainer}
         contentContainerStyle={styles.tagsContentContainer}
@@ -180,10 +194,8 @@ const MyPostItem: React.FC<MyPostItemProps> = ({
                   size={12}
                   color={statusProps.color}
                 />
-                <Text 
-                    style={[styles.statusText, { color: statusProps.color }]}
-                >
-                    {statusProps.text}
+                <Text style={[styles.statusText, { color: statusProps.color }]}>
+                  {statusProps.text}
                 </Text>
               </View>
 
@@ -194,7 +206,10 @@ const MyPostItem: React.FC<MyPostItemProps> = ({
                   color={visibilityProps.color}
                 />
                 <Text
-                  style={[styles.visibilityText, { color: visibilityProps.color }]}
+                  style={[
+                    styles.visibilityText,
+                    { color: visibilityProps.color },
+                  ]}
                 >
                   {visibilityProps.text}
                 </Text>
@@ -276,10 +291,10 @@ const MyPostItem: React.FC<MyPostItemProps> = ({
             style={styles.actionButton}
             onPress={() => onTogglePin(post.id)}
           >
-            <Ionicons 
-              name={post.is_pinned ? "pin" : "pin-outline"} 
-              size={16} 
-              color="#00c5e3" 
+            <Ionicons
+              name={post.is_pinned ? "pin" : "pin-outline"}
+              size={16}
+              color="#00c5e3"
             />
             <Text style={styles.actionButtonText}>
               {post.is_pinned ? "Unpin" : "Pin"}
@@ -335,8 +350,8 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   statusTagsContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   visibilityTag: {
     flexDirection: "row",

@@ -1,12 +1,12 @@
 import React, { useState } from "react";
 import {
-  Image,
   StyleSheet,
   TouchableOpacity,
   Animated,
   Alert,
 } from "react-native";
 import { Text, View } from "../Themed";
+import { Image } from '@/components/CachedImage';
 import { Comment } from "@/types/postType";
 import { useSession } from "@/components/SessionProvider";
 import { formatDate } from "@/utils/dateUtils";

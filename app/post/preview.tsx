@@ -2,19 +2,17 @@ import React, { useState, useEffect } from "react";
 import {
   StyleSheet,
   TouchableOpacity,
-  Image,
   SafeAreaView,
   StatusBar,
   Platform,
   ScrollView,
-  Alert,
 } from "react-native";
 import { Text, View } from "@/components/Themed";
+import { Image } from '@/components/CachedImage';
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useSession } from "@/components/SessionProvider";
-import { timeAgo } from "@/utils/dateUtils";
 
 /**
  * Post Preview Screen
@@ -64,7 +62,7 @@ export default function PostPreviewScreen() {
             <Image
               source={{ uri: previewPost.image }}
               style={styles.mediaImage}
-              resizeMode="cover"
+              contentFit="cover"
             />
           </View>
         );
@@ -144,8 +142,8 @@ export default function PostPreviewScreen() {
         <View style={styles.postCard}>
           <View style={styles.postHeader}>
             <View style={styles.userInfo}>
-              {user?.avatar ? (
-                <Image source={{ uri: user.avatar }} style={styles.userAvatar} />
+              {false ? (
+                <Image source={{}} style={styles.userAvatar} />
               ) : (
                 <View style={styles.userAvatarPlaceholder}>
                   <Text style={styles.avatarText}>

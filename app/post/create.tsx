@@ -1,21 +1,19 @@
 import React, { useState, useCallback, useEffect } from "react";
-import { View } from "@/components/Themed";
+import { Text, View } from "@/components/Themed";
 import {
   TextInput,
   StyleSheet,
   Alert,
-  StatusBar,
   ScrollView,
   Platform,
   KeyboardAvoidingView,
   TouchableOpacity,
-  Text as Text,
   Switch,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { router, useNavigation } from "expo-router";
+import { useRouter, useNavigation } from "expo-router";
 import axiosInstance from "@/utils/axiosInstance";
 import { formatUploadFileName } from "@/utils/formatUploadFileName";
 import MediaPreview from "@/components/MediaPreview";
@@ -58,6 +56,7 @@ const CreatePost = () => {
   const [tagInput, setTagInput] = useState<string>("");
   const [tags, setTags] = useState<string[]>([]);
   const [showCaptionAndTags, setShowCaptionAndTags] = useState<boolean>(false);
+  const router = useRouter();
 
   useEffect(() => {
     const checkForDraft = async () => {
@@ -541,13 +540,13 @@ const CreatePost = () => {
           { text: "Don't leave", style: "cancel" },
           {
             text: "Discard",
-            onPress: () => router.replace("/(tabs)"),
+            onPress: () => router.dismissTo("/(tabs)"),
             style: "destructive",
           },
         ]
       );
     } else {
-      router.replace("/(tabs)");
+      router.dismissTo("/(tabs)");
     }
   };
   // Added isSaving to disabled state checks
@@ -816,10 +815,13 @@ const CreatePost = () => {
           </Text>
         </View>
 
-        {/* Back to Tabs Button */}
-        <TouchableOpacity style={styles.backButton} onPress={handleLeave}>
-          <Ionicons name="arrow-back-outline" size={20} color="#FFFFFF" />
-          <Text style={styles.backButtonText}>Back to Tabs</Text>
+        {/*Resource & Tips Button */}
+        <TouchableOpacity
+          style={styles.goToResourcesButton}
+          onPress={() => router.push("/resourceTips")}
+        >
+          <Ionicons name="bulb-outline" size={20} color="#FFFFFF" />
+          <Text style={styles.goToResourcesButtonText}>Resource & Tips</Text>
         </TouchableOpacity>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -1115,20 +1117,27 @@ const styles = StyleSheet.create({
     color: "#666666",
     marginBottom: 4,
   },
-  backButton: {
+  goToResourcesButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    marginTop: 24,
+    marginTop: 32,
     backgroundColor: "#00c5e3",
-    paddingVertical: 12,
-    borderRadius: 24,
+    paddingVertical: 13,
+    paddingHorizontal: 24,
+    borderRadius: 30,
+    shadowColor: "#00c5e3",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.18,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  backButtonText: {
-    color: "#FFFFFF",
+  goToResourcesButtonText: {
+    color: "#fff",
     marginLeft: 8,
-    fontSize: 16,
-    fontWeight: "600",
+    fontSize: 17,
+    fontWeight: "bold",
+    letterSpacing: 0.2,
   },
 });
 

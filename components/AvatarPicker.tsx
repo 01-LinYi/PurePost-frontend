@@ -2,13 +2,13 @@
 import React, { useState } from "react";
 import {
   StyleSheet,
-  Image,
   TouchableOpacity,
   Alert,
   ActivityIndicator,
   Platform,
 } from "react-native";
 import { Text, View } from "./Themed";
+import { Image } from '@/components/CachedImage';
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import * as ImagePicker from "expo-image-picker";

@@ -1,6 +1,7 @@
 // components/post/AuthorInfo.tsx - Component for displaying post author information
 
-import { StyleSheet, TouchableOpacity, Image } from "react-native";
+import { StyleSheet, TouchableOpacity } from "react-native";
+import { Image } from '@/components/CachedImage';
 import { Ionicons } from "@expo/vector-icons";
 import { Text, View } from "@/components/Themed";
 import { User } from "@/types/postType";
