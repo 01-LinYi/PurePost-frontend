@@ -343,7 +343,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#888888',
     fontWeight: '400',
-  }
+  },
   adminOption: {
     borderBottomWidth: 0,
   },
