@@ -14,7 +14,7 @@ import {
 import * as ImagePicker from "expo-image-picker";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useRouter, useNavigation } from "expo-router";
+import { router, useRouter, useNavigation } from "expo-router";
 import axiosInstance from "@/utils/axiosInstance";
 import { formatUploadFileName } from "@/utils/formatUploadFileName";
 import MediaPreview from "@/components/MediaPreview";
@@ -59,6 +59,12 @@ const CreatePost = () => {
   const [tagInput, setTagInput] = useState<string>("");
   const [tags, setTags] = useState<string[]>([]);
   const [showCaptionAndTags, setShowCaptionAndTags] = useState<boolean>(false);
+  const [isScheduled, setIsScheduled] = useState<boolean>(false);
+  const [scheduledDate, setScheduledDate] = useState<Date>(new Date());
+  const [showDatePicker, setShowDatePicker] = useState<boolean>(false);
+  const [showTimePicker, setShowTimePicker] = useState<boolean>(false);
+  const [showScheduleModal, setShowScheduleModal] = useState<boolean>(false);
+
 
   useEffect(() => {
     const checkForDraft = async () => {
@@ -369,6 +375,7 @@ const CreatePost = () => {
     tagInput,
     showCaptionAndTags,
     draftId,
+    isScheduled, scheduledDate
   ]);
 
   // Add a tag
@@ -479,7 +486,7 @@ const CreatePost = () => {
         return;
       }
       
-      // Ensure it's at least 10 minutes in the future
+      /* Ensure it's at least 10 minutes in the future
       const minScheduleTime = new Date();
       minScheduleTime.setMinutes(minScheduleTime.getMinutes() + 10);
       
@@ -489,16 +496,55 @@ const CreatePost = () => {
           "Please schedule your post at least 10 minutes in the future."
         );
         return;
-      }
+      }*/
     }
 
     try {
       setIsLoading(true);
 
-      // ADDED: Check if we're publishing a draft
+    // Check if we're publishing a draft
     if (draftId)
     {
-        const response = await axiosInstance.post(`/content/posts/${draftId}/publish/`);
+      // For drafts, we need to handle scheduling differently
+      const formData = new FormData();
+      
+      // If scheduling, we need to set scheduled_for and use status "scheduled" 
+      // instead of "published"
+      if (isScheduled) {
+        formData.append("status", "scheduled");
+        formData.append("scheduled_for", scheduledDate.toISOString());
+      } else {
+        formData.append("status", "published");
+      }
+
+      const response = await axiosInstance.post(
+        `/content/posts/${draftId}/publish/`,
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
+
+      // Success message based on whether scheduled or published immediately
+      const successMessage = isScheduled 
+        ? "Your post has been scheduled for publication!"
+        : "Your post has been published!";
+        
+      Alert.alert("Success", successMessage, [
+        {
+          text: isScheduled ? "View Scheduled" : "View Post",
+          onPress: () => router.push(`/post/${response.data.id}`),
+        },
+        {
+          text: "Go Home",
+          onPress: () => router.push("/(tabs)"),
+        },
+      ]);
+      
+
+      /*  const response = await axiosInstance.post(`/content/posts/${draftId}/publish/`);
         
         Alert.alert("Success", "Your post has been published!", [
           {
@@ -509,11 +555,10 @@ const CreatePost = () => {
             text: "Go Home",
             onPress: () => router.push("/(tabs)"),
           },
-        ]);
+        ]);*/
       } else {
+        
         // Create form data object
-        console.log("hasDisclaimer:", hasDisclaimer);
-        console.log("disclaimerText:", disclaimerText);
 
         const formData = new FormData();
         formData.append("content", postText.trim());
@@ -530,6 +575,14 @@ const CreatePost = () => {
 
         if (tags.length > 0) {
           formData.append("tags", JSON.stringify(tags));
+        }
+
+        // If scheduling, set status to "scheduled" and include scheduled_for timestamp
+        if (isScheduled) {
+          formData.append("status", "scheduled");
+          formData.append("scheduled_for", scheduledDate.toISOString());
+        } else {
+          formData.append("status", "published");
         }
       
 
@@ -559,9 +612,26 @@ const CreatePost = () => {
             "Content-Type": "multipart/form-data",
           },
         });
+
+        // Success message based on whether scheduled or published immediately
+        const successMessage = isScheduled 
+          ? "Your post has been scheduled for publication!"
+          : "Your post has been published!";
+          
+        Alert.alert("Success", successMessage, [
+          {
+            text: isScheduled ? "View Scheduled" : "View Post",
+            onPress: () => router.push(`/post/${response.data.id}`),
+          },
+          {
+            text: "Go Home",
+            onPress: () => router.push("/(tabs)"),
+          },
+        ]);
+        
         console.log("Post created:", response.data);
 
-        Alert.alert("Success", "Your post has been published!", [
+        /*Alert.alert("Success", "Your post has been published!", [
             {
             text: "View Post",
             onPress: () => router.push(`/post/${response.data.id}`),
@@ -570,7 +640,7 @@ const CreatePost = () => {
             text: "Go Home",
             onPress: () => router.push("/(tabs)"),
           },
-        ]);
+        ])*/
 
         setPostText("");
         setMedia(null);
@@ -596,7 +666,8 @@ const CreatePost = () => {
       setIsLoading(false);
     }
   }, [postText, media, visibility, hasDisclaimer, disclaimerText,
-    caption, tags, tagInput, showCaptionAndTags, draftId]);
+    caption, tags, tagInput, showCaptionAndTags, draftId,
+    isScheduled, scheduledDate]);
 
   const handleLeave = () => {
     if (hasUnsavedChanges) {
