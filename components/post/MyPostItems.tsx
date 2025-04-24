@@ -75,14 +75,24 @@ const MyPostItem: React.FC<MyPostItemProps> = ({
   };
 
   const getStatusProps = (isStatus: PostStatus) => {
-    if (isStatus === "draft")
-      return { icon: "document-text-outline", color: "#FF6B6B", text: "Draft" };
-    else
-      return {
-        icon: "checkmark-circle-outline",
-        color: "#00c5e3",
-        text: "Published",
+    switch (isStatus)
+    {
+      case "draft":
+        return { icon: "document-text-outline", color: "#FF6B6B", text: "Draft" };
+      case "scheduled":
+        return { 
+          icon: "calendar-outline", 
+          color: "#FFA500",
+          text: "Scheduled" 
+        };
+      case "published":
+      default:
+        return {
+          icon: "checkmark-circle-outline",
+          color: "#00c5e3",
+          text: "Published",
       };
+    }
   };
 
   const visibilityProps = getVisibilityProps(post.visibility);
@@ -169,6 +179,22 @@ const MyPostItem: React.FC<MyPostItemProps> = ({
             isPrivateAccount={post.user.is_private}
           />
         </View>
+
+        {/* Show scheduled time if post is scheduled */}
+        {post.status === "scheduled" && post.scheduled_for && (
+          <View style={styles.scheduledTimeContainer}>
+            <Ionicons name="time-outline" size={14} color="#FFA500" />
+            <Text style={styles.scheduledTimeText}>
+              Scheduled for: {new Date(post.scheduled_for).toLocaleString(undefined, { 
+                month: 'short', 
+                day: 'numeric',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+              })}
+            </Text>
+          </View>
+        )}
 
         {/* Display disclaimer if available */}
         {post.disclaimer && (
@@ -479,6 +505,20 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#00c5e3",
     fontWeight: "500",
+  },
+  scheduledTimeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF8E1',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    marginBottom: 12,
+  },
+  scheduledTimeText: {
+    fontSize: 12,
+    color: '#FFA500',
+    marginLeft: 6,
   },
 });
 
