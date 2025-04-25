@@ -1,11 +1,13 @@
 import { StyleSheet, ScrollView, Platform } from "react-native";
 import { Text, View } from "@/components/Themed";
-import { Image } from '@/components/CachedImage';
+import { Image } from "@/components/CachedImage";
 import { Post, Comment } from "@/types/postType";
 import AuthorInfo from "./AuthorInfo";
 import PostActions from "./PostActions";
 import CommentsList from "./CommentList";
+import { useSession } from "@/components/SessionProvider";
 import { Ionicons } from "@expo/vector-icons";
+import { useEffect, useState } from "react";
 
 interface PostContentProps {
   post: Post;
@@ -31,9 +33,19 @@ const PostContent: React.FC<PostContentProps> = ({
   ondeleteComment,
   bottomPadding,
 }) => {
-  // Check if current user is the author (for edit permissions)
-  const canEdit = post.isAuthor || post.user?.id === "currentuser";
-
+  // Check if the user is admin
+  const { user } = useSession();
+  const [canEdit, setCanEdit] = useState(false);
+  useEffect(() => {
+    if (user && user.isAdmin) {
+      setCanEdit(true);
+    } else {
+      setCanEdit(false);
+    }
+    if (post.user && post.user.id === user?.id.toString()) {
+      setCanEdit(true);
+    }
+  }, [post.id]);
   // Render appropriate media content based on available data
   const renderMedia = () => {
     if (post.image) {
@@ -123,7 +135,7 @@ const PostContent: React.FC<PostContentProps> = ({
   // Render post caption if available
   const renderCaption = () => {
     if (!post.caption) return null;
-    
+
     return (
       <View style={styles.captionContainer}>
         <Text style={styles.captionText}>{post.caption}</Text>
@@ -134,12 +146,12 @@ const PostContent: React.FC<PostContentProps> = ({
   // Render tags if available
   const renderTags = () => {
     if (!post.tags || post.tags.length === 0) return null;
-    
+
     return (
       <View style={styles.tagsContainer}>
-        <ScrollView 
-          horizontal 
-          showsHorizontalScrollIndicator={false} 
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.tagsScrollContent}
         >
           {post.tags.map((tag, index) => (
@@ -195,7 +207,7 @@ const PostContent: React.FC<PostContentProps> = ({
 
       {/* Media preview */}
       {renderMedia()}
-      
+
       {/* Tags */}
       {renderTags()}
 
@@ -218,9 +230,9 @@ const PostContent: React.FC<PostContentProps> = ({
         <Text style={styles.commentsTitle}>
           Comments ({post.comment_count})
         </Text>
-        <CommentsList 
-        comments={comments || []} 
-        onDeleteComment={ondeleteComment}
+        <CommentsList
+          comments={comments || []}
+          onDeleteComment={ondeleteComment}
         />
       </View>
     </ScrollView>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   StyleSheet,
   TouchableOpacity,
@@ -16,7 +16,7 @@ import { formatBytes } from "@/utils/fileUtils";
 const SettingsScreen = () => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [cacheSize, setCacheSize] = useState<string>("0 B");
-  const { user, logOut, deleteAccount } = useSession();
+  const { user, logOut, deleteAccount, checkAdmin } = useSession();
   const router = useRouter();
   const { clearAllCache, getCacheStats } = useAppCache();
   const { clearCache } = useSecureProfileCache();
@@ -33,6 +33,13 @@ const SettingsScreen = () => {
   useFocusEffect(() => {
     loadCacheSize();
   });
+
+  useEffect(() => {
+    const fetchAdminStatus = async () => {
+      await checkAdmin();
+    };
+    fetchAdminStatus();
+  }, []);
 
   const handleLogout = () => {
     Alert.alert("Logout", "Are you sure you want to log out?", [
@@ -199,7 +206,7 @@ const SettingsScreen = () => {
             </View>
             <Ionicons name="chevron-forward" size={20} color="#999" />
           </TouchableOpacity>
-
+          { false && // Temporarily disabled
           <TouchableOpacity
             style={styles.option}
             onPress={() => {
@@ -212,6 +219,20 @@ const SettingsScreen = () => {
             </View>
             <Ionicons name="chevron-forward" size={20} color="#999" />
           </TouchableOpacity>
+          }
+
+          { user?.isAdmin && // Check if user is admin
+            <TouchableOpacity
+            style={[styles.option, styles.adminOption]}
+            onPress={() => {router.push("/admin");}}
+          >
+            <View style={styles.optionContent}>
+              <Ionicons name="shield-outline" size={22} color="#007AFF" />
+              <Text style={styles.adminText}>Content Moderation</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#999" />
+          </TouchableOpacity>
+  }
         </View>
 
         <View style={styles.section}>
@@ -333,7 +354,15 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#888888',
     fontWeight: '400',
-  }
+  },
+  adminOption: {
+    borderBottomWidth: 0,
+  },
+  adminText: {
+    color: "#007AFF",
+    fontSize: 16,
+    marginLeft: 12,
+  },
 });
 
 export default SettingsScreen;
