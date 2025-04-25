@@ -14,7 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useNotifications } from '@/hooks/useNotifications';
 import NotificationItem from '@/components/notification/NotificationItem';
-import { Notification } from '@/types/notificationType';
+import { Notification, NotificationType } from '@/types/notificationType';
 
 export default function NotificationScreen() {
   const router = useRouter();
@@ -50,11 +50,14 @@ export default function NotificationScreen() {
     }
     
     // Navigate based on notification type
-    if (notification.post_id) {
+    if (notification.type === NotificationType.FOLLOW) {
+      // Navigate to the follower's profile
+      router.push(`/user/${notification.sender.username}?id=${notification.sender.id}`);
+    } else if (notification.post_id) {
+      // For post-related notifications
       router.push(`/post/${notification.post_id}`);
-    } /*else if (notification.type === 'follow') {
-      router.push(`/profile/${notification.sender.id}`);
-    }*/
+    }
+  
   }, [markNotificationRead, router]);
 
   console.log('Notifications:', !notifications.some(n => !n.read));

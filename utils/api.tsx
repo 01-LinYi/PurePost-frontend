@@ -884,12 +884,12 @@ export const getNotifications = async (): Promise<any> => {
         sender: {
           id: extractSenderId(notification),
           username: extractUsername(notification),
-          profile_picture: null
+          profile_picture: notification.sender_profile_picture || null
         },
         content: notification.message,
         created_at: notification.created_at,
         read: notification.is_read,
-        post_id: notification.object_id,
+        post_id: notification.notification_type !== 'follow' ? notification.object_id : undefined,
         comment_id: notification.notification_type === 'comment' ? notification.object_id : undefined
       }));
     } else {
@@ -906,31 +906,33 @@ export const getNotifications = async (): Promise<any> => {
 
 // Helper functions to extract data from notification
 function extractSenderId(notification: any): string {
-  if (notification.content_type && notification.content_object) {
-    // Try to get user ID from content object if available
-    return notification.content_object.user_id || '';
+  if (notification.content_object && notification.content_object.id) {
+    return notification.content_object.id;
   }
   
-  // Fallback to extracting from message
-  const words = notification.message.split(' ');
-  // Assuming message format is usually "{username} {action} your post"
-  return words[0] || '';
+  return notification.sender_id || '';
 }
 
 function extractUsername(notification: any): string {
-  // Extract username from the beginning of the message 
-  // Assuming format: "Username liked your post"
-  const message = notification.message;
-  const actionWords = [' liked', ' commented', ' shared', ' followed'];
-  
-  for (const action of actionWords) {
-    if (message.includes(action)) {
-      return message.split(action)[0];
-    }
+  // Extract username from notification
+  if (notification.sender_username) {
+    return notification.sender_username;
   }
   
-  // If no match, just return first word as username
-  return message.split(' ')[0] || '';
+  // Extract from message as fallback
+  const message = notification.message;
+  if (notification.notification_type === 'follow') {
+    // Assuming format: "Username started following you"
+    return message.split(' started following')[0];
+  } else if (notification.notification_type === 'like') {
+    return message.split(' liked')[0];
+  } else if (notification.notification_type === 'comment') {
+    return message.split(' commented')[0];
+  } else if (notification.notification_type === 'share') {
+    return message.split(' shared')[0];
+  }
+  
+  return '';
 }
 
 // Mark notifications as read

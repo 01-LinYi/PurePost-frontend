@@ -20,6 +20,8 @@ export default function NotificationItem({ notification, onPress }: Notification
         return <Ionicons name="chatbubble" size={18} color="#5AC8FA" />;
       case NotificationType.SHARE:
         return <Ionicons name="arrow-redo" size={18} color="#4CD964" />;
+      case NotificationType.FOLLOW:
+        return <Ionicons name="person-add" size={18} color="#007AFF" />;
       default:
         return <Ionicons name="notifications" size={18} color="#FF9500" />;
     }
@@ -30,11 +32,13 @@ export default function NotificationItem({ notification, onPress }: Notification
     
     switch (notification.type) {
       case NotificationType.LIKE:
-        return <Text style={styles.message}><Text style={styles.username}>{username}</Text> liked your post</Text>;
+        return <Text style={styles.message}><Text style={styles.username}>{username}</Text> </Text>;
       case NotificationType.COMMENT:
-        return <Text style={styles.message}><Text style={styles.username}>{username}</Text> commented on your post</Text>;
+        return <Text style={styles.message}><Text style={styles.username}>{username}</Text> </Text>;
       case NotificationType.SHARE:
-        return <Text style={styles.message}><Text style={styles.username}>{username}</Text> shared your post</Text>;
+        return <Text style={styles.message}><Text style={styles.username}>{username}</Text> </Text>;
+      case NotificationType.FOLLOW:
+        return <Text style={styles.message}><Text style={styles.username}>{username}</Text> </Text>;
       default:
         return <Text style={styles.message}>New notification</Text>;
     }
