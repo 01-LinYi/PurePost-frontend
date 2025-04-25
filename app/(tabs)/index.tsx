@@ -8,6 +8,7 @@ import {
   RefreshControl,
   ActivityIndicator,
   Alert,
+  AppState,
 } from "react-native";
 import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "expo-router";
@@ -24,6 +25,8 @@ import { unSavePost } from "@/utils/api";
 import useFolderModal from "@/hooks/useFolderModal";
 import ReportModal from "@/components/report/ReportModal";
 import useReportModal from "@/hooks/useReportModal";
+import { useNotifications } from '@/hooks/useNotifications';
+import { useFocusEffect } from '@react-navigation/native';
 
 /**
  * Home Screen that displays the social feed with posts
@@ -34,6 +37,7 @@ export default function HomeScreen() {
   const router = useRouter();
   const folderModal = useFolderModal();
   const reportModal = useReportModal();
+  const { unreadCount, loadNotifications } = useNotifications();
 
   // Use custom hook to handle posts data and operations, similar to useMyPosts hook
   const {
@@ -73,6 +77,25 @@ export default function HomeScreen() {
       },
     ]);
   }, [reportModal.errorMsg]);
+
+  useEffect(() => {
+    const unsubscribe = AppState.addEventListener('change', nextAppState => {
+      if (nextAppState === 'active') {
+        loadNotifications();
+        handleRefresh();
+      }
+    });
+
+    return () => unsubscribe.remove();
+  }, [loadNotifications, handleRefresh]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadNotifications(); // Refresh notifications when screen is focused
+    }, [loadNotifications])
+  );
+
+  const navigateToNotifications = () => router.push('/notifications');
 
   const handleOpenSelector = (postId: string) => folderModal.openModal(postId);
   const handleSelectFolder = async (folder: SavedFolder) => {
@@ -172,7 +195,8 @@ export default function HomeScreen() {
       <FeedHeader
         onLogOut={handleLogOut}
         onCreatePost={navigateToCreatePost}
-        onNotifications={() => {}}
+        onNotifications={navigateToNotifications}
+        unreadNotificationsCount={unreadCount}
       />
 
       {/* Search Bar */}

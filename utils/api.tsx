@@ -729,3 +729,118 @@ export const fetchMyReports = async (
     }
   }
 };
+
+
+// Get notifications
+export const getNotifications = async (): Promise<any> => {
+  try {
+    const response = await getApi('/notifications/', {}, {
+      skipCache: true, // Always get fresh notifications
+      forceRefresh: true
+    });
+    
+    if (response.status === 200) {
+      // Transform backend data format to match frontend Notification interface
+      return response.data.map((notification: any) => ({
+        id: notification.id,
+        type: notification.notification_type,
+        sender: {
+          id: extractSenderId(notification),
+          username: extractUsername(notification),
+          profile_picture: null
+        },
+        content: notification.message,
+        created_at: notification.created_at,
+        read: notification.is_read,
+        post_id: notification.object_id,
+        comment_id: notification.notification_type === 'comment' ? notification.object_id : undefined
+      }));
+    } else {
+      throw new Error(`Failed to fetch notifications: ${response.statusText}`);
+    }
+  } catch (error) {
+    console.error('Error fetching notifications:', error);
+    if (isAxiosError(error) && error.response) {
+      throw new Error(error.response.data.detail || 'Failed to fetch notifications');
+    }
+    throw error;
+  }
+};
+
+// Helper functions to extract data from notification
+function extractSenderId(notification: any): string {
+  if (notification.content_type && notification.content_object) {
+    // Try to get user ID from content object if available
+    return notification.content_object.user_id || '';
+  }
+  
+  // Fallback to extracting from message
+  const words = notification.message.split(' ');
+  // Assuming message format is usually "{username} {action} your post"
+  return words[0] || '';
+}
+
+function extractUsername(notification: any): string {
+  // Extract username from the beginning of the message 
+  // Assuming format: "Username liked your post"
+  const message = notification.message;
+  const actionWords = [' liked', ' commented', ' shared', ' followed'];
+  
+  for (const action of actionWords) {
+    if (message.includes(action)) {
+      return message.split(action)[0];
+    }
+  }
+  
+  // If no match, just return first word as username
+  return message.split(' ')[0] || '';
+}
+
+// Mark notifications as read
+export const markNotificationsAsRead = async (notificationIds: number[]): Promise<void> => {
+  try {
+    await axiosInstance.post('/notifications/mark-read/', {
+      notification_ids: notificationIds
+    });
+  } catch (error) {
+    console.error('Error marking notifications as read:', error);
+    if (isAxiosError(error) && error.response) {
+      throw new Error(error.response.data.detail || 'Failed to mark notifications as read');
+    }
+    throw error;
+  }
+};
+
+// Mark all notifications as read
+export const markAllNotificationsAsRead = async (): Promise<void> => {
+  try {
+    // First get all unread notification IDs
+    const notifications = await getNotifications();
+    const unreadIds = notifications
+      .filter((notification: any) => !notification.read)
+      .map((notification: any) => notification.id);
+    
+    if (unreadIds.length === 0) return;
+    
+    // Then mark them all as read
+    await markNotificationsAsRead(unreadIds);
+  } catch (error) {
+    console.error('Error marking all notifications as read:', error);
+    throw error;
+  }
+};
+
+// Delete notifications
+export const deleteNotifications = async (notificationIds: number[]): Promise<void> => {
+  try {
+    await axiosInstance.post('/notifications/delete/', {
+      notification_ids: notificationIds
+    });
+  } catch (error) {
+    console.error('Error deleting notifications:', error);
+    if (isAxiosError(error) && error.response) {
+      throw new Error(error.response.data.detail || 'Failed to delete notifications');
+    }
+    throw error;
+  }
+};
