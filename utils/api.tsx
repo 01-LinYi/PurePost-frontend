@@ -8,8 +8,10 @@ import {
   transformUser,
   transformUserProfile,
 } from "@/utils/transformers/profileTransformers";
-import { AxiosError, isAxiosError } from "axios";
+import { isAxiosError } from "axios";
 import { CacheManager } from "@/utils/cache/cacheManager";
+import { FormAnswer, apiFeedback } from "@/types/feedbackType";
+import { transformFeedback } from "@/utils/transformers/feedbackTransformer";
 
 export interface PaginationResponse<T> {
   prev: string | null;
@@ -867,15 +869,18 @@ export const fetchUserAdmin = async (): Promise<boolean> => {
   }
 };
 
-
 // Get notifications
 export const getNotifications = async (): Promise<any> => {
   try {
-    const response = await getApi('/notifications/', {}, {
-      skipCache: true, // Always get fresh notifications
-      forceRefresh: true
-    });
-    
+    const response = await getApi(
+      "/notifications/",
+      {},
+      {
+        skipCache: true, // Always get fresh notifications
+        forceRefresh: true,
+      }
+    );
+
     if (response.status === 200) {
       // Transform backend data format to match frontend Notification interface
       return response.data.map((notification: any) => ({
@@ -884,21 +889,26 @@ export const getNotifications = async (): Promise<any> => {
         sender: {
           id: extractSenderId(notification),
           username: extractUsername(notification),
-          profile_picture: null
+          profile_picture: null,
         },
         content: notification.message,
         created_at: notification.created_at,
         read: notification.is_read,
         post_id: notification.object_id,
-        comment_id: notification.notification_type === 'comment' ? notification.object_id : undefined
+        comment_id:
+          notification.notification_type === "comment"
+            ? notification.object_id
+            : undefined,
       }));
     } else {
       throw new Error(`Failed to fetch notifications: ${response.statusText}`);
     }
   } catch (error) {
-    console.error('Error fetching notifications:', error);
+    console.error("Error fetching notifications:", error);
     if (isAxiosError(error) && error.response) {
-      throw new Error(error.response.data.detail || 'Failed to fetch notifications');
+      throw new Error(
+        error.response.data.detail || "Failed to fetch notifications"
+      );
     }
     throw error;
   }
@@ -908,41 +918,45 @@ export const getNotifications = async (): Promise<any> => {
 function extractSenderId(notification: any): string {
   if (notification.content_type && notification.content_object) {
     // Try to get user ID from content object if available
-    return notification.content_object.user_id || '';
+    return notification.content_object.user_id || "";
   }
-  
+
   // Fallback to extracting from message
-  const words = notification.message.split(' ');
+  const words = notification.message.split(" ");
   // Assuming message format is usually "{username} {action} your post"
-  return words[0] || '';
+  return words[0] || "";
 }
 
 function extractUsername(notification: any): string {
-  // Extract username from the beginning of the message 
+  // Extract username from the beginning of the message
   // Assuming format: "Username liked your post"
   const message = notification.message;
-  const actionWords = [' liked', ' commented', ' shared', ' followed'];
-  
+  const actionWords = [" liked", " commented", " shared", " followed"];
+
   for (const action of actionWords) {
     if (message.includes(action)) {
       return message.split(action)[0];
     }
   }
-  
+
   // If no match, just return first word as username
-  return message.split(' ')[0] || '';
+  return message.split(" ")[0] || "";
 }
 
 // Mark notifications as read
-export const markNotificationsAsRead = async (notificationIds: number[]): Promise<void> => {
+export const markNotificationsAsRead = async (
+  notificationIds: number[]
+): Promise<void> => {
   try {
-    await axiosInstance.post('/notifications/mark-read/', {
-      notification_ids: notificationIds
+    await axiosInstance.post("/notifications/mark-read/", {
+      notification_ids: notificationIds,
     });
   } catch (error) {
-    console.error('Error marking notifications as read:', error);
+    console.error("Error marking notifications as read:", error);
     if (isAxiosError(error) && error.response) {
-      throw new Error(error.response.data.detail || 'Failed to mark notifications as read');
+      throw new Error(
+        error.response.data.detail || "Failed to mark notifications as read"
+      );
     }
     throw error;
   }
@@ -956,28 +970,98 @@ export const markAllNotificationsAsRead = async (): Promise<void> => {
     const unreadIds = notifications
       .filter((notification: any) => !notification.read)
       .map((notification: any) => notification.id);
-    
+
     if (unreadIds.length === 0) return;
-    
+
     // Then mark them all as read
     await markNotificationsAsRead(unreadIds);
   } catch (error) {
-    console.error('Error marking all notifications as read:', error);
+    console.error("Error marking all notifications as read:", error);
     throw error;
   }
 };
 
 // Delete notifications
-export const deleteNotifications = async (notificationIds: number[]): Promise<void> => {
+export const deleteNotifications = async (
+  notificationIds: number[]
+): Promise<void> => {
   try {
-    await axiosInstance.post('/notifications/delete/', {
-      notification_ids: notificationIds
+    await axiosInstance.post("/notifications/delete/", {
+      notification_ids: notificationIds,
     });
   } catch (error) {
-    console.error('Error deleting notifications:', error);
+    console.error("Error deleting notifications:", error);
     if (isAxiosError(error) && error.response) {
-      throw new Error(error.response.data.detail || 'Failed to delete notifications');
+      throw new Error(
+        error.response.data.detail || "Failed to delete notifications"
+      );
     }
     throw error;
+  }
+};
+
+export const getAnswers = async (
+  forceRefresh: boolean
+): Promise<FormAnswer[]> => {
+  const res = await getApi(
+    `feedback/forms/`,
+    {},
+    {
+      skipCache: false,
+      cacheTtlMinutes: 5,
+      forceRefresh: forceRefresh,
+    }
+  );
+  if (res.data.results.length === 0) {
+    return [];
+  }
+  return res.data.results.map((item: apiFeedback) => transformFeedback(item));
+};
+
+export const getSingleAnswer = async (
+  formName: string,
+  forceRefresh: boolean
+): Promise<FormAnswer | null> => {
+  const res = await getApi(
+    `feedback/forms/`,
+    {
+      type: formName,
+    },
+    {
+      skipCache: false,
+      cacheTtlMinutes: 5,
+      forceRefresh: forceRefresh,
+    }
+  );
+  if (res.data.results.length === 0) {
+    return null;
+  }
+  // the results should only have one item
+  return transformFeedback(res.data.results[0]);
+};
+
+export const submitAnswer = async (
+  formName: string,
+  answer: FormAnswer,
+  isFinished: boolean
+) => {
+  try {
+    await axiosInstance.post(`feedback/forms/`, {
+      feedback_type: formName,
+      content: JSON.stringify(answer.content),
+      is_finished: isFinished,
+    });
+  } catch (error) {
+    if (isAxiosError(error) && error.response) {
+      let errorMessage = "";
+      if (error.response.data.non_field_errors) {
+        errorMessage = error.response.data.non_field_errors;
+      } else if (error.response.data.detail) {
+        errorMessage = error.response.data.detail;
+      } else {
+        errorMessage = error.response.data;
+      }
+      console.debug("Error submitting answer:", errorMessage);
+    }
   }
 };

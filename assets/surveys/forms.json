@@ -1,0 +1,162 @@
+{
+  "social_media_usage": {
+    "title": "Social Media Usage Feedback",
+    "questions": [
+      {
+        "id": "platform_usage",
+        "label": "Which social media platforms do you use regularly?",
+        "type": "single_choice",
+        "options": ["Facebook", "Twitter", "Instagram", "TikTok", "Other"]
+      },
+      {
+        "id": "usage_frequency",
+        "label": "How often do you use social media?",
+        "type": "single_choice",
+        "options": [
+          "Multiple times a day",
+          "Once a day",
+          "A few times a week",
+          "Rarely",
+          "Never"
+        ]
+      },
+      {
+        "id": "content_consumption",
+        "label": "What type of content do you mostly consume on social media?",
+        "type": "single_choice",
+        "options": [
+          "News",
+          "Entertainment",
+          "Lifestyle",
+          "Political Content",
+          "Other"
+        ]
+      },
+      {
+        "id": "deepfake_awareness",
+        "label": "Are you aware of deepfake content on social media?",
+        "type": "single_choice",
+        "options": ["Yes", "No"]
+      }
+    ]
+  },
+  "deepfake_awareness": {
+    "title": "Deepfake Awareness Survey",
+    "questions": [
+      {
+        "id": "familiarity",
+        "label": "How familiar are you with deepfake technology?",
+        "type": "single_choice",
+        "options": ["Very familiar", "Somewhat familiar", "Not familiar at all"]
+      },
+      {
+        "id": "impact",
+        "label": "How do you think deepfake technology affects social media?",
+        "type": "single_choice",
+        "options": [
+          "Very negatively",
+          "Somewhat negatively",
+          "No impact",
+          "Somewhat positively",
+          "Very positively"
+        ]
+      },
+      {
+        "id": "concerns",
+        "label": "What are your main concerns about deepfakes on social media?",
+        "type": "single_choice",
+        "options": [
+          "Misinformation",
+          "Political manipulation",
+          "Privacy invasion",
+          "Fraudulent content",
+          "No concerns"
+        ]
+      },
+      {
+        "id": "trust_in_media",
+        "label": "Has the existence of deepfakes affected your trust in content on social media?",
+        "type": "single_choice",
+        "options": ["Yes, a lot", "Yes, somewhat", "No, not at all"]
+      }
+    ]
+  },
+
+  "social_media_fake_news": {
+    "title": "Social Media Trust & Fake News Survey",
+    "questions": [
+      {
+        "id": "trust_level",
+        "label": "How much do you trust content on social media?",
+        "type": "single_choice",
+        "options": [
+          "Completely trust",
+          "Mostly trust",
+          "Neutral",
+          "Mostly distrust",
+          "Completely distrust"
+        ]
+      },
+      {
+        "id": "encounter_fake_news",
+        "label": "How often do you encounter fake or misleading news on social media?",
+        "type": "single_choice",
+        "options": ["Very often", "Occasionally", "Rarely", "Never"]
+      },
+      {
+        "id": "fact_checking",
+        "label": "Do you verify news from social media before believing or sharing it?",
+        "type": "single_choice",
+        "options": ["Yes, always", "Sometimes", "Rarely", "Never"]
+      },
+      {
+        "id": "deepfake_concerns",
+        "label": "How concerned are you about deepfake content being shared as real news?",
+        "type": "single_choice",
+        "options": [
+          "Very concerned",
+          "Somewhat concerned",
+          "Neutral",
+          "Not very concerned",
+          "Not concerned at all"
+        ]
+      }
+    ]
+  },
+
+  "social_media_deepfake_regulations": {
+    "title": "Social Media & Deepfake Regulations Feedback",
+    "questions": [
+      {
+        "id": "legal_regulation",
+        "label": "Do you think there should be stricter regulations on deepfake content on social media?",
+        "type": "single_choice",
+        "options": ["Yes", "No", "Not sure"]
+      },
+      {
+        "id": "platform_responsibility",
+        "label": "Should social media platforms take responsibility for removing deepfake content?",
+        "type": "single_choice",
+        "options": ["Yes", "No", "Not sure"]
+      },
+      {
+        "id": "education_needed",
+        "label": "Do you think more education is needed to help people recognize deepfakes on social media?",
+        "type": "single_choice",
+        "options": ["Yes", "No", "Not sure"]
+      },
+      {
+        "id": "impact_of_regulations",
+        "label": "How do you think regulations on deepfake content would impact your use of social media?",
+        "type": "single_choice",
+        "options": [
+          "Very positively",
+          "Somewhat positively",
+          "No impact",
+          "Somewhat negatively",
+          "Very negatively"
+        ]
+      }
+    ]
+  }
+}
