@@ -21,6 +21,7 @@ import EmptyState from "@/components/post/EmptyState";
  */
 export default function MyPosts() {
   const { user } = useSession();
+  const { userId, username } = useLocalSearchParams();
   const router = useRouter();
   // Use custom hook to handle posts data and operations
   const {
@@ -33,7 +34,7 @@ export default function MyPosts() {
     handleSortChange,
     deletePost,
     loadData,
-  } = useMyPosts({ userId: user?.id.toLocaleString() });
+  } = useMyPosts({ userId: userId.toString() });
 
   // Navigation handlers
   const navigateToPost = (postId: string) => {
@@ -62,6 +63,7 @@ export default function MyPosts() {
     <View style={styles.container}>
       {/* Header with back button and create post button */}
       <MyPostsHeader
+        username={user?.id.toString() == userId ? null : username}
         onBack={handleGoBack}
         onCreatePost={navigateToCreatePost}
       />
