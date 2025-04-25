@@ -1,59 +1,16 @@
-import React from "react";
+import React, { useEffect } from "react";
 import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  RefreshControl,
 } from "react-native";
 import { Text, View } from "@/components/Themed";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { useAdminDashboard } from "@/hooks/useAdminDashboard";
+import { useAdminDashboard } from "@/hooks/admin/useAdminDashboard";
 import { formatDate } from "@/utils/dateUtils";
-
-const REPORT_TYPES = {
-  inappropriate: {
-    label: "Inappropriate Content",
-    description: "Content containing pornography, violence, or other material violating community guidelines",
-    color: "#E74C3C",
-    icon: "warning"  // MaterialIcons
-  },
-  deepfake: {
-    label: "Deepfake",
-    description: "Misleading content created using AI or other manipulation technologies",
-    color: "#C0392B",
-    icon: "face-recognition"  // MaterialCommunityIcons
-  },
-  spam: {
-    label: "Spam",
-    description: "Repetitive posts or irrelevant commercial advertisements",
-    color: "#8E44AD",
-    icon: "mail"  // MaterialIcons
-  },
-  harassment: {
-    label: "Harassment",
-    description: "Personal attacks, threats, or persistent unwanted behavior toward individuals",
-    color: "#D35400",
-    icon: "account-alert"  // MaterialCommunityIcons
-  },
-  misinformation: {
-    label: "Misinformation",
-    description: "Deliberately inaccurate or misleading information",
-    color: "#F39C12",
-    icon: "info"  // MaterialIcons
-  },
-  copyright: {
-    label: "Copyright Infringement",
-    description: "Unauthorized use of copyrighted material",
-    color: "#16A085",
-    icon: "copyright"  // MaterialIcons
-  },
-  other: {
-    label: "Other Issue",
-    description: "Issues that don't fall into the above categories",
-    color: "#3498DB",
-    icon: "flag"  // MaterialIcons
-  }
-};
+import { REPORT_TYPES } from "@/constants/DefaultReport";
 
 const CONTENT_TYPES = {
   image: {
@@ -76,7 +33,8 @@ const CONTENT_TYPES = {
 
 function getReportTypeLabel(type: string): string {
   return (
-    REPORT_TYPES[type as keyof typeof REPORT_TYPES]?.label || REPORT_TYPES.other.label
+    REPORT_TYPES[type as keyof typeof REPORT_TYPES]?.label ||
+    REPORT_TYPES.other.label
   );
 }
 
@@ -161,7 +119,7 @@ function SectionHeader({
 export default function AdminDashboard() {
   const router = useRouter();
   // Custom hook to fetch dashboard data
-  const { stats, pendingReports, recentContent, isLoading, error } =
+  const { stats, pendingReports, recentContent, isLoading, error, refresh } =
     useAdminDashboard();
 
   if (isLoading) {
@@ -178,7 +136,7 @@ export default function AdminDashboard() {
         <Text style={styles.errorText}>Failed to load: {error.message}</Text>
         <TouchableOpacity
           style={styles.retryButton}
-          onPress={() => router.reload()}
+          onPress={() => refresh()}
           accessibilityLabel="Retry loading data"
         >
           <Text style={styles.retryButtonText}>Retry</Text>
@@ -194,14 +152,19 @@ export default function AdminDashboard() {
   const hasContent = Array.isArray(recentContent) && recentContent.length > 0;
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView
+      style={styles.container}
+      refreshControl={
+        <RefreshControl refreshing={false} onRefresh={() => refresh()} />
+      }
+    >
       {/* Stats Cards Section */}
       <View style={styles.statsContainer}>
         <StatCard
           title="All Content"
           count={AllContentCount}
           icon="document-text"
-          onPress={() => router.push('/admin/content')}
+          onPress={() => router.push("/admin/content")}
         />
         <StatCard
           title="Active Reports"
@@ -225,18 +188,20 @@ export default function AdminDashboard() {
               key={report.id}
               style={styles.listItem}
               onPress={() => router.push(`/admin/report/${report.id}`)}
-              accessibilityLabel={`Report: ${getReportTypeLabel(report.type)}`}
+              accessibilityLabel={`Report: ${getReportTypeLabel(
+                report.reason.key
+              )}`}
             >
-              <TypeIndicator color={getReportTypeColor(report.type)} />
+              <TypeIndicator color={getReportTypeColor(report.reason.key)} />
               <View style={styles.listItemContent}>
                 <Text style={styles.listItemTitle}>
-                  {getReportTypeLabel(report.type)}
+                  {getReportTypeLabel(report.reason.key)}
                 </Text>
                 <Text style={styles.listItemSubtitle} numberOfLines={1}>
-                  {report.reason}
+                  {report.reason.label}
                 </Text>
                 <Text style={styles.listItemInfo}>
-                  {formatDate(report.createdAt)} · {report.reporterName}
+                  {formatDate(report.createdAt)} · {report.reporter.username}
                 </Text>
               </View>
               <Ionicons name="chevron-forward" size={20} color="#A9D7E3" />
@@ -248,41 +213,43 @@ export default function AdminDashboard() {
       </View>
 
       {/* Recent Content Section */}
-      <SectionHeader
-        title="Recent Content"
-        count={hasContent ? recentContent.length : 0}
-        onViewAll={() => router.push("/admin/content")}
-      />
-      <View style={styles.listContainer}>
-        {hasContent ? (
-          recentContent.slice(0, 3).map((content) => (
-            <TouchableOpacity
-              key={content.id}
-              style={styles.listItem}
-              onPress={() => router.push(`/admin/content/${content.id}`)}
-              accessibilityLabel={`Content: ${
-                "Untitled Content"
-              }`}
-            >
-              <TypeIndicator color={getContentTypeColor("text")} />
-              <View style={styles.listItemContent}>
-                <Text style={styles.listItemTitle} numberOfLines={1}>
-                  {"Untitled Content"}
-                </Text>
-                <Text style={styles.listItemSubtitle} numberOfLines={1}>
-                  {"content.preview"}
-                </Text>
-                <Text style={styles.listItemInfo}>
-                  {formatDate(content.created_at)} · {content.user.username}
-                </Text>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color="#A9D7E3" />
-            </TouchableOpacity>
-          ))
-        ) : (
-          <Text style={styles.emptyText}>No recent content</Text>
-        )}
-      </View>
+      {false && ( // Temporarily disabled
+        <>
+          <SectionHeader
+            title="Recent Content"
+            count={hasContent ? recentContent.length : 0}
+            onViewAll={() => router.push("/admin/content")}
+          />
+          <View style={styles.listContainer}>
+            {hasContent ? (
+              recentContent.slice(0, 3).map((content) => (
+                <TouchableOpacity
+                  key={content.id}
+                  style={styles.listItem}
+                  onPress={() => {}}
+                  accessibilityLabel={`Content: ${"Untitled Content"}`}
+                >
+                  <TypeIndicator color={getContentTypeColor("text")} />
+                  <View style={styles.listItemContent}>
+                    <Text style={styles.listItemTitle} numberOfLines={1}>
+                      {"Untitled Content"}
+                    </Text>
+                    <Text style={styles.listItemSubtitle} numberOfLines={1}>
+                      {"content.preview"}
+                    </Text>
+                    <Text style={styles.listItemInfo}>
+                      {formatDate(content.created_at)} · {content.user.username}
+                    </Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={20} color="#A9D7E3" />
+                </TouchableOpacity>
+              ))
+            ) : (
+              <Text style={styles.emptyText}>No recent content</Text>
+            )}
+          </View>
+        </>
+      )}
     </ScrollView>
   );
 }

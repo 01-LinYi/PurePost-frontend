@@ -50,6 +50,12 @@ export default function AdminLayout() {
                     title: "Reports",
                 }}
             />
+            <Stack.Screen
+                name="report/[reportId]"
+                options={{
+                    title: "Report Details",
+                }}
+            />
         </Stack>
     );
 }

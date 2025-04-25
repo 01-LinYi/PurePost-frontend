@@ -39,6 +39,12 @@ export const clearApiCache = async (urlPattern?: string): Promise<void> => {
 /**
  * Perform a GET request to the specified URL using axiosInstance.
  * @param url
+ * @param params
+ * @param options
+ * @param options.skipCache: `false` to save as cache
+ * @param options.cacheTtlMinutes: Cache TTL in minutes
+ * @param options.forceRefresh: Force refresh the cache and fetch new data
+ * @description This function fetches data from the specified URL using axiosInstance.
  * @returns JSON data = {
  *              'config': {},
  *              'data': {},
@@ -725,8 +731,139 @@ export const fetchMyReports = async (
     );
     return res;
   } catch (error: any) {
-    if (error && isAxiosError(error)){
+    if (error && isAxiosError(error)) {
       console.debug("Error fetching reports:", error.response?.data);
     }
+  }
+};
+
+export const fetchAdminReports = async (
+  params: {
+    forceRefresh?: boolean;
+    page?: number;
+    pageSize?: number;
+    ordering?: string;
+  } = {}
+): Promise<any> => {
+  const {
+    forceRefresh = false,
+    page = 1,
+    pageSize = 10,
+    ordering = "-created_at",
+  } = params;
+
+  try {
+    const res = await getApi(
+      `/content/reports/?page=${page}&page_size=${pageSize}&ordering=${ordering}`,
+      {},
+      {
+        skipCache: false,
+        cacheTtlMinutes: 5,
+        forceRefresh: forceRefresh,
+      }
+    );
+    return res.data;
+  } catch (error: any) {
+    if (error && isAxiosError(error)) {
+      console.debug("Error fetching reports:", error.response?.data);
+    }
+  }
+};
+
+export const fetchPendingReports = async (
+  params: {
+    forceRefresh?: boolean;
+    page?: number;
+    pageSize?: number;
+    ordering?: string;
+  } = {}
+): Promise<any> => {
+  const {
+    forceRefresh = false,
+    page = 1,
+    pageSize = 10,
+    ordering = "-created_at",
+  } = params;
+
+  try {
+    const res = await getApi(
+      `/content/reports/pending/?page=${page}&page_size=${pageSize}&ordering=${ordering}`,
+      {},
+      {
+        skipCache: false,
+        cacheTtlMinutes: 5,
+        forceRefresh: forceRefresh,
+      }
+    );
+    return res.data;
+  } catch (error: any) {
+    if (error && isAxiosError(error)) {
+      console.debug("Error fetching reports:", error.response?.data);
+    }
+  }
+};
+
+export const fetchReportStat = async (
+  forceRefresh: boolean = false
+): Promise<any> => {
+  try {
+    const res = await getApi(
+      `/content/reports/stats/`,
+      {},
+      {
+        skipCache: false,
+        cacheTtlMinutes: 5,
+        forceRefresh: forceRefresh,
+      }
+    );
+    return res.data;
+  } catch (error: any) {
+    if (error && isAxiosError(error)) {
+      console.debug("Error fetching reports:", error.response?.data);
+    }
+  }
+};
+
+export const performReportAction = async (
+  reportId: string,
+  action: "resolve" | "reject"
+): Promise<void> => {
+  if (!reportId || isNaN(Number(reportId))) {
+    throw new Error("Report ID is required");
+  }
+  if (!["resolve", "reject"].includes(action)) {
+    throw new Error("Invalid action");
+  }
+  try {
+    switch (action) {
+      case "resolve":
+        await axiosInstance.post(`/content/reports/${reportId}/resolve/`);
+        break;
+      case "reject":
+        await axiosInstance.post(`/content/reports/${reportId}/reject/`);
+        break;
+    }
+  } catch (error) {
+    console.error("Error updating report status:", error);
+    throw error;
+  }
+};
+
+export const fetchUserAdmin = async (): Promise<boolean> => {
+  try {
+    const res = await getApi(
+      `/auth/admin/check/`,
+      {},
+      {
+        skipCache: true, // Don't cache this request!
+      }
+    );
+    const isAdmin = !!res.data.is_admin || !!res.data.is_superuser;
+    return isAdmin;
+  } catch (error: any) {
+    if (error && isAxiosError(error)) {
+      console.debug("Error fetching reports:", error.response?.data);
+    }
+    return false;
   }
 };

@@ -72,24 +72,13 @@ export default function useReport() {
       setError("Failed to fetch reported posts");
       return new Set<number>();
     }
-    //console.log("Fetched reports :", res.data.results);
-    const ids = res.data.results.map((item: any) => item.post_id);
-    // console.log("Fetched reported IDs:", res.data.results.map((item:any) => item.post.id));
+    const ids = res.data.results
+      .filter((item: any) => item.status === "pending")
+      .map((item: any) => item.post_id);
     const newReportedIds = new Set<number>(ids);
-    setReportedIds(newReportedIds)
+    setReportedIds(newReportedIds);
     return newReportedIds;
   };
-
-  const isReported = useCallback(
-    (targetId: string, type: ReportTargetType) => {
-      const id = Number(targetId);
-      if (type === "post" && reportedIds.has(id)) {
-        return true;
-      }
-      return false;
-    },
-    [reportedIds]
-  );
 
   return {
     submitReport,
