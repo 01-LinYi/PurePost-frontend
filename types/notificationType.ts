@@ -3,7 +3,8 @@
 export enum NotificationType {
     LIKE = 'like',
     COMMENT = 'comment',
-    SHARE = 'share'
+    SHARE = 'share',
+    REPORT = 'report',
 }
   
 export interface Notification {
