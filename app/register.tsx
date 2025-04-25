@@ -261,6 +261,7 @@ const RegisterPage = () => {
             setPassword(text);
             if (errors.password) setErrors({ ...errors, password: null });
           }}
+          autoComplete="off"
         />
         {errors.password && (
           <Text style={styles.errorText}>{errors.password}</Text>

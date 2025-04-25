@@ -3,6 +3,8 @@
  * Converts ISO or database date format to readable format
  *
  * @param dateString Date string to format
+ * @param locale Locale for date formatting (defaults to device locale)
+ * @param options Formatting options
  * @returns Formatted date string
  */
 export function formatDate(dateString: string | undefined | null): string {
