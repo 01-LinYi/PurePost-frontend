@@ -52,9 +52,9 @@ export default function NotificationItem({
       case NotificationType.SHARE:
         return (
           <Text style={styles.message}>
-            <Text style={styles.username}>{username}</Text> </Text>;
+            <Text style={styles.username}>{username}</Text> </Text>);
       case NotificationType.FOLLOW:
-        return <Text style={styles.message}><Text style={styles.username}>{username}</Text> 
+        return (<Text style={styles.message}><Text style={styles.username}>{username}</Text> 
           </Text>
         );
       case NotificationType.REPORT:
