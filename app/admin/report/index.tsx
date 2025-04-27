@@ -27,8 +27,8 @@ export default function ReportScreen() {
     refresh,
     hasNextPage,
   } = useAdminReports({
-    onlyPending,
-    page,
+    onlyPending:onlyPending,
+    page: page,
     pageSize: 10,
     fetchAll: false,
     forceRefresh: false,

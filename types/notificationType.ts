@@ -5,6 +5,7 @@ export enum NotificationType {
     COMMENT = 'comment',
     SHARE = 'share',
     FOLLOW = 'follow',
+    REPORT = 'report',
 }
   
 export interface Notification {

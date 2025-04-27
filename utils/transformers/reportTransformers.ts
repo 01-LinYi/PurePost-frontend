@@ -12,7 +12,19 @@ import {
 } from "@/constants/DefaultReport";
 
 export const transformApiReportToReport = (apiReport: ApiReport): Report => {
-  const transformedPost = transformApiPostToPost(apiReport.post);
+  if (!apiReport) {
+    throw new Error("Invalid API report data");
+  }
+  const transformedPost = (apiReport.post) ? transformApiPostToPost(apiReport.post)
+    : {
+        id: "DELETED",
+        content: "This post has been deleted",
+        user: {
+          id: "",
+          username: "",
+        },
+        image: "",
+      };
   return {
     id: apiReport.id,
     reason: DEFAULT_REASONS_MAP.post.find(

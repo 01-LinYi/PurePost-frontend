@@ -1,9 +1,10 @@
 import { UserProfile, UserStats } from "@/types/profileType";
 
 export const MOCK_STATS: UserStats = {
-  posts_count: 120,
-  followers_count: 114,
-  following_count: 514,
+  publicPostsCount: 100,
+  postsCount: 120,
+  followersCount: 114,
+  followingCount: 514,
 };
 
 export const DefaultProfile: UserProfile = {
@@ -14,10 +15,13 @@ export const DefaultProfile: UserProfile = {
   bio: "Software Developer | Tech Enthusiast | Coffee Lover",
   location: "San Francisco, CA",
   website: "https://johndoe.dev",
-  date_of_birth: "2000-01-01",
-  created_at: "2023-01-01T12:00:00Z",
-  updated_at: "2023-02-01T12:00:00Z",
+  dateOfBirth: "2000-01-01",
+  createdAt: "2023-01-01T12:00:00Z",
+  updatedAt: "2023-02-01T12:00:00Z",
   isActive: true,
-  isVerify: true,
+  isVerified: true,
   stats: MOCK_STATS,
+  isFollowing: false,
+  isMe: false,
+  isPrivate: false,
 };

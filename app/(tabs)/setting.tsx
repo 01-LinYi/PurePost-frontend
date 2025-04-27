@@ -249,6 +249,18 @@ const SettingsScreen = () => {
             </View>
             <Ionicons name="chevron-forward" size={20} color="#999" />
           </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.option}
+            onPress={() => {
+              router.push("/feedback");
+            }}
+          >
+            <View style={styles.optionContent}>
+            <Ionicons name="clipboard-outline" size={22} color="#333" />
+              <Text style={styles.optionText}>User Feedback Questions</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#999" />
+          </TouchableOpacity>
           <View style={styles.infoContainer}>
             <Text style={styles.infoText}>ver 1.0.0</Text>
             <Text style={styles.infoSubtext}>
