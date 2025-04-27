@@ -37,32 +37,19 @@ export default function NotificationItem({
 
     switch (notification.type) {
       case NotificationType.LIKE:
-        return (
-          <Text style={styles.message}>
-            <Text style={styles.username}>{username}</Text> 
-          </Text>
-        );
+        return <Text style={styles.message}>
+            <Text style={styles.username}>{username}</Text> </Text>;
       case NotificationType.COMMENT:
-        return (
-          <Text style={styles.message}>
-            <Text style={styles.username}>{username}</Text> commented on your
-            post
-          </Text>
-        );
+        return <Text style={styles.message}>
+            <Text style={styles.username}>{username}</Text> </Text>;
       case NotificationType.SHARE:
-        return (
-          <Text style={styles.message}>
-            <Text style={styles.username}>{username}</Text> </Text>);
+        return <Text style={styles.message}>
+            <Text style={styles.username}>{username}</Text> </Text>;
       case NotificationType.FOLLOW:
-        return (<Text style={styles.message}><Text style={styles.username}>{username}</Text> 
-          </Text>
-        );
+        return <Text style={styles.message}>
+          <Text style={styles.username}>{username}</Text> </Text>;
       case NotificationType.REPORT:
-        return (
-          <Text style={styles.message}>
-            Report Notification
-          </Text>
-        );
+        return <Text style={styles.message}> Report Notification </Text>;
       default:
         return <Text style={styles.message}>New notification</Text>;
     }
