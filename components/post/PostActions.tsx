@@ -104,7 +104,7 @@ const PostActions: React.FC<PostActionsProps> = ({
       {/* Share button and count */}
       <View style={styles.actionGroup}>
         <TouchableOpacity onPress={onShare} style={styles.iconButton}>
-          <Ionicons name="arrow-redo-outline" size={24} color="#666" />
+          <Ionicons name="share-social-outline" size={24} color="#666" />
         </TouchableOpacity>
 
         {shareCount > 0 && (

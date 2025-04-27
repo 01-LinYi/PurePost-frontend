@@ -1,4 +1,4 @@
-import { StyleSheet, ScrollView, Platform } from "react-native";
+import { StyleSheet, ScrollView, Platform, Share } from "react-native";
 import { Text, View } from "@/components/Themed";
 import { Image } from "@/components/CachedImage";
 import { Post, Comment } from "@/types/postType";
@@ -14,7 +14,7 @@ interface PostContentProps {
   comments: Comment[];
   onLike: () => void;
   onEdit?: () => void;
-  onShare: () => void;
+  onShare: (id: string) => Promise<void>;
   onSave: () => void;
   ondeleteComment?: (commentId: number) => void;
   bottomPadding: number;
@@ -31,7 +31,7 @@ const PostContent: React.FC<PostContentProps> = ({
   onShare,
   onSave,
   ondeleteComment,
-  bottomPadding,
+  bottomPadding, // deprecated
 }) => {
   // Check if the user is admin
   const { user } = useSession();
@@ -164,15 +164,32 @@ const PostContent: React.FC<PostContentProps> = ({
     );
   };
 
+  const handleShare = async () => {
+    const contentPreview =
+      post.content.slice(0, 50) + (post.content.length > 50 ? "..." : "");
+    const message = post.caption
+      ? `${post.caption}: ${contentPreview}`
+      : contentPreview;
+
+    const finalMessage = `${message}\nAuthor: ${post.user.username}`;
+    try {
+      const result = await Share.share({
+        message: finalMessage,
+        // Add a URL if your app has deep linking
+        // url: `yourapp://post/${post.id}`
+        title: "Share Post",
+      });
+      if (result.action === Share.sharedAction) {
+        // Optionally handle the result of the share action
+        await onShare(post.id);
+      }
+      // Record share in backend
+    } catch (error) {
+      console.error("Error sharing post:", error);
+    }
+  };
   return (
-    <ScrollView
-      style={styles.scrollContainer}
-      contentContainerStyle={[
-        styles.contentContainer,
-        { paddingBottom: bottomPadding },
-      ]}
-      showsVerticalScrollIndicator={false}
-    >
+    <>
       {/* Author info */}
       <AuthorInfo
         user={post.user}
@@ -183,18 +200,6 @@ const PostContent: React.FC<PostContentProps> = ({
         showEditButton={canEdit}
         isPrivateAccount={post.user?.is_private}
       />
-
-      {/* Content Disclaimer - only show if post has a disclaimer */}
-      {post.disclaimer && (
-        <View style={styles.disclaimerContainer}>
-          <View style={styles.disclaimerContent}>
-            <View style={styles.disclaimerIconContainer}>
-              <Ionicons name="warning-outline" size={18} color="#ffffff" />
-            </View>
-            <Text style={styles.disclaimerText}>{post.disclaimer}</Text>
-          </View>
-        </View>
-      )}
 
       {/* Deepfake detection status */}
       {renderDeepfakeStatus()}
@@ -220,7 +225,7 @@ const PostContent: React.FC<PostContentProps> = ({
         commentsCount={post.comment_count}
         shareCount={post.share_count}
         onLike={onLike}
-        onShare={onShare}
+        onShare={handleShare}
         onSave={onSave}
         onComment={() => {}}
       />
@@ -235,17 +240,11 @@ const PostContent: React.FC<PostContentProps> = ({
           onDeleteComment={ondeleteComment}
         />
       </View>
-    </ScrollView>
+    </>
   );
 };
 
 const styles = StyleSheet.create({
-  scrollContainer: {
-    flex: 1,
-  },
-  contentContainer: {
-    padding: 20,
-  },
   postText: {
     fontSize: 16,
     lineHeight: 24,

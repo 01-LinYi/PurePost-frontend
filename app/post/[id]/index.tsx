@@ -1,7 +1,14 @@
 // app/post/[id]/index.tsx - Post detail screen displaying full post content
 
 import { useState, useEffect, useCallback } from "react";
-import { StyleSheet, Alert, StatusBar, ActivityIndicator } from "react-native";
+import {
+  StyleSheet,
+  Alert,
+  StatusBar,
+  ActivityIndicator,
+  ScrollView,
+  RefreshControl,
+} from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Text, View } from "@/components/Themed";
@@ -15,12 +22,13 @@ import { transformApiPostToPost } from "@/utils/transformers/postsTransformers";
 import { performOptimisticUpdate } from "@/utils/optimiticeUP";
 import { useFolders } from "@/hooks/useFolders";
 import { SavedFolder } from "@/types/folderType";
-import { unSavePost } from "@/utils/api";
+import { unSavePost, sharePost} from "@/utils/api";
 import FolderSelectorModal from "@/components/folder/FolderSelectorModal";
 import useFolderModal from "@/hooks/useFolderModal";
 import useReportModal from "@/hooks/useReportModal";
 import ReportModal from "@/components/report/ReportModal";
 
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 /**
  * Post detail screen that displays a single post with full content and interactions
  */
@@ -69,10 +77,8 @@ const PostDetail = () => {
         Alert.alert("Error", "Invalid post ID");
         return;
       }
-      if (!uiState.isLoading) return;
-
+      // if (!uiState.isLoading) return;
       try {
-        setUiState((prev) => ({ ...prev, isLoading: true }));
         console.log(`Fetching post with ID: ${id}`);
 
         const res = await api.fetchSinglePosts(id, forceRefresh);
@@ -80,7 +86,7 @@ const PostDetail = () => {
 
         // Transform API response to our frontend Post model
         const transformedPost = transformApiPostToPost(apiPost);
-        console.log("Transformed post data:", transformedPost);
+        // console.log("Transformed post data:", transformedPost);
 
         setPostData({
           post: transformedPost,
@@ -100,7 +106,7 @@ const PostDetail = () => {
   // Load post when component mounts or ID changes
   useEffect(() => {
     loadPostData(false);
-  }, [id, loadPostData]);
+  }, [id]);
 
   useEffect(() => {
     if (!reportModal.errorMsg) return;
@@ -112,7 +118,7 @@ const PostDetail = () => {
             reportModal.closeModal();
             router.back();
           },
-          style: "destructive"
+          style: "destructive",
         },
         {
           text: "Cancel",
@@ -133,6 +139,7 @@ const PostDetail = () => {
   const handleRefresh = async () => {
     setUiState((prev) => ({ ...prev, isLoading: true }));
     try {
+      await sleep(200);
       await loadPostData(true);
     } catch (error) {
       console.error("Failed to refresh post data:", error);
@@ -200,29 +207,14 @@ const PostDetail = () => {
   /**
    * Handle share action
    */
-  const handleShare = useCallback(() => {
-    if (!post) return;
-
-    // Update share count optimistically
-    const newShareCount = post.share_count + 1;
-
-    setPostData((prev) => ({
-      ...prev,
-      post: prev.post
-        ? {
-            ...prev.post,
-            share_count: newShareCount,
-          }
-        : null,
-    }));
-
-    // In a real app, you would call an API to track the share
-    console.log(`Sharing post ${post.id}, new share count: ${newShareCount}`);
-    Alert.alert(
-      "Share Success",
-      `Content has been shared. Current share count: ${newShareCount}`
-    );
-  }, [post]);
+  const handleShare = async (postId: string) => {
+    try {
+      await sharePost(postId);
+      Alert.alert("Share Success", "Content has been shared.");
+    } catch (e) {
+      Alert.alert("Share failed", "Please try again");
+    }
+  };
 
   /**
    * Handle save/unsave action
@@ -332,18 +324,18 @@ const PostDetail = () => {
    */
   const handleOption = () => {
     Alert.alert("Post Options", "Choose an action", [
-          {
-            text: "Report Post",
-            onPress: () => {
-              reportModal.openModal(id as string, "post");
-            },
-          },
-          {
-            text: "Cancel",
-            style: "cancel",
-          },
+      {
+        text: "Report Post",
+        onPress: () => {
+          reportModal.openModal(id as string, "post");
+        },
+      },
+      {
+        text: "Cancel",
+        style: "cancel",
+      },
     ]);
-  }
+  };
 
   // Render loading state
   if (isLoading) {
@@ -380,17 +372,34 @@ const PostDetail = () => {
           onPress: handleOption,
         }}
       />
-      {/* Post content component */}
-      <PostContent
-        post={post}
-        comments={comments}
-        onLike={handleLike}
-        onEdit={handleEdit}
-        onShare={handleShare}
-        onSave={handleSave}
-        ondeleteComment={handleDeleteComment}
-        bottomPadding={Math.max(20, insets.bottom) + 70}
-      />
+      <ScrollView
+        style={styles.scrollContainer}
+        contentContainerStyle={[
+          styles.contentContainer,
+          { paddingBottom: Math.max(20, insets.bottom) + 70 },
+        ]}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={uiState.isLoading}
+            onRefresh={handleRefresh}
+            colors={["#00c5e3"]}
+            tintColor="#00c5e3"
+          />
+        }
+      >
+        {/* Post content component */}
+        <PostContent
+          post={post}
+          comments={comments}
+          onLike={handleLike}
+          onEdit={handleEdit}
+          onShare={handleShare}
+          onSave={handleSave}
+          ondeleteComment={handleDeleteComment}
+          bottomPadding={Math.max(20, insets.bottom) + 70}
+        />
+      </ScrollView>
 
       {/* Comment input component */}
       <CommentInput
@@ -428,6 +437,12 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#FFFFFF",
+  },
+  scrollContainer: {
+    flex: 1,
+  },
+  contentContainer: {
+    padding: 20,
   },
   centerContent: {
     justifyContent: "center",

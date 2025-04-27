@@ -46,15 +46,25 @@ export default function FeedPostItem({
   const router = useRouter();
   // Handle share action
   const handleShare = async () => {
+    const contentPreview =
+      post.content.slice(0, 50) + (post.content.length > 50 ? "..." : "");
+    const message = post.caption
+      ? `${post.caption}: ${contentPreview}`
+      : contentPreview;
+
+    const finalMessage = `${message}\nAuthor: ${post.user.username}`;
     try {
-      await Share.share({
-        message: `Check out this post: ${post.content}`,
+      const result = await Share.share({
+        message: finalMessage,
         // Add a URL if your app has deep linking
         // url: `yourapp://post/${post.id}`
+        title: "Share Post",
       });
-
+      if (result.action === Share.sharedAction) {
+        // Optionally handle the result of the share action
+        await onShare(post.id);
+      }
       // Record share in backend
-      await onShare(post.id);
     } catch (error) {
       console.error("Error sharing post:", error);
     }
@@ -77,7 +87,6 @@ export default function FeedPostItem({
       },
     ]);
   };
-
 
   // Render deepfake detection section
   const renderDeepfakeSection = () => {
@@ -219,16 +228,22 @@ export default function FeedPostItem({
         <View style={styles.userInfo}>
           <TouchableOpacity
             style={styles.userAvatarContainer}
-            onPress={() => router.push(`/user/${post.user.username}?id=${post.user.id}`)}
+            onPress={() =>
+              router.push(`/user/${post.user.username}?id=${post.user.id}`)
+            }
           >
             {renderAvatar()}
           </TouchableOpacity>
           <TouchableOpacity
-            onPress={() => router.push(`/user/${post.user.username}?id=${post.user.id}`)}
+            onPress={() =>
+              router.push(`/user/${post.user.username}?id=${post.user.id}`)
+            }
           >
             <View>
               <Text style={styles.username}>{getUsername()}</Text>
-              <Text style={styles.timestamp}>{formatDate(post.created_at)}</Text>
+              <Text style={styles.timestamp}>
+                {formatDate(post.created_at)}
+              </Text>
             </View>
           </TouchableOpacity>
         </View>

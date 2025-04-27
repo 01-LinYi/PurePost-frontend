@@ -584,7 +584,7 @@ export const fetchSharers = async (
 
 /**
  * Fetch users who interacted with a post
- * @param type : 'likes', 'comments', 或 'shares'
+ * @param type : 'likes', 'comments', or 'shares'
  * @param post_id
  * @param cursor
  * @returns PaginationResponse<UserProfile>
@@ -1071,3 +1071,14 @@ export const submitAnswer = async (
     }
   }
 };
+
+export const sharePost = async (
+  postId: string,
+): Promise<void> => {
+  try {
+    await axiosInstance.post(`/content/posts/${postId}/share/`);
+  } catch (error) {
+    console.error("Error sharing post:", error);
+    throw error;
+  }
+}

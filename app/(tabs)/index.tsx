@@ -21,7 +21,7 @@ import FeedHeader from "@/components/post/FeedHeader";
 import FolderSelectorModal from "@/components/folder/FolderSelectorModal";
 import { useFolders } from "@/hooks/useFolders";
 import { SavedFolder } from "@/types/folderType";
-import { unSavePost } from "@/utils/api";
+import { unSavePost, sharePost } from "@/utils/api";
 import useFolderModal from "@/hooks/useFolderModal";
 import ReportModal from "@/components/report/ReportModal";
 import useReportModal from "@/hooks/useReportModal";
@@ -134,6 +134,16 @@ export default function HomeScreen() {
     folderModal.setLoading(false);
   };
 
+  const handleShare = async (postId: string) => {
+    try {
+      await sharePost(postId);
+      // send notification here
+    }
+    catch (e) {
+      Alert.alert("Share failed", "Please try again");
+    }
+  };
+
   const handleReportPost = (postId: string) =>
     reportModal.openModal(postId, "post");
 
@@ -240,13 +250,7 @@ export default function HomeScreen() {
               post={item}
               onLike={handleLike}
               onSave={item.is_saved ? handleUnsave : handleOpenSelector}
-              onShare={(item) => {
-                return new Promise<void>((resolve) => {
-                  // Add your share logic here
-                  console.log(`Sharing post`);
-                  resolve(); // Resolve when done
-                });
-              }}
+              onShare={handleShare}
               onReport={handleReportPost}
               onDeepfakeDetection={handleDeepfakeDetection}
               onNavigate={navigateToPost}
