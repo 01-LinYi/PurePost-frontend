@@ -28,7 +28,7 @@ type Conversation = {
 };
 
 type User = {
-  user_id: number;
+  id: number;
   username: string;
   avatar: string;
 };
@@ -543,12 +543,12 @@ export default function ConversationListScreen() {
 
             <FlatList
               data={searchResults}
-              keyExtractor={(item) => String(item.user_id)}
+              keyExtractor={(item) => String(item.id)}
               renderItem={({ item }) => (
                 <UserListItem
                   item={item}
-                  isSelected={selectedUsers.includes(item.user_id)}
-                  onSelect={() => handleUserSelect(item.user_id)}
+                  isSelected={selectedUsers.includes(item.id)}
+                  onSelect={() => handleUserSelect(item.id)}
                 />
               )}
               contentContainerStyle={styles.userListContent}

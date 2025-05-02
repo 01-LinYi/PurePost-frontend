@@ -48,7 +48,7 @@ const PrivacyToggle: React.FC<PrivacyToggleProps> = ({
           <View style={styles.switchRow}>
             <Text style={styles.switchHint}>
               {isPrivate
-                ? "Only followers can see your details"
+                ? "Hiding your details..."
                 : "Anyone can view your profile"}
             </Text>
             <Switch

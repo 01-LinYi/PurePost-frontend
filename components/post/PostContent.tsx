@@ -83,35 +83,69 @@ const PostContent: React.FC<PostContentProps> = ({
       icon: "information-circle-outline",
       text: "Content analysis pending",
     };
+    console.log("Post deepfake score:", post.deepfake_score);
 
+    if (post.deepfake_status === "analyzing") {
+      statusInfo = {
+        color: "#007AFF",
+        icon: "hourglass-outline",
+        text: "Content authenticity verification in progress",
+      };
+    } else if (post.deepfake_status === "analysis_failed") {
+      statusInfo = {
+        color: "#FF9500",
+        icon: "alert-circle-outline",
+        text: "Could not determine content authenticity",
+      };
+    }
     switch (post.deepfake_status) {
       case "flagged":
-        statusInfo = {
-          color: "#FF3B30",
-          icon: "warning-outline",
-          text: "This content may be artificially generated or manipulated",
-        };
+        if (post.deepfake_score && post.deepfake_score >= 0.8) {
+          statusInfo = {
+            color: "#FF3B30",
+            icon: "warning-outline",
+            text: `High probability (${post.deepfake_score.toPrecision(2)}) of artificial generation or manipulation`,
+          };
+        } else if (post.deepfake_score && post.deepfake_score >= 0.5) {
+          statusInfo = {
+            color: "#FF9500",
+            icon: "warning-outline",
+            text: `Medium probability (${post.deepfake_score.toPrecision(2)}) of artificial generation or manipulation`,
+          };
+        } else {
+          statusInfo = {
+            color: "#FF9500",
+            icon: "warning-outline",
+            text: "This content may be artificially generated or manipulated",
+          };
+        }
         break;
       case "not_flagged":
-        statusInfo = {
-          color: "#34C759",
-          icon: "checkmark-circle-outline",
-          text: "Low probability of manipulation",
-        };
-        break;
-      case "analyzing":
-        statusInfo = {
-          color: "#007AFF",
-          icon: "hourglass-outline",
-          text: "Content authenticity verification in progress",
-        };
-        break;
-      case "analysis_failed":
-        statusInfo = {
-          color: "#FF9500",
-          icon: "alert-circle-outline",
-          text: "Could not determine content authenticity",
-        };
+        if (post.deepfake_score && post.deepfake_score <= 0.1) {
+          statusInfo = {
+            color: "#34C759",
+            icon: "checkmark-circle-outline",
+            text: "Very low probability of manipulation",
+          };
+        } else if (post.deepfake_score && post.deepfake_score <= 0.3) {
+          statusInfo = {
+            color: "#34C759",
+            icon: "checkmark-circle-outline",
+            text: `Low probability (${post.deepfake_score.toPrecision(2)}) of manipulation`,
+          };
+        } else if (post.deepfake_score && post.deepfake_score >= 0.5) {
+          statusInfo = {
+            color: "#FF9500",
+            icon: "warning-outline",
+            text: `Medium probability (${post.deepfake_score.toPrecision(2)}) of artificial generation or manipulation`,
+          };
+        } else {
+          statusInfo = {
+            color: "#34C759",
+            icon: "checkmark-circle-outline",
+            text: "Moderate-low probability of manipulation",
+          };
+        }
         break;
     }
 

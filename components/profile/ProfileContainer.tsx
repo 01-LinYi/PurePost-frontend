@@ -62,7 +62,7 @@ export default function ProfileContainer({
         profileData={profileData}
         isOwnProfile={isOwnProfile}
         isRefreshing={isRefreshing}
-        onRefresh={handleRefresh}
+        onRefresh={ () => handleRefresh}
         onFollowStatusChange={handleFollowStatusChange}
         dataLoading={isLoading}
         cacheInfo={cacheInfo}

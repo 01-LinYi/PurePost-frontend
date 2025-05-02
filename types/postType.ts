@@ -93,6 +93,7 @@ export interface ApiPost {
   visibility: PostVisibility;
   disclaimer: string | null;
   deepfake_status: DeepfakeStatus | null;
+  deepfake_score: number | null;
   status: PostStatus;
   caption?: string;
   tags?: string[]; 

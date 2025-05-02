@@ -118,10 +118,10 @@ export default function FeedPostItem({
         return (
           <View style={styles.deepfakeSafe}>
             <Text style={styles.deepfakeLowProbabilityText}>
-              Low probability of manipulation
+              Content likely authentic
             </Text>
             <Text style={styles.deepfakeConfidenceText}>
-              No manipulation detected in this content
+              Analysis indicates low to moderate probability of manipulation
             </Text>
           </View>
         );

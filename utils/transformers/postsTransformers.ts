@@ -46,6 +46,7 @@ export const transformApiPostToPost = (apiPost: ApiPost): Post => {
     visibility: apiPost.visibility,
     disclaimer: apiPost.disclaimer,
     deepfake_status: apiPost.deepfake_status,
+    deepfake_score: apiPost.deepfake_score || null,
     status: apiPost.status,
     is_pinned: apiPost.pinned,
     caption: apiPost.caption || null,
