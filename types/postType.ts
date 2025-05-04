@@ -2,7 +2,7 @@
 
 // Visibility options for posts
 export type PostVisibility = "public" | "private" | "friends";
-export type PostStatus = "draft" | "published";
+export type PostStatus = "draft" | "published" | "scheduled";
 
 // Deepfake analysis status options
 export type DeepfakeStatus =
@@ -67,6 +67,9 @@ export interface Post {
   disclaimer: string | null;
   deepfake_status: DeepfakeStatus | null;
   status: PostStatus;
+  caption?: string | null;
+  tags?: string[];
+  scheduled_for?: string | null;
   
   // Frontend-only fields
   isAuthor?: boolean;
@@ -90,7 +93,12 @@ export interface ApiPost {
   visibility: PostVisibility;
   disclaimer: string | null;
   deepfake_status: DeepfakeStatus | null;
+  deepfake_score: number | null;
   status: PostStatus;
+  caption?: string;
+  tags?: string[]; 
+  scheduled_for?: string | null;
+
   user: {
     id: number | string;
     username: string;
@@ -108,8 +116,11 @@ export interface PostCreate {
   image?: File | null;
   video?: File | null;
   visibility: "public" | "private" | "followers";
-  status: "draft" | "published";
+  status: "draft" | "published" | "scheduled";
   disclaimer?: string;
+  caption?: string;
+  tags?: string[];
+  scheduled_for?: string | null;
 }
 
 export interface SavedPost {
@@ -131,10 +142,13 @@ export interface Folder {
 export interface PostRequest {
   content: string;
   visibility: "public" | "private";
-  status: "draft" | "published";
+  status: "draft" | "published" | "scheduled";
   media?: File;
   media_id?: string;
   disclaimer?: string;
+  caption?: string;
+  tags?: string[]; 
+  scheduled_for?: string | null;
 }
 
 export interface FolderRequest {

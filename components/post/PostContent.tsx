@@ -1,20 +1,22 @@
-// components/post/PostContent.tsx - Component to display full post content and interactions
-
-import { View, StyleSheet, ScrollView, Platform, Image } from "react-native";
-import { Text } from "@/components/Themed";
+import { StyleSheet, ScrollView, Platform, Share } from "react-native";
+import { Text, View } from "@/components/Themed";
+import { Image } from "@/components/CachedImage";
 import { Post, Comment } from "@/types/postType";
 import AuthorInfo from "./AuthorInfo";
 import PostActions from "./PostActions";
 import CommentsList from "./CommentList";
+import { useSession } from "@/components/SessionProvider";
 import { Ionicons } from "@expo/vector-icons";
+import { useEffect, useState } from "react";
 
 interface PostContentProps {
   post: Post;
   comments: Comment[];
   onLike: () => void;
   onEdit?: () => void;
-  onShare: () => void;
+  onShare: (id: string) => Promise<void>;
   onSave: () => void;
+  ondeleteComment?: (commentId: number) => void;
   bottomPadding: number;
 }
 
@@ -28,11 +30,22 @@ const PostContent: React.FC<PostContentProps> = ({
   onEdit,
   onShare,
   onSave,
-  bottomPadding,
+  ondeleteComment,
+  bottomPadding, // deprecated
 }) => {
-  // Check if current user is the author (for edit permissions)
-  const canEdit = post.isAuthor || post.user?.id === "currentuser";
-
+  // Check if the user is admin
+  const { user } = useSession();
+  const [canEdit, setCanEdit] = useState(false);
+  useEffect(() => {
+    if (user && user.isAdmin) {
+      setCanEdit(true);
+    } else {
+      setCanEdit(false);
+    }
+    if (post.user && post.user.id === user?.id.toString()) {
+      setCanEdit(true);
+    }
+  }, [post.id]);
   // Render appropriate media content based on available data
   const renderMedia = () => {
     if (post.image) {
@@ -41,7 +54,7 @@ const PostContent: React.FC<PostContentProps> = ({
           <Image
             source={{ uri: post.image }}
             style={styles.mediaImage}
-            resizeMode="cover"
+            contentFit="cover"
           />
         </View>
       );
@@ -70,35 +83,69 @@ const PostContent: React.FC<PostContentProps> = ({
       icon: "information-circle-outline",
       text: "Content analysis pending",
     };
+    console.log("Post deepfake score:", post.deepfake_score);
 
+    if (post.deepfake_status === "analyzing") {
+      statusInfo = {
+        color: "#007AFF",
+        icon: "hourglass-outline",
+        text: "Content authenticity verification in progress",
+      };
+    } else if (post.deepfake_status === "analysis_failed") {
+      statusInfo = {
+        color: "#FF9500",
+        icon: "alert-circle-outline",
+        text: "Could not determine content authenticity",
+      };
+    }
     switch (post.deepfake_status) {
       case "flagged":
-        statusInfo = {
-          color: "#FF3B30",
-          icon: "warning-outline",
-          text: "This content may be artificially generated or manipulated",
-        };
+        if (post.deepfake_score && post.deepfake_score >= 0.8) {
+          statusInfo = {
+            color: "#FF3B30",
+            icon: "warning-outline",
+            text: `High probability (${post.deepfake_score.toPrecision(2)}) of artificial generation or manipulation`,
+          };
+        } else if (post.deepfake_score && post.deepfake_score >= 0.5) {
+          statusInfo = {
+            color: "#FF9500",
+            icon: "warning-outline",
+            text: `Medium probability (${post.deepfake_score.toPrecision(2)}) of artificial generation or manipulation`,
+          };
+        } else {
+          statusInfo = {
+            color: "#FF9500",
+            icon: "warning-outline",
+            text: "This content may be artificially generated or manipulated",
+          };
+        }
         break;
       case "not_flagged":
-        statusInfo = {
-          color: "#34C759",
-          icon: "checkmark-circle-outline",
-          text: "Content verified as authentic",
-        };
-        break;
-      case "analyzing":
-        statusInfo = {
-          color: "#007AFF",
-          icon: "hourglass-outline",
-          text: "Content authenticity verification in progress",
-        };
-        break;
-      case "analysis_failed":
-        statusInfo = {
-          color: "#FF9500",
-          icon: "alert-circle-outline",
-          text: "Content could not be analyzed for authenticity",
-        };
+        if (post.deepfake_score && post.deepfake_score <= 0.1) {
+          statusInfo = {
+            color: "#34C759",
+            icon: "checkmark-circle-outline",
+            text: "Very low probability of manipulation",
+          };
+        } else if (post.deepfake_score && post.deepfake_score <= 0.3) {
+          statusInfo = {
+            color: "#34C759",
+            icon: "checkmark-circle-outline",
+            text: `Low probability (${post.deepfake_score.toPrecision(2)}) of manipulation`,
+          };
+        } else if (post.deepfake_score && post.deepfake_score >= 0.5) {
+          statusInfo = {
+            color: "#FF9500",
+            icon: "warning-outline",
+            text: `Medium probability (${post.deepfake_score.toPrecision(2)}) of artificial generation or manipulation`,
+          };
+        } else {
+          statusInfo = {
+            color: "#34C759",
+            icon: "checkmark-circle-outline",
+            text: "Moderate-low probability of manipulation",
+          };
+        }
         break;
     }
 
@@ -119,15 +166,64 @@ const PostContent: React.FC<PostContentProps> = ({
     );
   };
 
+  // Render post caption if available
+  const renderCaption = () => {
+    if (!post.caption) return null;
+
+    return (
+      <View style={styles.captionContainer}>
+        <Text style={styles.captionText}>{post.caption}</Text>
+      </View>
+    );
+  };
+
+  // Render tags if available
+  const renderTags = () => {
+    if (!post.tags || post.tags.length === 0) return null;
+
+    return (
+      <View style={styles.tagsContainer}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.tagsScrollContent}
+        >
+          {post.tags.map((tag, index) => (
+            <View key={index} style={styles.tagChip}>
+              <Text style={styles.tagText}>#{tag}</Text>
+            </View>
+          ))}
+        </ScrollView>
+      </View>
+    );
+  };
+
+  const handleShare = async () => {
+    const contentPreview =
+      post.content.slice(0, 50) + (post.content.length > 50 ? "..." : "");
+    const message = post.caption
+      ? `${post.caption}: ${contentPreview}`
+      : contentPreview;
+
+    const finalMessage = `${message}\nAuthor: ${post.user.username}`;
+    try {
+      const result = await Share.share({
+        message: finalMessage,
+        // Add a URL if your app has deep linking
+        // url: `yourapp://post/${post.id}`
+        title: "Share Post",
+      });
+      if (result.action === Share.sharedAction) {
+        // Optionally handle the result of the share action
+        await onShare(post.id);
+      }
+      // Record share in backend
+    } catch (error) {
+      console.error("Error sharing post:", error);
+    }
+  };
   return (
-    <ScrollView
-      style={styles.scrollContainer}
-      contentContainerStyle={[
-        styles.contentContainer,
-        { paddingBottom: bottomPadding },
-      ]}
-      showsVerticalScrollIndicator={false}
-    >
+    <>
       {/* Author info */}
       <AuthorInfo
         user={post.user}
@@ -139,26 +235,20 @@ const PostContent: React.FC<PostContentProps> = ({
         isPrivateAccount={post.user?.is_private}
       />
 
-      {/* Content Disclaimer - only show if post has a disclaimer */}
-      {post.disclaimer && (
-        <View style={styles.disclaimerContainer}>
-          <View style={styles.disclaimerContent}>
-            <View style={styles.disclaimerIconContainer}>
-              <Ionicons name="warning-outline" size={18} color="#ffffff" />
-            </View>
-            <Text style={styles.disclaimerText}>{post.disclaimer}</Text>
-          </View>
-        </View>
-      )}
-
       {/* Deepfake detection status */}
       {renderDeepfakeStatus()}
+
+      {/* Post caption - show above content if available */}
+      {renderCaption()}
 
       {/* Post content */}
       <Text style={styles.postText}>{post.content}</Text>
 
       {/* Media preview */}
       {renderMedia()}
+
+      {/* Tags */}
+      {renderTags()}
 
       {/* Interaction bar */}
       <PostActions
@@ -169,7 +259,7 @@ const PostContent: React.FC<PostContentProps> = ({
         commentsCount={post.comment_count}
         shareCount={post.share_count}
         onLike={onLike}
-        onShare={onShare}
+        onShare={handleShare}
         onSave={onSave}
         onComment={() => {}}
       />
@@ -179,19 +269,16 @@ const PostContent: React.FC<PostContentProps> = ({
         <Text style={styles.commentsTitle}>
           Comments ({post.comment_count})
         </Text>
-        <CommentsList comments={comments || []} />
+        <CommentsList
+          comments={comments || []}
+          onDeleteComment={ondeleteComment}
+        />
       </View>
-    </ScrollView>
+    </>
   );
 };
 
 const styles = StyleSheet.create({
-  scrollContainer: {
-    flex: 1,
-  },
-  contentContainer: {
-    padding: 20,
-  },
   postText: {
     fontSize: 16,
     lineHeight: 24,
@@ -246,8 +333,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     overflow: "hidden",
     borderWidth: 1,
-    borderColor: "#FF9800",
-    backgroundColor: "#FFF8E1",
+    borderColor: "#00c5e3",
   },
   disclaimerContent: {
     flexDirection: "row",
@@ -255,7 +341,7 @@ const styles = StyleSheet.create({
     padding: 12,
   },
   disclaimerIconContainer: {
-    backgroundColor: "#FF9800",
+    backgroundColor: "#00c5e3",
     width: 24,
     height: 24,
     borderRadius: 12,
@@ -267,7 +353,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 14,
     lineHeight: 20,
-    color: "#E65100",
+    color: "#00c5e3",
   },
   // Status indicator styles
   statusContainer: {
@@ -289,6 +375,41 @@ const styles = StyleSheet.create({
   statusText: {
     fontSize: 14,
     lineHeight: 20,
+    fontWeight: "500",
+  },
+  captionContainer: {
+    marginBottom: 12,
+    alignItems: "center",
+    backgroundColor: "#e1f5fe",
+    borderRadius: 8,
+    padding: 12,
+    borderLeftWidth: 3,
+    borderLeftColor: "#00c5e3",
+  },
+  captionText: {
+    fontSize: 18,
+    fontWeight: "600",
+    fontStyle: "italic",
+    color: "#333333",
+    lineHeight: 24,
+  },
+  tagsContainer: {
+    marginBottom: 16,
+  },
+  tagsScrollContent: {
+    paddingBottom: 6,
+  },
+  tagChip: {
+    backgroundColor: "#e1f5fe",
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+    marginRight: 8,
+    marginBottom: 4,
+  },
+  tagText: {
+    fontSize: 14,
+    color: "#00c5e3",
     fontWeight: "500",
   },
 });

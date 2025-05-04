@@ -1,7 +1,7 @@
-# PurePost Frontend
+# PurePost-Frontend
 
-![React Native](https://img.shields.io/badge/React_Native-61DAFB?logo=react&logoColor=white)
-![Expo](https://img.shields.io/badge/Expo-000020?logo=expo&logoColor=white)
+![React Native](https://img.shields.io/badge/React_Native-61DAFB?logo=react&logoColor=white) ![Expo](https://img.shields.io/badge/Expo-CNG-4630EB?logo=expo&logoColor=white) ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)
+![GitHub Actions](https://img.shields.io/badge/GitHub%20Actions-2088FF?logo=github-actions&logoColor=white)
 
 ![PurePost Logo](./assets/images/purePostTransparent.png)
 
@@ -24,7 +24,6 @@ Ensure you have installed:
 
 - [Git](https://git-scm.com/downloads)
 - [Node.js (LTS)](https://nodejs.org/)
-- [Expo CLI](https://docs.expo.dev/get-started/installation/)
 - [Yarn](https://classic.yarnpkg.com/en/docs/install) (optional)
 
 Check your setup:
@@ -54,6 +53,16 @@ Or using Yarn:
 yarn install
 ```
 
+### **Environment Variables**
+
+Copy the .env.example file to `.env` and update the values as needed:
+
+```sh
+cp .env.example .env
+```
+
+Currently this `.env` file is not used and you have to manually configure the backend URL in file `constants/Api.ts`
+
 ### **Running the Application**
 
 To start the development server, run:
@@ -68,7 +77,9 @@ Or using Yarn:
 yarn start
 ```
 
-This will start the Expo development server. You can then use the Expo Go app on your mobile device to scan the QR code and run the application.
+This will start the Expo development server. Following the instruction on CLI, you can use the Expo Go app on your mobile device to scan the QR code and run the application.
+
+The below options for compling a CNG build and run the app on your local simulators.
 
 ### **Running on Android**
 
@@ -135,14 +146,6 @@ yarn build
 ```
 
 This will create a production build of the application.
-
-### **Environment Variables**
-
-Copy the .env.example file to `.env` and update the values as needed:
-
-```sh
-cp .env.example .env
-```
 
 ### **Contributing**
 

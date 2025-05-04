@@ -8,6 +8,8 @@ import { Ionicons } from "@expo/vector-icons";
 type FeedHeaderProps = {
   onLogOut: () => void;
   onCreatePost: () => void;
+  onNotifications: () => void;
+  unreadNotificationsCount?: number;
 };
 
 /**
@@ -16,6 +18,8 @@ type FeedHeaderProps = {
 export default function FeedHeader({
   onLogOut,
   onCreatePost,
+  onNotifications,
+  unreadNotificationsCount = 0,
 }: FeedHeaderProps) {
   return (
     <View style={styles.header}>
@@ -28,9 +32,20 @@ export default function FeedHeader({
         </TouchableOpacity>
 
         {/* Notifications button */}
-        <TouchableOpacity style={styles.headerButton}>
-          <Ionicons name="notifications-outline" size={24} color="#00c5e3" />
-        </TouchableOpacity>
+        <View>
+          <TouchableOpacity style={styles.headerButton} onPress={onNotifications}>
+            <Ionicons name="notifications-outline" size={24} color="#00c5e3" />
+          </TouchableOpacity>
+          {unreadNotificationsCount > 0 && (
+            <View style={styles.notificationBadge}>
+              {unreadNotificationsCount > 99 ? (
+                <Text style={styles.notificationBadgeText}>99+</Text>
+              ) : (
+                <Text style={styles.notificationBadgeText}>{unreadNotificationsCount}</Text>
+              )}
+            </View>
+          )}
+        </View>
 
         {/* Log out button */}
         <TouchableOpacity style={styles.headerButton} onPress={onLogOut}>
@@ -86,5 +101,24 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600",
     marginLeft: 4,
+  },
+  notificationBadge: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    backgroundColor: '#FF3B30',
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+    borderWidth: 1.5,
+    borderColor: '#FFF',
+  },
+  notificationBadgeText: {
+    color: '#FFF',
+    fontSize: 10,
+    fontWeight: 'bold',
   },
 });

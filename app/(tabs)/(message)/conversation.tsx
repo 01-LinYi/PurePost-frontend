@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import {
   FlatList,
   TouchableOpacity,
-  Image,
   Alert,
   TextInput,
   Modal,
@@ -13,6 +12,7 @@ import {
 import { router } from "expo-router";
 import axiosInstance from "@/utils/axiosInstance";
 import { View, Text } from "@/components/Themed";
+import { Image } from '@/components/CachedImage';
 import { API_URL } from "@/constants/Api";
 import axios from "axios";
 import { Ionicons } from "@expo/vector-icons";
@@ -28,7 +28,7 @@ type Conversation = {
 };
 
 type User = {
-  user_id: number;
+  id: number;
   username: string;
   avatar: string;
 };
@@ -543,12 +543,12 @@ export default function ConversationListScreen() {
 
             <FlatList
               data={searchResults}
-              keyExtractor={(item) => String(item.user_id)}
+              keyExtractor={(item) => String(item.id)}
               renderItem={({ item }) => (
                 <UserListItem
                   item={item}
-                  isSelected={selectedUsers.includes(item.user_id)}
-                  onSelect={() => handleUserSelect(item.user_id)}
+                  isSelected={selectedUsers.includes(item.id)}
+                  onSelect={() => handleUserSelect(item.id)}
                 />
               )}
               contentContainerStyle={styles.userListContent}

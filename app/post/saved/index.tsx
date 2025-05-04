@@ -1,82 +1,21 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   StyleSheet,
   Alert,
-  StatusBar,
   ActivityIndicator,
   TouchableOpacity,
   FlatList,
   TextInput,
   Modal,
 } from "react-native";
-import { router } from "expo-router";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { SavedFolder } from "@/types/folderType";
+import { useFolders } from "@/hooks/useFolders";
 import { Text, View } from "@/components/Themed";
 import ActionButton from "@/components/ActionButton";
-import axiosInstance from "@/utils/axiosInstance";
-
-// Define the SavedFolder type
-type SavedFolder = {
-  id: string;
-  name: string;
-  postCount: number;
-  createdAt: string;
-};
-
-// API for fetching, creating, renaming, and deleting saved folders
-const fetchSavedFolders = async (): Promise<SavedFolder[]> => {
-  try {
-    const response = await axiosInstance.get("/content/folders/");
-    return response.data.results;
-  } catch (error) {
-    console.error("Error fetching folders:", error);
-    throw error;
-  }
-};
-
-const createFolder = async (name: string): Promise<SavedFolder> => {
-  try {
-    const response = await axiosInstance.post("/content/folders/", { name });
-    return response.data;
-  } catch (error) {
-    console.error("Error creating folder:", error);
-    throw error;
-  }
-};
-
-const renameFolder = async (id: string, name: string): Promise<SavedFolder> => {
-  try {
-    const response = await axiosInstance.patch(`/content/folders/${id}/`, { name });
-    return response.data;
-  } catch (error) {
-    console.error("Error renaming folder:", error);
-    throw error;
-  }
-};
-
-const deleteFolder = async (id: string): Promise<void> => {
-  try {
-    await axiosInstance.delete(`/content/folders/${id}/`);
-  } catch (error) {
-    console.error("Error deleting folder:", error);
-    throw error;
-  }
-};
-
-const getFolderPosts = async (id: string): Promise<any[]> => {
-  try {
-    const response = await axiosInstance.get(`/content/folders/${id}/posts/`);
-    return response.data;
-  } catch (error) {
-    console.error("Error getting folder posts:", error);
-    throw error;
-  }
-};
 
 const SavedFolders = () => {
-  const [folders, setFolders] = useState<SavedFolder[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [renameModalVisible, setRenameModalVisible] = useState(false);
   const [createModalVisible, setCreateModalVisible] = useState(false);
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
@@ -86,58 +25,41 @@ const SavedFolders = () => {
   const [newFolderName, setNewFolderName] = useState("");
   const [createFolderName, setCreateFolderName] = useState("");
 
-  const insets = useSafeAreaInsets();
+  const router = useRouter();
 
-  const loadFolders = async () => {
-    try {
-      setIsLoading(true);
-      const data = await fetchSavedFolders();
-      setFolders(data);
-    } catch (error) {
-      Alert.alert(
-        "Error",
-        "Failed to load saved folders: " +
-          ((error as Error).message || "Unknown error")
-      );
-      console.error("Folders loading error:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadFolders();
-  }, []);
+  const {
+    folders,
+    isLoading,
+    error,
+    refresh,
+    createFolder,
+    renameFolder,
+    deleteFolder,
+    isCreating,
+    isRenaming,
+    isDeleting,
+  } = useFolders();
 
   const handleCreateFolder = () => {
     setCreateFolderName("New Folder");
     setCreateModalVisible(true);
   };
-
   const confirmCreateFolder = async () => {
     if (!createFolderName.trim()) return;
-
     try {
-      setIsLoading(true);
-      const newFolder = await createFolder(createFolderName.trim());
-      
-      // Add the new folder to the state
-      setFolders((prevFolders) => [...prevFolders, newFolder]);
-      
-      // Close the modal and reset
+      await createFolder(createFolderName.trim());
       setCreateModalVisible(false);
       setCreateFolderName("");
-      
-      // Display success message
-      Alert.alert("Success", `Folder "${createFolderName}" created successfully`);
+      Alert.alert(
+        "Success",
+        `Folder "${createFolderName}" created successfully`
+      );
     } catch (error) {
       Alert.alert(
         "Error",
         "Failed to create folder: " +
           ((error as Error).message || "Unknown error")
       );
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -146,27 +68,13 @@ const SavedFolders = () => {
     setNewFolderName(folder.name);
     setRenameModalVisible(true);
   };
-
   const confirmRename = async () => {
     if (!selectedFolder || !newFolderName.trim()) return;
-
     try {
-      setIsLoading(true);
-      const updatedFolder = await renameFolder(selectedFolder.id, newFolderName.trim());
-      
-      // Update the folder name in the state
-      setFolders((prevFolders) =>
-        prevFolders.map((folder) =>
-          folder.id === selectedFolder.id ? updatedFolder : folder
-        )
-      );
-      
-      // Close the modal and reset the state
+      await renameFolder(selectedFolder.id, newFolderName.trim());
       setRenameModalVisible(false);
       setSelectedFolder(null);
       setNewFolderName("");
-      
-      // Display success message
       Alert.alert("Success", "Folder renamed successfully");
     } catch (error) {
       Alert.alert(
@@ -174,8 +82,6 @@ const SavedFolders = () => {
         "Failed to rename folder: " +
           ((error as Error).message || "Unknown error")
       );
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -183,24 +89,12 @@ const SavedFolders = () => {
     setSelectedFolder(folder);
     setDeleteModalVisible(true);
   };
-
   const confirmDelete = async () => {
     if (!selectedFolder) return;
-
     try {
-      setIsLoading(true);
       await deleteFolder(selectedFolder.id);
-      
-      // Remove the folder from the state
-      setFolders((prevFolders) =>
-        prevFolders.filter((folder) => folder.id !== selectedFolder.id)
-      );
-      
-      // Close the modal and reset the state
       setDeleteModalVisible(false);
       setSelectedFolder(null);
-      
-      // Display success message
       Alert.alert("Success", "Folder deleted successfully");
     } catch (error) {
       Alert.alert(
@@ -208,11 +102,10 @@ const SavedFolders = () => {
         "Failed to delete folder: " +
           ((error as Error).message || "Unknown error")
       );
-    } finally {
-      setIsLoading(false);
     }
   };
 
+  // 跳转到文件夹详情
   const handleFolderPress = (folderId: string) => {
     router.push(`/post/saved/${folderId}`);
   };
@@ -223,16 +116,14 @@ const SavedFolders = () => {
       onPress={() => handleFolderPress(item.id)}
       activeOpacity={0.7}
     >
-      <View
-        style={[styles.folderItemContent, { backgroundColor: "transparent" }]}
-      >
+      <View style={styles.folderItemContent}>
         <Ionicons name="folder" size={24} color="#00c5e3" />
-        <View style={[styles.folderInfo, { backgroundColor: "transparent" }]}>
+        <View style={styles.folderInfo}>
           <Text style={styles.folderName}>{item.name}</Text>
           <Text style={styles.folderCount}>{item.postCount} posts</Text>
         </View>
       </View>
-      <View style={[styles.folderActions, { backgroundColor: "transparent" }]}>
+      <View style={styles.folderActions}>
         <TouchableOpacity
           style={styles.actionButton}
           onPress={() => handleRenameFolder(item)}
@@ -259,17 +150,10 @@ const SavedFolders = () => {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-
-      <View
-        style={[
-          styles.header,
-          { paddingTop: 10, backgroundColor: "transparent" },
-        ]}
-      >
+      <View style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}
-          onPress={() => router.replace("/(tabs)/profile")}
+          onPress={() => router.back()}
         >
           <Ionicons name="arrow-back" size={24} color="#00c5e3" />
         </TouchableOpacity>
@@ -283,8 +167,14 @@ const SavedFolders = () => {
         </TouchableOpacity>
       </View>
 
+      {error ? (
+        <Text style={{ color: "red", alignSelf: "center", margin: 8 }}>
+          {error}
+        </Text>
+      ) : null}
+
       {folders.length === 0 ? (
-        <View style={[styles.emptyState, { backgroundColor: "transparent" }]}>
+        <View style={styles.emptyState}>
           <Ionicons name="folder-open-outline" size={60} color="#aaa" />
           <Text style={styles.emptyText}>No saved folders yet</Text>
           <ActionButton
@@ -302,7 +192,7 @@ const SavedFolders = () => {
           contentContainerStyle={styles.folderList}
           showsVerticalScrollIndicator={false}
           refreshing={isLoading}
-          onRefresh={loadFolders}
+          onRefresh={refresh}
         />
       )}
 
@@ -323,18 +213,18 @@ const SavedFolders = () => {
               placeholder="Enter new folder name"
               autoFocus
             />
-            <View
-              style={[styles.modalButtons, { backgroundColor: "transparent" }]}
-            >
+            <View style={styles.modalButtons}>
               <TouchableOpacity
                 style={[styles.modalButton, styles.cancelButton]}
                 onPress={() => setRenameModalVisible(false)}
+                disabled={isRenaming}
               >
                 <Text style={styles.cancelButtonText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.modalButton, styles.confirmButton]}
                 onPress={confirmRename}
+                disabled={isRenaming}
               >
                 <Text style={styles.confirmButtonText}>Save</Text>
               </TouchableOpacity>
@@ -361,18 +251,18 @@ const SavedFolders = () => {
               autoFocus
               selectTextOnFocus
             />
-            <View
-              style={[styles.modalButtons, { backgroundColor: "transparent" }]}
-            >
+            <View style={styles.modalButtons}>
               <TouchableOpacity
                 style={[styles.modalButton, styles.cancelButton]}
                 onPress={() => setCreateModalVisible(false)}
+                disabled={isCreating}
               >
                 <Text style={styles.cancelButtonText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.modalButton, styles.confirmButton]}
                 onPress={confirmCreateFolder}
+                disabled={isCreating}
               >
                 <Text style={styles.confirmButtonText}>Create</Text>
               </TouchableOpacity>
@@ -392,20 +282,22 @@ const SavedFolders = () => {
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Delete Folder</Text>
             <Text style={styles.modalMessage}>
-              Are you sure you want to delete "{selectedFolder?.name}"? This action cannot be undone.
+              All posts under this folder will be removed and cannot be
+              undone.{'\n'}
+              Are you sure you want to delete "{selectedFolder?.name}"? 
             </Text>
-            <View
-              style={[styles.modalButtons, { backgroundColor: "transparent" }]}
-            >
+            <View style={styles.modalButtons}>
               <TouchableOpacity
                 style={[styles.modalButton, styles.cancelButton]}
                 onPress={() => setDeleteModalVisible(false)}
+                disabled={isDeleting}
               >
                 <Text style={styles.cancelButtonText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.modalButton, styles.deleteButton]}
                 onPress={confirmDelete}
+                disabled={isDeleting}
               >
                 <Text style={styles.deleteButtonText}>Delete</Text>
               </TouchableOpacity>
@@ -418,6 +310,7 @@ const SavedFolders = () => {
 };
 
 const styles = StyleSheet.create({
+  // ...你的原有styles可以直接复制
   container: {
     flex: 1,
     backgroundColor: "#FFFFFF",
@@ -430,13 +323,14 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 16,
-    paddingBottom: 16,
+    paddingHorizontal: 10,
+    paddingBottom: 10,
     borderBottomWidth: 1,
     borderBottomColor: "#f0f0f0",
   },
   backButton: {
-    padding: 8,
+    padding: 5,
+    flexDirection: "row",
   },
   title: {
     fontSize: 24,
@@ -477,9 +371,12 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     flex: 1,
+    backgroundColor: "transparent",
   },
   folderInfo: {
     marginLeft: 12,
+    backgroundColor: "transparent",
+    flex: 1,
   },
   folderName: {
     fontSize: 16,
@@ -494,6 +391,7 @@ const styles = StyleSheet.create({
   folderActions: {
     flexDirection: "row",
     alignItems: "center",
+    backgroundColor: "transparent",
   },
   actionButton: {
     padding: 8,

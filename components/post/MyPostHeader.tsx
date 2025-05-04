@@ -5,6 +5,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Text, View } from "@/components/Themed";
 
 interface MyPostsHeaderProps {
+  username: string | string[] | null;
   onBack: () => void;
   onCreatePost: () => void;
 }
@@ -13,6 +14,7 @@ interface MyPostsHeaderProps {
  * Header component for the My Posts screen with navigation and create post button
  */
 const MyPostsHeader: React.FC<MyPostsHeaderProps> = ({
+  username,
   onBack,
   onCreatePost,
 }) => {
@@ -28,7 +30,10 @@ const MyPostsHeader: React.FC<MyPostsHeaderProps> = ({
         <Ionicons name="arrow-back" size={22} color="#00c5e3" />
       </TouchableOpacity>
 
-      <Text style={styles.pageTitle}>My Posts</Text>
+      {username == null ?
+        (<Text style={styles.pageTitle}>My Posts</Text>) :
+        (<Text style={styles.pageTitle}>{`${username}'s post`}</Text>)
+      }
 
       <TouchableOpacity
         style={styles.createPostButton}
@@ -61,7 +66,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: "bold",
     color: "#00c5e3",
-    flex: 1, 
+    flex: 1,
   },
   createPostButton: {
     flexDirection: "row",
@@ -69,7 +74,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#00c5e3",
     paddingVertical: 6,
     paddingHorizontal: 10,
-    borderRadius: 18, 
+    borderRadius: 18,
   },
   createPostButtonText: {
     color: "#FFFFFF",

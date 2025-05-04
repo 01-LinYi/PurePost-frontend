@@ -1,110 +1,319 @@
-import React, { useEffect, useState } from "react";
-import { StyleSheet, FlatList, ActivityIndicator, Alert } from "react-native";
+import React, { useEffect, useState, useCallback, useRef } from "react";
+import {
+  StyleSheet,
+  ActivityIndicator,
+  Alert,
+  TouchableOpacity,
+  Animated,
+  RefreshControl,
+  Platform,
+} from "react-native";
 import { Text, View } from "@/components/Themed";
-import { UserProfile } from "@/types/profileType";
 import { useSession } from "@/components/SessionProvider";
 import * as api from "@/utils/api";
 import { Follow } from "@/types/followType";
-
-// Global list of all followers (limited total dataset)
-const allFollowers = [
-  { id: "1", name: "Alice", email: "alice@someuni.edu" },
-  { id: "2", name: "Bob", email: "bob@someuni.edu" },
-  { id: "3", name: "Charlie", email: "charlie@mail.com" },
-  { id: "4", name: "David", email: "david@mail.com" },
-  { id: "5", name: "Eve", email: "eve@mail.com" },
-  { id: "6", name: "Frank", email: "frank@mail.com" },
-  { id: "7", name: "Grace", email: "grace@mail.com" },
-  { id: "8", name: "Hannah", email: "hannah@mail.com" },
-  { id: "9", name: "Ivy", email: "ivy@mail.com" },
-  { id: "10", name: "Jack", email: "jack@mail.com" },
-  { id: "11", name: "Karen", email: "karen@mail.com" },
-  { id: "12", name: "Leo", email: "leo@mail.com" },
-  { id: "13", name: "Mona", email: "mona@mail.com" },
-  { id: "14", name: "Nancy", email: "nancy@mail.com" },
-  { id: "15", name: "Oscar", email: "oscar@mail.com" },
-  { id: "16", name: "Pam", email: "pam@mail.com" },
-  { id: "17", name: "Quinn", email: "quinn@mail.com" },
-  { id: "18", name: "Rita", email: "rita@mail.com" },
-  { id: "19", name: "Sam", email: "sam@mail.com" },
-  { id: "20", name: "Tina", email: "tina@mail.com" },
-];
-
+import { Ionicons } from "@expo/vector-icons";
+import { StatusBar } from "expo-status-bar";
+import { useRouter } from "expo-router";
 export default function Followers() {
-  const [followers, setFollowers] = useState<Follow[]>([]); // Initially load the first 3 followers
+  const [followers, setFollowers] = useState<Follow[]>([]);
   const [next, setNext] = useState<string | null>(null);
-  const [loadingMore, setLoadingMore] = useState(false); // Loading more state
-  const [refreshing, setRefreshing] = useState(false); // Refreshing state
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [hasError, setHasError] = useState(false);
+
   const { user } = useSession();
+  const router = useRouter();
+  const scrollY = useRef(new Animated.Value(0)).current;
+  const animationValuesRef = useRef(new Map());
+
   if (!user) {
-    console.error("Current User not found"); // should never happen
+    console.error("Current User not found");
     return null;
   }
-  
+
+  // Header shadow animation
+  const headerShadowOpacity = scrollY.interpolate({
+    inputRange: [0, 20],
+    outputRange: [0, 0.3],
+    extrapolate: "clamp",
+  });
+
   // Function to fetch more followers
-  const fetchMoreFollowers = async () => {
+  const fetchMoreFollowers = useCallback(async () => {
     if (loadingMore || next === null) return;
+
     setLoadingMore(true);
-    const res = await api.fetchFollowers(user.id, next);
-    console.log(res);
-    setFollowers(res.results);
-    setNext(res.next);
-    setLoadingMore(false);
-  };
+    try {
+      const res = await api.fetchFollowers(user.id, next);
+      setFollowers((prev) => [...prev, ...res.results]);
+      setNext(res.next);
+      setHasError(false);
+    } catch (error) {
+      console.error("Error fetching more followers:", error);
+      setHasError(true);
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [loadingMore, next, user?.id]);
 
   // Function to refresh followers
-  const refreshFollowers = async () => {
+  const refreshFollowers = useCallback(async () => {
     setRefreshing(true);
-    setNext(null); // Reset next to null to start from the beginning
-    await fetchMoreFollowers(); // Fetch more followers
-    setRefreshing(false);
-  };
+    try {
+      const res = await api.fetchFollowers(user.id, null);
+      setFollowers(res.results);
+      setNext(res.next);
+      setHasError(false);
+    } catch (error) {
+      console.error("Error refreshing followers:", error);
+      setHasError(true);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [user?.id]);
 
+  // Initial data fetching
   useEffect(() => {
-      // Initial fetch of the list of people the user is following
-      const fetchInitialFollowing = async () => {
-        try {
-          const res = await api.fetchFollowers(user.id, null);
-          setFollowers(res.results);
-          setNext(res.next);
-        } catch (error) {
-          console.error("Error fetching followings:", error);
-          Alert.alert("Error", "Failed to load followings.");
+    const fetchInitialFollowers = async () => {
+      setIsLoading(true);
+      try {
+        const res = await api.fetchFollowers(user.id, null);
+        setFollowers(res.results);
+        setNext(res.next);
+        setHasError(false);
+      } catch (error) {
+        console.error("Error fetching followers:", error);
+        setHasError(true);
+        Alert.alert("Error", "Failed to load followers.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchInitialFollowers();
+  }, [user?.id]);
+
+  // Setup animation values when followers list changes
+  useEffect(() => {
+    if (followers.length > 0) {
+      followers.forEach((item) => {
+        if (!animationValuesRef.current.has(item.id)) {
+          animationValuesRef.current.set(item.id, {
+            translateY: new Animated.Value(20),
+            opacity: new Animated.Value(0),
+          });
         }
+      });
+    }
+  }, [followers]);
+
+  // Start animations
+  const startAnimation = useCallback((id: number, index: number) => {
+    const animValues = animationValuesRef.current.get(id);
+    if (!animValues) return;
+
+    Animated.timing(animValues.translateY, {
+      toValue: 0,
+      duration: 300,
+      delay: index * 50,
+      useNativeDriver: true,
+    }).start();
+
+    Animated.timing(animValues.opacity, {
+      toValue: 1,
+      duration: 300,
+      delay: index * 50,
+      useNativeDriver: true,
+    }).start();
+  }, []);
+
+  // Trigger animations when followers change
+  useEffect(() => {
+    if (followers.length > 0) {
+      followers.forEach((follower, index) => {
+        startAnimation(follower.id, index);
+      });
+    }
+  }, [followers, startAnimation]);
+
+  // Render a follower item with animation
+  const renderFollowerItem = useCallback(
+    ({ item, index }: { item: Follow; index: number }) => {
+      const animValues = animationValuesRef.current.get(item.id) || {
+        translateY: new Animated.Value(0),
+        opacity: new Animated.Value(1),
       };
-  
-      fetchInitialFollowing();
+
+      return (
+        <Animated.View
+          style={[
+            styles.userItem,
+            {
+              opacity: animValues.opacity,
+              transform: [{ translateY: animValues.translateY }],
+            },
+          ]}
+        >
+          <TouchableOpacity
+            style={styles.userItemContent}
+            onPress={() => {
+              router.push(`/user/${item.follower_details.username}`);
+            }}
+            activeOpacity={0.7}
+          >
+            <View style={styles.userInfo}>
+              <Text style={styles.userName}>
+                {item.follower_details.username}
+              </Text>
+              <Text style={styles.userBio} numberOfLines={1}>
+                {item.follower_details.email}
+              </Text>
+            </View>
+          </TouchableOpacity>
+        </Animated.View>
+      );
+    },
+    []
+  );
+
+  // Empty state component with animation
+  const EmptyState = useCallback(() => {
+    const emptyScale = useRef(new Animated.Value(0.8)).current;
+    const emptyOpacity = useRef(new Animated.Value(0)).current;
+
+    React.useLayoutEffect(() => {
+      try {
+        Animated.parallel([
+          Animated.spring(emptyScale, {
+            toValue: 1,
+            useNativeDriver: true,
+            friction: 8,
+          }),
+          Animated.timing(emptyOpacity, {
+            toValue: 1,
+            duration: 400,
+            useNativeDriver: true,
+          }),
+        ]).start();
+      } catch (error) {
+        console.error("EmptyState animation error:", error);
+      }
     }, []);
+
+    return (
+      <Animated.View
+        style={[
+          styles.emptyContainer,
+          {
+            opacity: emptyOpacity,
+            transform: [{ scale: emptyScale }],
+          },
+        ]}
+      >
+        <Ionicons name="people-outline" size={64} color="#DDDDDD" />
+        <Text style={styles.emptyTitle}>No followers yet</Text>
+        <Text style={styles.emptyText}>
+          When people follow you, they'll appear here
+        </Text>
+      </Animated.View>
+    );
+  }, []);
+
+  const hasFollowers = Array.isArray(followers) && followers.length > 0;
 
   return (
     <View style={styles.container}>
-      {followers.length > 0 ? (
-        <FlatList
+      {/* Animated Header */}
+      <Animated.View
+        style={[
+          styles.header,
+          {
+            shadowOpacity: headerShadowOpacity,
+          },
+        ]}
+      >
+        <View style={styles.headerContent}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => router.back()}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            accessibilityLabel="Go back"
+            accessibilityRole="button"
+          >
+            <Ionicons name="arrow-back" size={22} color="#29B6F6" />
+          </TouchableOpacity>
+          <View style={styles.titleContainer}>
+            <Ionicons
+              name="people"
+              size={22}
+              color="#29B6F6"
+              style={styles.titleIcon}
+            />
+            <Text style={styles.title}>Followers</Text>
+          </View>
+          <View style={styles.rightPlaceholder} />
+        </View>
+      </Animated.View>
+
+      {/* Content Area */}
+      {isLoading && !refreshing ? (
+        <View style={styles.loaderContainer}>
+          <ActivityIndicator size="large" color="#29B6F6" />
+          <Text style={styles.loaderText}>Loading followers...</Text>
+        </View>
+      ) : hasError ? (
+        <View style={styles.errorContainer}>
+          <Ionicons name="alert-circle-outline" size={60} color="#FF3B30" />
+          <Text style={styles.errorTitle}>Couldn't load followers</Text>
+          <Text style={styles.errorText}>An unexpected error occurred.</Text>
+          <TouchableOpacity
+            style={[styles.retryButton, { backgroundColor: "#29B6F6" }]}
+            onPress={refreshFollowers}
+          >
+            <Text style={styles.retryButtonText}>Try Again</Text>
+          </TouchableOpacity>
+        </View>
+      ) : hasFollowers ? (
+        <Animated.FlatList
           data={followers}
+          renderItem={renderFollowerItem}
           keyExtractor={(item) => item.id.toString()}
-          renderItem={({ item }) => (
-            <View style={styles.item}>
-              <Text style={styles.name}>{item.follower_details.username}</Text>
-              <Text style={styles.email}>{item.follower_details.email}</Text>
-            </View>
+          style={styles.userList}
+          contentContainerStyle={styles.listContentContainer}
+          onScroll={Animated.event(
+            [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+            { useNativeDriver: false }
           )}
-          onEndReached={() => {console.log("here"); fetchMoreFollowers()}} // Triggered when the user scrolls to the end
-          onEndReachedThreshold={0.5} // Trigger when 50% of the list is scrolled
+          scrollEventThrottle={16}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={refreshFollowers}
+              tintColor="#29B6F6"
+              colors={["#29B6F6"]}
+              progressViewOffset={10}
+            />
+          }
+          onEndReached={fetchMoreFollowers}
+          onEndReachedThreshold={0.5}
           ListFooterComponent={
             loadingMore ? (
-              <ActivityIndicator size="small" color="#007bff" />
+              <View style={styles.footerLoader}>
+                <ActivityIndicator size="small" color="#29B6F6" />
+              </View>
             ) : null
           }
-          refreshing={refreshing} // Pull-to-refresh state
-          onRefresh={refreshFollowers} 
-          // Triggered when the user performs a pull-to-refresh
         />
       ) : (
-        <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-          <Text>No followers found.</Text>
+        <View style={styles.emptyListContainer}>
+          <EmptyState />
         </View>
-      )
-      }
+      )}
+
+      <StatusBar style={Platform.OS === "ios" ? "dark" : "auto"} />
     </View>
   );
 }
@@ -112,18 +321,160 @@ export default function Followers() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 20,
-    backgroundColor: "#fff",
+    backgroundColor: "#FFFFFF",
   },
-  item: {
-    marginBottom: 15,
+  header: {
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 6,
+    elevation: 4,
+    zIndex: 10,
   },
-  name: {
+  headerContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  backButton: {
+    width: 40,
+  },
+  titleContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  titleIcon: {
+    marginRight: 8,
+  },
+  title: {
     fontSize: 18,
-    fontWeight: "bold",
+    fontWeight: "700",
+    color: "#111111",
   },
-  email: {
+  rightPlaceholder: {
+    width: 40,
+  },
+  loaderContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  loaderText: {
+    marginTop: 16,
     fontSize: 16,
-    color: "#555",
+    color: "#666666",
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  errorTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#333333",
+    marginTop: 16,
+  },
+  errorText: {
+    fontSize: 15,
+    color: "#666666",
+    textAlign: "center",
+    marginTop: 8,
+    marginHorizontal: 40,
+  },
+  retryButton: {
+    marginTop: 24,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: "#FFFFFF",
+    fontWeight: "600",
+    fontSize: 16,
+  },
+  userList: {
+    flex: 1,
+  },
+  listContentContainer: {
+    paddingTop: 8,
+    paddingBottom: 30,
+  },
+  emptyListContainer: {
+    flexGrow: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  emptyContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 20,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#333333",
+    marginTop: 16,
+  },
+  emptyText: {
+    fontSize: 15,
+    color: "#888888",
+    textAlign: "center",
+    marginTop: 8,
+  },
+  userItem: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    marginHorizontal: 8,
+    marginVertical: 4,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  userItemContent: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  avatar: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: "#F5F5F5",
+  },
+  userInfo: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  userName: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#111111",
+  },
+  userBio: {
+    fontSize: 14,
+    color: "#888888",
+    marginTop: 2,
+  },
+  followButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    backgroundColor: "#F5F5F5",
+    borderRadius: 16,
+  },
+  followButtonText: {
+    color: "#333333",
+    fontWeight: "600",
+    fontSize: 14,
+  },
+  footerLoader: {
+    paddingVertical: 20,
+    alignItems: "center",
   },
 });

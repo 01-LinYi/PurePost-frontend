@@ -15,6 +15,8 @@ const COLORS = {
   divider: "#F3F4F6",
   primaryTransparent: "rgba(0, 197, 227, 0.1)",
   primaryUltraLight: "rgba(0, 197, 227, 0.05)",
+  shadow: "#000000",
+  white: "#FFFFFF",
 };
 
 export const styles = StyleSheet.create({
@@ -22,25 +24,25 @@ export const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background,
   },
-  
+
   scrollContainer: {
     paddingBottom: 20,
   },
-  
+
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: COLORS.background,
   },
-  
+
   loadingText: {
     marginTop: 10,
     fontSize: 16,
     color: COLORS.primary,
     fontWeight: "500",
   },
-  
+
   cacheInfoContainer: {
     backgroundColor: COLORS.primaryUltraLight,
     padding: 8,
@@ -49,13 +51,13 @@ export const styles = StyleSheet.create({
     borderRadius: 8,
     marginHorizontal: 12,
   },
-  
+
   cacheInfoText: {
     fontSize: 12,
     color: COLORS.primary,
     fontStyle: "italic",
   },
-  
+
   profileCard: {
     backgroundColor: COLORS.cardBackground,
     borderRadius: 20,
@@ -74,13 +76,13 @@ export const styles = StyleSheet.create({
       },
     }),
   },
-  
+
   avatarSection: {
     alignItems: "center",
     position: "relative",
     marginTop: -70,
   },
-  
+
   avatarGradientBorder: {
     width: 110,
     height: 110,
@@ -89,7 +91,7 @@ export const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  
+
   avatar: {
     width: 104,
     height: 104,
@@ -97,67 +99,67 @@ export const styles = StyleSheet.create({
     borderWidth: 3,
     borderColor: COLORS.cardBackground,
   },
-  
+
   userInfo: {
     alignItems: "center",
     marginTop: 10,
     backgroundColor: "transparent",
   },
-  
+
   nameContainer: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "transparent",
   },
-  
+
   name: {
     fontSize: 22,
     fontWeight: "bold",
     color: COLORS.text,
   },
-  
+
   verifiedIcon: {
     marginLeft: 6,
   },
-  
+
   username: {
     fontSize: 15,
     color: COLORS.textSecondary,
     marginTop: 3,
   },
-  
+
   email: {
     fontSize: 13,
     color: COLORS.textLight,
     marginTop: 3,
   },
-  
+
   actionButtonsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginTop: 20,
     paddingHorizontal: 16,
   },
-  
+
   actionButton: {
     flex: 1,
     marginHorizontal: 6,
     height: 42,
   },
-  
+
   followingButton: {
     borderWidth: 1,
-    borderColor: '#D1D5DB',
-    backgroundColor: 'transparent',
+    borderColor: "#D1D5DB",
+    backgroundColor: "transparent",
   },
-  
+
   mainButton: {
     width: "85%",
     marginVertical: 6,
     height: 44,
   },
-  
+
   statsContainer: {
     flexDirection: "row",
     justifyContent: "space-around",
@@ -168,27 +170,27 @@ export const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: COLORS.primaryTransparent,
   },
-  
+
   stat: {
     alignItems: "center",
     paddingVertical: 8,
     paddingHorizontal: 15,
     borderRadius: 10,
   },
-  
+
   statNumber: {
     fontSize: 18,
     fontWeight: "bold",
     color: COLORS.primary,
   },
-  
+
   statLabel: {
     fontSize: 13,
     color: COLORS.textSecondary,
     marginTop: 3,
     fontWeight: "500",
   },
-  
+
   bioSection: {
     backgroundColor: COLORS.cardBackground,
     borderRadius: 20,
@@ -207,14 +209,14 @@ export const styles = StyleSheet.create({
       },
     }),
   },
-  
+
   sectionTitle: {
     fontSize: 18,
     fontWeight: "700",
     color: COLORS.primary,
     marginBottom: 14,
   },
-  
+
   bioItem: {
     flexDirection: "row",
     marginBottom: 16,
@@ -223,31 +225,31 @@ export const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: COLORS.primaryUltraLight,
   },
-  
+
   bioIcon: {
     marginRight: 14,
     marginTop: 2,
     color: COLORS.primary,
   },
-  
+
   bioTextContainer: {
     flex: 1,
     backgroundColor: "transparent",
   },
-  
+
   bioLabel: {
     fontSize: 14,
     fontWeight: "600",
     color: COLORS.textSecondary,
   },
-  
+
   bioValue: {
     fontSize: 15,
     color: COLORS.text,
     marginTop: 3,
     lineHeight: 22,
   },
-  
+
   settingsSection: {
     backgroundColor: COLORS.cardBackground,
     borderRadius: 20,
@@ -267,7 +269,7 @@ export const styles = StyleSheet.create({
       },
     }),
   },
-  
+
   settingItem: {
     flexDirection: "row",
     alignItems: "center",
@@ -276,7 +278,7 @@ export const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: COLORS.divider,
   },
-  
+
   settingText: {
     fontSize: 16,
     color: COLORS.text,
@@ -284,7 +286,7 @@ export const styles = StyleSheet.create({
     flex: 1,
     fontWeight: "500",
   },
-  
+
   postSection: {
     backgroundColor: COLORS.cardBackground,
     borderRadius: 20,
@@ -303,7 +305,7 @@ export const styles = StyleSheet.create({
       },
     }),
   },
-  
+
   postContainer: {
     minHeight: 120,
     justifyContent: "center",
@@ -316,7 +318,7 @@ export const styles = StyleSheet.create({
     borderStyle: "dashed",
     marginTop: 10,
   },
-  
+
   noPostText: {
     fontSize: 16,
     color: COLORS.primary,
@@ -325,16 +327,75 @@ export const styles = StyleSheet.create({
     fontWeight: "500",
   },
 
+  // 添加到你的styles对象中
+  visibilitySection: {
+    backgroundColor: COLORS.cardBackground || "#ffffff",
+    borderRadius: 12,
+    padding: 12,
+    marginVertical: 8,
+    shadowColor: COLORS.shadow || "#000000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 2,
+  },
   toggleContainer: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginTop: 16,
-    paddingHorizontal: 16,
+    marginTop: 4,
+    paddingHorizontal: 4,
   },
-  
+  labelContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  visibilityIcon: {
+    marginRight: 8,
+  },
   toggleLabel: {
     fontSize: 16,
     color: COLORS.text,
+    fontWeight: "500",
+  },
+  privateLabel: {
+    color: COLORS.text,
+  },
+  publicLabel: {
+    color: COLORS.text,
+  },
+  switchWrapper: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  statusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 4,
+    marginRight: 10,
+  },
+  statusText: {
+    color: COLORS.white,
+    fontSize: 10,
+    fontWeight: "bold",
+    letterSpacing: 0.5,
+  },
+  toggleSwitch: {
+    transform: [{ scaleX: 0.9 }, { scaleY: 0.9 }],
+  },
+  statusIndicator: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 16,
+    gap: 6,
+  },
+  privacyHint: {
+    fontSize: 13,
+    color: COLORS.textSecondary || "#666",
+    marginTop: 8,
+    marginLeft: 4,
+    opacity: 0.8,
   },
 });

@@ -38,6 +38,11 @@ const getMediaType = (uri: string): string => {
   return "image";
 };
 
+const validateTag = (tag: string): boolean => {
+  // Allow alphanumeric, spaces, underscores, and hyphens, 1-30 characters
+  return /^[a-zA-Z0-9 _-]{1,30}$/.test(tag);
+};
+
 const EditPost = () => {
   const { id } = useLocalSearchParams();
   const [postText, setPostText] = useState<string>("");
@@ -51,12 +56,16 @@ const EditPost = () => {
     visibility: "public" | "private" | "friends";
     hasDisclaimer: boolean;
     disclaimerText: string;
+    caption: string;
+    tags: string[]; 
   }>({
     text: "",
     media: null,
     visibility: "public",
     hasDisclaimer: false,
     disclaimerText: "",
+    caption: "",
+    tags: [], 
   });
   const [visibility, setVisibility] = useState<
     "public" | "private" | "friends"
@@ -64,6 +73,11 @@ const EditPost = () => {
   const [hasDisclaimer, setHasDisclaimer] = useState<boolean>(false);
   const [disclaimerText, setDisclaimerText] = useState<string>("");
   const insets = useSafeAreaInsets();
+  const [caption, setCaption] = useState<string>("");
+  const [tagInput, setTagInput] = useState<string>("");
+  const [tags, setTags] = useState<string[]>([]);
+  const [showCaptionAndTags, setShowCaptionAndTags] = useState<boolean>(false);
+
 
   // Fetch original post data
   useEffect(() => {
@@ -106,6 +120,20 @@ const EditPost = () => {
         setHasDisclaimer(!!post.disclaimer);
         setDisclaimerText(post.disclaimer || "");
 
+        // Check if caption exists and set it
+        if (post.caption) {
+          console.log("Setting caption:", post.caption);
+          setCaption(post.caption);
+          setShowCaptionAndTags(true);
+        }
+        
+        // Check if tags exist and set them
+        if (post.tags && Array.isArray(post.tags) && post.tags.length > 0) {
+          console.log("Setting tags:", post.tags);
+          setTags(post.tags);
+          setShowCaptionAndTags(true);
+        }
+
         // Store original values for comparison
         setOriginalPost({
           text: post.content || "",
@@ -113,6 +141,8 @@ const EditPost = () => {
           visibility: post.visibility || "public",
           hasDisclaimer: !!post.disclaimer,
           disclaimerText: post.disclaimer || "",
+          caption: post.caption || "",
+          tags: post.tags || [],  
         });
 
         setIsLoading(false);
@@ -135,6 +165,46 @@ const EditPost = () => {
       setDisclaimerText("");
     }
   }, [hasDisclaimer]);
+
+  // Toggle caption and tags section
+  const toggleCaptionAndTags = useCallback(() => {
+    setShowCaptionAndTags(!showCaptionAndTags);
+  }, [showCaptionAndTags]);
+
+  // Add a tag
+  const addTag = useCallback(() => {
+    const trimmedTag = tagInput.trim();
+    
+    if (!trimmedTag) {
+      return;
+    }
+    
+    if (!validateTag(trimmedTag)) {
+      Alert.alert(
+        "Invalid Tag", 
+        "Tags can only contain letters, numbers, spaces, underscores, and hyphens, and must be 1-30 characters long."
+      );
+      return;
+    }
+    
+    if (tags.includes(trimmedTag)) {
+      Alert.alert("Duplicate Tag", "This tag has already been added.");
+      return;
+    }
+    
+    if (tags.length >= 10) {
+      Alert.alert("Tag Limit", "You can add a maximum of 10 tags.");
+      return;
+    }
+    
+    setTags([...tags, trimmedTag]);
+    setTagInput("");
+  }, [tagInput, tags]);
+
+  // Remove a tag
+  const removeTag = useCallback((tagToRemove: string) => {
+    setTags(tags.filter(tag => tag !== tagToRemove));
+  }, [tags]);
 
   const pickMedia = useCallback(async () => {
     try {
@@ -260,6 +330,16 @@ const EditPost = () => {
         }
       }
 
+      // Add caption if available
+      if (caption.trim()) {
+        formData.append("caption", caption.trim());
+      }
+
+      // Add tags if available
+      if (tags.length > 0) {
+        formData.append("tags", JSON.stringify(tags));
+      }
+
       // Call API to update post
       await api.updatePost(id, formData);
 
@@ -274,7 +354,8 @@ const EditPost = () => {
     } finally {
       setIsSubmitting(false);
     }
-  }, [postText, media, id, visibility, hasDisclaimer, disclaimerText]);
+  }, [postText, media, id, visibility, hasDisclaimer, disclaimerText,
+    caption, tags, tagInput, showCaptionAndTags]);
 
   const handleDelete = useCallback(() => {
     if (typeof id !== "string") {
@@ -316,7 +397,9 @@ const EditPost = () => {
       media !== originalPost.media ||
       visibility !== originalPost.visibility ||
       hasDisclaimer !== originalPost.hasDisclaimer ||
-      disclaimerText !== originalPost.disclaimerText;
+      disclaimerText !== originalPost.disclaimerText ||
+      caption !== originalPost.caption ||
+      JSON.stringify(tags) !== JSON.stringify(originalPost.tags);
 
     if (hasChanges) {
       Alert.alert(
@@ -341,6 +424,7 @@ const EditPost = () => {
     hasDisclaimer,
     disclaimerText,
     originalPost,
+    caption, tags, tagInput, showCaptionAndTags,
   ]);
 
   const isUpdateDisabled =
@@ -349,7 +433,9 @@ const EditPost = () => {
       media === originalPost.media &&
       visibility === originalPost.visibility &&
       hasDisclaimer === originalPost.hasDisclaimer &&
-      disclaimerText === originalPost.disclaimerText);
+      disclaimerText === originalPost.disclaimerText &&
+      caption === originalPost.caption &&                     
+      JSON.stringify(tags) === JSON.stringify(originalPost.tags));
 
   // Render loading state
   if (isLoading) {
@@ -399,6 +485,92 @@ const EditPost = () => {
 
         {/* Preview your media */}
         <MediaPreview media={media} onRemove={removeMedia} />
+
+        {/* Caption and Tags Toggle Button */}
+        <TouchableOpacity
+          style={styles.captionToggleButton}
+          onPress={toggleCaptionAndTags}
+        >
+          <View style={styles.captionToggleContent}>
+            <Ionicons 
+              name={showCaptionAndTags ? "chevron-up-outline" : "chevron-down-outline"} 
+              size={20} 
+              color="#00c5e3" 
+            />
+            <Text style={styles.captionToggleText}>
+              {showCaptionAndTags ? "Hide Caption & Tags" : "Add Caption & Tags"}
+            </Text>
+          </View>
+        </TouchableOpacity>
+
+        {/* Caption and Tags Section */}
+        {showCaptionAndTags && (
+          <View style={styles.captionTagsContainer}>
+            {/* Caption Input */}
+            <View style={styles.captionContainer}>
+              <Text style={styles.sectionLabel}>Caption</Text>
+              <TextInput
+                style={styles.captionInput}
+                placeholder="Add a short caption to your post..."
+                placeholderTextColor="#9E9E9E"
+                multiline
+                value={caption}
+                onChangeText={setCaption}
+                maxLength={100}
+                returnKeyType="default"
+              />
+              <Text style={styles.charCount}>{caption.length}/100</Text>
+            </View>
+            
+            {/* Tags Input */}
+            <View style={styles.tagsContainer}>
+              <Text style={styles.sectionLabel}>Tags</Text>
+              <View style={styles.tagInputContainer}>
+                <TextInput
+                  style={styles.tagInput}
+                  placeholder="Add tags..."
+                  placeholderTextColor="#9E9E9E"
+                  value={tagInput}
+                  onChangeText={setTagInput}
+                  maxLength={30}
+                  returnKeyType="done"
+                  onSubmitEditing={addTag}
+                  autoCapitalize="none"
+                />
+                <TouchableOpacity 
+                  style={styles.addTagButton}
+                  onPress={addTag}
+                  disabled={!tagInput.trim()}
+                >
+                  <Ionicons name="add-circle-outline" size={24} color="#00c5e3" />
+                </TouchableOpacity>
+              </View>
+              
+              {/* Tags Display */}
+              {tags.length > 0 && (
+                <View style={styles.tagsWrap}>
+                  {tags.map((tag, index) => (
+                    <View key={index} style={styles.tagChip}>
+                      <Text style={styles.tagText}>#{tag}</Text>
+                      <TouchableOpacity
+                        onPress={() => removeTag(tag)}
+                        style={styles.removeTagButton}
+                      >
+                        <Ionicons name="close-circle" size={16} color="#666666" />
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                </View>
+              )}
+              
+              {tags.length > 0 && (
+                <Text style={styles.tagCountText}>
+                  {tags.length}/10 tags added
+                </Text>
+              )}
+            </View>
+          </View>
+        )}
 
         {/* Disclaimer Toggle */}
         <View style={styles.disclaimerToggleContainer}>
@@ -704,6 +876,110 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     fontSize: 16,
     marginLeft: 8,
+  },
+  captionToggleButton: {
+    backgroundColor: "#f9f9f9",
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    marginTop: 8,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "#00c5e3",
+  },
+  captionToggleContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#f9f9f9",
+  },
+  captionToggleText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#00c5e3",
+    marginLeft: 8,
+  },
+  captionTagsContainer: {
+    borderRadius: 10,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "#e0e0e0",
+  },
+  sectionLabel: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#333333",
+    marginBottom: 8,
+  },
+  captionContainer: {
+    marginBottom: 16,
+  },
+  captionInput: {
+    width: "100%",
+    minHeight: 60,
+    borderWidth: 1,
+    borderColor: "#00c5e3",
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 14,
+    backgroundColor: "#f9f9f9",
+    textAlignVertical: "top",
+    marginBottom: 4,
+    color: "#333333",
+  },
+  tagsContainer: {
+    marginBottom: 8,
+  },
+  tagInputContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  tagInput: {
+    flex: 1,
+    height: 40,
+    borderWidth: 1,
+    borderColor: "#00c5e3",
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    fontSize: 14,
+    backgroundColor: "#f9f9f9",
+    color: "#333333",
+    marginRight: 8,
+  },
+  addTagButton: {
+    padding: 6,
+  },
+  tagsWrap: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    marginBottom: 8,
+    backgroundColor: "#ffffff",
+  },
+  tagChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#E1F5FE",
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 16,
+    marginRight: 8,
+    marginBottom: 8,
+  },
+  tagText: {
+    fontSize: 12,
+    color: "#00c5e3",
+    fontWeight: "500",
+  },
+  removeTagButton: {
+    marginLeft: 6,
+    padding: 2,
+  },
+  tagCountText: {
+    fontSize: 12,
+    color: "#666666",
+    marginTop: 4,
   },
 });
 

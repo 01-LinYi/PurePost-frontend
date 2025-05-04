@@ -6,7 +6,12 @@ import {
 } from "react";
 import { useStorageState } from "../hooks/useStorageState";
 import { User } from "@/types/userType";
-import { login, logout, deleteAccount as deleteAccountApi } from "@/utils/api";
+import {
+  login,
+  logout,
+  deleteAccount as deleteAccountApi,
+  fetchUserAdmin,
+} from "@/utils/api";
 import { LoginResponse } from "@/types/authType";
 
 const AuthContext = createContext<{
@@ -14,6 +19,7 @@ const AuthContext = createContext<{
   logOut: () => Promise<string | null>;
   deleteAccount: (password: string) => Promise<string | null>;
   setUserVerify: (isVerify: boolean) => void;
+  checkAdmin: () => Promise<boolean>;
   session: string | null;
   isSessionLoading: boolean;
   user: User | null;
@@ -23,6 +29,7 @@ const AuthContext = createContext<{
   logOut: async () => null,
   deleteAccount: async () => null,
   setUserVerify: async () => false,
+  checkAdmin: async () => false,
   session: null,
   isSessionLoading: false,
   user: null,
@@ -41,7 +48,6 @@ export function useSession() {
   return value;
 }
 
-const authEndpoint = "auth/";
 
 export function SessionProvider({ children }: PropsWithChildren) {
   // const [user, setUser] = useState(null);
@@ -103,7 +109,25 @@ export function SessionProvider({ children }: PropsWithChildren) {
     jsonUser.isVerified = isVerify;
     setJsonUser(jsonUser);
     setUser(JSON.stringify(jsonUser));
-  }
+  };
+
+  const checkAdmin = async (): Promise<boolean> => {
+    if (!jsonUser) return false;
+
+    if ("isAdmin" in jsonUser) {
+      return !!jsonUser.isAdmin;
+    }
+
+    try {
+      const isAdmin = await fetchUserAdmin();
+      setJsonUser({ ...jsonUser, isAdmin: isAdmin });
+      setUser(JSON.stringify({ ...jsonUser, isAdmin: isAdmin }));
+      return isAdmin;
+    } catch (error) {
+      console.error("Check admin failed:", error);
+      return false;
+    }
+  };
 
   return (
     <AuthContext.Provider
@@ -112,6 +136,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
         logOut,
         deleteAccount,
         setUserVerify,
+        checkAdmin,
         session: session,
         isSessionLoading: isSessionLoading,
         user: jsonUser,

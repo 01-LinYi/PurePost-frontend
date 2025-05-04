@@ -20,9 +20,9 @@ type FeedPostItemProps = {
   onLike: (postId: string) => Promise<any>;
   onDeepfakeDetection: (postId: string) => Promise<boolean>;
   onNavigate: (postId: string) => void;
-  onSave: (postId: string, folderId?: string) => Promise<any>;
+  onSave: (postId: string) => void;
   onShare: (postId: string) => Promise<any>;
-  onReport: (postId: string, reason: string) => void;
+  onReport: (postId: string) => void;
 };
 
 // Cache control for images
@@ -46,15 +46,25 @@ export default function FeedPostItem({
   const router = useRouter();
   // Handle share action
   const handleShare = async () => {
+    const contentPreview =
+      post.content.slice(0, 50) + (post.content.length > 50 ? "..." : "");
+    const message = post.caption
+      ? `${post.caption}: ${contentPreview}`
+      : contentPreview;
+
+    const finalMessage = `${message}\nAuthor: ${post.user.username}`;
     try {
-      await Share.share({
-        message: `Check out this post: ${post.content}`,
+      const result = await Share.share({
+        message: finalMessage,
         // Add a URL if your app has deep linking
         // url: `yourapp://post/${post.id}`
+        title: "Share Post",
       });
-
+      if (result.action === Share.sharedAction) {
+        // Optionally handle the result of the share action
+        await onShare(post.id);
+      }
       // Record share in backend
-      await onShare(post.id);
     } catch (error) {
       console.error("Error sharing post:", error);
     }
@@ -69,29 +79,7 @@ export default function FeedPostItem({
       },
       {
         text: "Report Post",
-        onPress: () => promptReportReason(),
-      },
-      {
-        text: "Cancel",
-        style: "cancel",
-      },
-    ]);
-  };
-
-  // Prompt user for report reason
-  const promptReportReason = () => {
-    Alert.alert("Report Post", "Why are you reporting this post?", [
-      {
-        text: "Inappropriate Content",
-        onPress: () => onReport(post.id, "inappropriate_content"),
-      },
-      {
-        text: "Misinformation",
-        onPress: () => onReport(post.id, "misinformation"),
-      },
-      {
-        text: "Spam",
-        onPress: () => onReport(post.id, "spam"),
+        onPress: () => onReport(post.id),
       },
       {
         text: "Cancel",
@@ -130,10 +118,10 @@ export default function FeedPostItem({
         return (
           <View style={styles.deepfakeSafe}>
             <Text style={styles.deepfakeLowProbabilityText}>
-              Low probability of manipulation
+              Content likely authentic
             </Text>
             <Text style={styles.deepfakeConfidenceText}>
-              No manipulation detected in this content
+              Analysis indicates low to moderate probability of manipulation
             </Text>
           </View>
         );
@@ -240,16 +228,22 @@ export default function FeedPostItem({
         <View style={styles.userInfo}>
           <TouchableOpacity
             style={styles.userAvatarContainer}
-            onPress={() => router.push(`/user/${post.user.username}`)}
+            onPress={() =>
+              router.push(`/user/${post.user.username}?id=${post.user.id}`)
+            }
           >
             {renderAvatar()}
           </TouchableOpacity>
           <TouchableOpacity
-            onPress={() => router.push(`/user/${post.user.username}`)}
+            onPress={() =>
+              router.push(`/user/${post.user.username}?id=${post.user.id}`)
+            }
           >
             <View>
               <Text style={styles.username}>{getUsername()}</Text>
-              <Text style={styles.timestamp}>{formatDate(post.created_at)}</Text>
+              <Text style={styles.timestamp}>
+                {formatDate(post.created_at)}
+              </Text>
             </View>
           </TouchableOpacity>
         </View>
